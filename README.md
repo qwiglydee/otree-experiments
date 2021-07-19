@@ -1,8 +1,20 @@
 # oTree experiments
 
-Some experimental implementation of various games for oTree v5
+Some experimental implementation of games for oTree v5
 
-- captcha
+Features:
+- live page with infinite iterations (micro-rounds) and timeout
+- generating each puzzle on the fly
+- showing a puzzle as an image on the live page
+- recording each iteration, elapsed time, puzzle, solution, given answer, correctness, and if the puzzle was skipped
+- custom export of all recorded data
+
+Puzzle types implemented or to be implemented:
+- captcha: classic distorted text
+- digits matrices: TODO
+- counts symbols: TODO
+- arithmetic: TODO
+
 
 ## Development
 
