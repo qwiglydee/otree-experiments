@@ -57,7 +57,7 @@ def generate_puzzle(player: Player):
     difficulty = player.session.config.get('captcha_length', Constants.default_captcha_length)
     text = utils.generate_text(difficulty)
     # difficulty, puzzle, solution
-    return difficulty, text, text
+    return difficulty, text, text.lower()
 
 
 def generate_image(text):
@@ -67,7 +67,7 @@ def generate_image(text):
 
 
 def check_answer(solution: str, answer: str):
-    return answer.upper() == solution
+    return answer.lower() == solution
 
 
 # generic game function, independent from above specific
