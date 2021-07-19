@@ -1,6 +1,8 @@
+import time
 from otree.api import *
 
 from . import utils
+
 
 doc = """
 Experimental catcha game
@@ -34,10 +36,10 @@ class Player(BasePlayer):
 class PuzzleGame(ExtraModel):
     """A model to store current game state"""
     player = models.Link(Player)
-
-    elapsed = models.FloatField(initial=0)
+    start_time = models.FloatField()
     iteration = models.IntegerField(initial=0)
     difficulty = models.FloatField(initial=0)
+
     puzzle = models.StringField(initial="")
     solution = models.StringField(initial="")
 
@@ -48,6 +50,7 @@ class PuzzleRecord(ExtraModel):
     elapsed = models.FloatField()
     iteration = models.IntegerField()
     difficulty = models.FloatField()
+
     puzzle = models.StringField()
     solution = models.StringField()
     answer = models.StringField()
@@ -75,9 +78,10 @@ def check_answer(solution: str, answer: str):
 
 def play_captcha(player: Player, data: dict):
     """Handles iteration of the game"""
+    now = time.time()
     # create or retrieve current state
     if 'start' in data:
-        current = PuzzleGame.create(player=player)
+        current = PuzzleGame.create(player=player, start_time=now)
     else:
         current = PuzzleGame.objects_get(player=player)
 
@@ -86,7 +90,7 @@ def play_captcha(player: Player, data: dict):
         answer = data['answer']
         PuzzleRecord.create(
             player=player,
-            elapsed=current.elapsed,
+            elapsed=now - current.start_time,
             iteration=current.iteration,
             difficulty=current.difficulty,
             puzzle=current.puzzle,
@@ -103,7 +107,6 @@ def play_captcha(player: Player, data: dict):
     current.puzzle = puzzle
     current.solution = solution
     current.iteration += 1
-    # current.elapsed = ...
 
     # send the puzzle as image
     image = generate_image(puzzle)
@@ -113,14 +116,14 @@ def play_captcha(player: Player, data: dict):
 
 def custom_export(players):
     """Dumps all the puzzles displayed"""
-    yield ['session', 'participant_code', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct']
+    yield ['session', 'participant_code',
+           'time', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct']
     for p in players:
         participant = p.participant
         session = p.session
         for z in PuzzleRecord.filter(player=p):
             yield [session.code, participant.code,
-                   z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct]
-
+                   z.elapsed, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct]
 
 # PAGES
 
