@@ -12,6 +12,8 @@ class Constants(api.BaseConstants):
     players_per_group = None
     num_rounds = 1
 
+    default_captcha_length = 5
+
 
 class Subsession(api.BaseSubsession):
     pass
@@ -27,8 +29,9 @@ class Player(api.BasePlayer):
 
 # customizable functions
 
-def generate_text(player: Player, difficulty: int):
-    return utils.generate_text(difficulty)
+def generate_puzzle(player: Player):
+    difficulty = player.session.config.get('captcha_length', Constants.default_captcha_length)
+    return difficulty, utils.generate_text(difficulty)
 
 
 def generate_image(text):
@@ -37,18 +40,20 @@ def generate_image(text):
     return image
 
 
+def play_captcha(player: Player, data: dict):
+    difficulty, puzzle = generate_puzzle(player)
+    image = generate_image(puzzle)
+    data = utils.encode_image(image)
+    return {player.id_in_group: {'image': data}}
+
+
 # PAGES
 
 
 class MainPage(api.Page):
     timeout_seconds = 60
 
-    def live_method(player: Player, data):
-        difficulty = 5
-        puzzle = generate_text(player, difficulty)
-        image = generate_image(puzzle)
-        data = utils.encode_image(image)
-        return {player.id_in_group: {'image': data}}
+    live_method = play_captcha
 
 
 class Results(api.Page):

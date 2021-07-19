@@ -4,7 +4,8 @@ SESSION_CONFIGS = [
     dict(
         name='captcha',
         num_demo_participants=1,
-        app_sequence=['captcha']
+        app_sequence=['captcha'],
+        captcha_length=3
     ),
 ]
 
