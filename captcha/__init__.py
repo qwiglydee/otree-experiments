@@ -13,6 +13,7 @@ class Constants(BaseConstants):
     num_rounds = 1
 
     default_captcha_length = 5
+    game_duration = 1
 
 
 class Subsession(BaseSubsession):
@@ -123,8 +124,12 @@ def custom_export(players):
 
 # PAGES
 
-class MainPage(Page):
-    timeout_seconds = 60
+class Intro(Page):
+    pass
+
+
+class Game(Page):
+    timeout_seconds = Constants.game_duration * 60
 
     live_method = play_captcha
 
@@ -142,4 +147,4 @@ class Results(Page):
     pass
 
 
-page_sequence = [MainPage, Results]
+page_sequence = [Intro, Game, Results]
