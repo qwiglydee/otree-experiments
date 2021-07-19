@@ -1,5 +1,6 @@
 from otree import api
 
+from . import utils
 
 doc = """
 Experimental catcha game
@@ -27,7 +28,14 @@ class Player(api.BasePlayer):
 # PAGES
 class MainPage(api.Page):
     timeout_seconds = 60
-    pass
+
+    @staticmethod
+    def vars_for_template(player):
+        text = utils.generate_text(5)
+        image = utils.generate_image(text)
+        image = utils.distort_image(image)
+        data = utils.encode_image(image)
+        return {'image': data}
 
 
 class Results(api.Page):
