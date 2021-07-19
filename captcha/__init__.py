@@ -110,6 +110,17 @@ def play_captcha(player: Player, data: dict):
     return {player.id_in_group: {'image': data}}
 
 
+def custom_export(players):
+    """Dumps all the puzzles displayed"""
+    yield ['session', 'participant_code', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct']
+    for p in players:
+        participant = p.participant
+        session = p.session
+        for z in PuzzleRecord.filter(player=p):
+            yield [session.code, participant.code,
+                   z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct]
+
+
 # PAGES
 
 class MainPage(Page):
@@ -119,7 +130,7 @@ class MainPage(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        current = PuzzleGame.object_get(player=player)
+        current = PuzzleGame.objects_get(player=player)
         # record total player stats
         player.total_puzzles = current.iteration
         player.total_solved = len(PuzzleRecord.filter(player=player, is_correct=True))
