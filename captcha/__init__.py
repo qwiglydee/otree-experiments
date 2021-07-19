@@ -27,8 +27,8 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    total_puzzles = models.IntegerField()
-    total_solved = models.IntegerField()
+    total_puzzles = models.IntegerField(initial=0)
+    total_solved = models.IntegerField(initial=0)
 
 
 # puzzle-specific stuff
@@ -37,9 +37,9 @@ class PuzzleGame(ExtraModel):
     """A model to store current game state"""
     player = models.Link(Player)
     start_time = models.FloatField()
-    iteration = models.IntegerField(initial=0)
-    difficulty = models.FloatField(initial=0)
+    iteration = models.IntegerField()
 
+    difficulty = models.FloatField(initial=0)
     puzzle = models.StringField(initial="")
     solution = models.StringField(initial="")
 
@@ -47,10 +47,10 @@ class PuzzleGame(ExtraModel):
 class PuzzleRecord(ExtraModel):
     """A model to keep record of all solved puzzles"""
     player = models.Link(Player)
-    elapsed = models.FloatField()
-    iteration = models.IntegerField()
-    difficulty = models.FloatField()
+    elapsed = models.FloatField(initial=0)
+    iteration = models.IntegerField(initial=0)
 
+    difficulty = models.FloatField()
     puzzle = models.StringField()
     solution = models.StringField()
     answer = models.StringField()
@@ -59,7 +59,11 @@ class PuzzleRecord(ExtraModel):
 
 
 def generate_puzzle(player: Player):
-    difficulty = player.session.config.get('captcha_length', Constants.default_captcha_length)
+    session = player.session
+    if session.config.get('captcha_testing'):
+        text = f"{player.total_puzzles:03}"
+        return 0, text, text
+    difficulty = session.config.get('captcha_length', Constants.default_captcha_length)
     text = utils.generate_text(difficulty)
     # difficulty, puzzle, solution
     return difficulty, text, text.lower()
@@ -82,13 +86,15 @@ def play_captcha(player: Player, data: dict):
     now = time.time()
     # create or retrieve current state
     if 'start' in data:
-        current = PuzzleGame.create(player=player, start_time=now)
+        # initial= doesn't work
+        current = PuzzleGame.create(player=player, start_time=now, iteration=0)
     else:
         current = PuzzleGame.objects_get(player=player)
 
     # record current answer
     if 'answer' in data:
         answer = data['answer']
+        correct = check_answer(current.solution, answer)
         PuzzleRecord.create(
             player=player,
             elapsed=now - current.start_time,
@@ -97,18 +103,23 @@ def play_captcha(player: Player, data: dict):
             puzzle=current.puzzle,
             solution=current.solution,
             answer=answer,
-            is_correct=check_answer(current.solution, answer),
+            is_correct=correct,
             is_skipped=(answer == "")
         )
+        if correct:
+            player.total_solved += 1
 
     # generate next puzzle
     difficulty, puzzle, solution = generate_puzzle(player)
 
     # save current puzzle
+    current.iteration += 1
     current.difficulty = difficulty
     current.puzzle = puzzle
     current.solution = solution
-    current.iteration += 1
+
+    # update player stats
+    player.total_puzzles += 1
 
     # send the puzzle as image
     image = generate_image(puzzle)
@@ -140,12 +151,8 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        current = PuzzleGame.objects_get(player=player)
-        # record total player stats
-        player.total_puzzles = current.iteration
-        player.total_solved = len(PuzzleRecord.filter(player=player, is_correct=True))
-        # clean up
-        current.delete()
+        # cleanup
+        PuzzleGame.objects_get(player=player).delete()
 
 
 class Results(Page):

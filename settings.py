@@ -7,6 +7,12 @@ SESSION_CONFIGS = [
         app_sequence=['captcha'],
         captcha_length=3
     ),
+    dict(
+        name='captcha_testing',
+        num_demo_participants=1,
+        app_sequence=['captcha'],
+        captcha_testing=True
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs
