@@ -1,0 +1,3 @@
+otree~=5.0
+psycopg2-binary~=2.0
+Pillow~=8.0

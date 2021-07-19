@@ -1,0 +1,12 @@
+.*
+!.gitignore
+staticfiles
+./db.sqlite3
+*~
+*.sqlite3
+_static_root
+_bots*s
+__temp*
+__pycache__/
+*.py[cod]
+*.otreezip
