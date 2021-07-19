@@ -55,6 +55,7 @@ class PuzzleRecord(ExtraModel):
     solution = models.StringField()
     answer = models.StringField()
     is_correct = models.BooleanField()
+    is_skipped = models.BooleanField()
 
 
 def generate_puzzle(player: Player):
@@ -96,7 +97,8 @@ def play_captcha(player: Player, data: dict):
             puzzle=current.puzzle,
             solution=current.solution,
             answer=answer,
-            is_correct=check_answer(current.solution, answer)
+            is_correct=check_answer(current.solution, answer),
+            is_skipped=(answer == "")
         )
 
     # generate next puzzle
@@ -117,13 +119,13 @@ def play_captcha(player: Player, data: dict):
 def custom_export(players):
     """Dumps all the puzzles displayed"""
     yield ['session', 'participant_code',
-           'time', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct']
+           'time', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct', 'is_skipped']
     for p in players:
         participant = p.participant
         session = p.session
         for z in PuzzleRecord.filter(player=p):
             yield [session.code, participant.code,
-                   z.elapsed, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct]
+                   z.elapsed, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct, z.is_skipped]
 
 # PAGES
 
