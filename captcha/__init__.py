@@ -25,17 +25,30 @@ class Player(api.BasePlayer):
     pass
 
 
+# customizable functions
+
+def generate_text(player: Player, difficulty: int):
+    return utils.generate_text(difficulty)
+
+
+def generate_image(text):
+    image = utils.generate_image(text)
+    image = utils.distort_image(image)
+    return image
+
+
 # PAGES
+
+
 class MainPage(api.Page):
     timeout_seconds = 60
 
-    @staticmethod
-    def vars_for_template(player):
-        text = utils.generate_text(5)
-        image = utils.generate_image(text)
-        image = utils.distort_image(image)
+    def live_method(player: Player, data):
+        difficulty = 5
+        puzzle = generate_text(player, difficulty)
+        image = generate_image(puzzle)
         data = utils.encode_image(image)
-        return {'image': data}
+        return {player.id_in_group: {'image': data}}
 
 
 class Results(api.Page):

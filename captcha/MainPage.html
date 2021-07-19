@@ -7,14 +7,40 @@
 {{ endblock }}
 
 {{ block title }}
-    Captcha page
+Captcha page
 {{ endblock }}
 
 {{ block content }}
+<div class="d-flex flex-column align-items-center">
+    <img class="captcha m-1" id="captcha-img">
 
-    <img src="{{ image }}">
-    TODO
-    {{ formfields }}
-    {{ next_button }}
+    <input type="text" id="answer-inp" class="form-control m-1" name="answer" placeholder="enter text from the captcha and press Enter">
+</div>
 
+{{ next_button }}
+
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    let $image = null, $input = null;
+
+    $(function () {
+        $image = $("#captcha-img");
+        $input = $("#answer-inp");
+        $input.keydown(ev => {
+            if( ev.key == 'Enter' ) submit();
+        });
+        liveSend({ start: true });
+    })
+
+    function liveRecv(data) {
+        $image.prop('src', data.image);
+        $input.val("");
+    }
+
+    function submit() {
+        liveSend({ answer: $input.val() });
+    }
+</script>
 {{ endblock }}
