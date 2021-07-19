@@ -1,6 +1,11 @@
 from os import environ
 
 SESSION_CONFIGS = [
+    dict(
+        name='captcha',
+        num_demo_participants=1,
+        app_sequence=['captcha']
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs
