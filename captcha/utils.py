@@ -21,7 +21,7 @@ def generate_text(length):
 
 TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
-TEXT_FONT = str(Path(__file__).parent / "FreeSansBold.otf")
+TEXT_FONT = str(Path(__file__) / "static" / "FreeSansBold.otf")
 
 
 def generate_image(text):
