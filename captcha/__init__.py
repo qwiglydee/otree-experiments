@@ -5,7 +5,7 @@ from . import utils
 
 
 doc = """
-Experimental catcha game
+Experimental captcha game
 """
 
 
@@ -33,31 +33,6 @@ class Player(BasePlayer):
 
 # puzzle-specific stuff
 
-class PuzzleGame(ExtraModel):
-    """A model to store current game state"""
-    player = models.Link(Player)
-    start_time = models.FloatField()
-    iteration = models.IntegerField()
-
-    difficulty = models.FloatField(initial=0)
-    puzzle = models.StringField(initial="")
-    solution = models.StringField(initial="")
-
-
-class PuzzleRecord(ExtraModel):
-    """A model to keep record of all solved puzzles"""
-    player = models.Link(Player)
-    elapsed = models.FloatField(initial=0)
-    iteration = models.IntegerField(initial=0)
-
-    difficulty = models.FloatField()
-    puzzle = models.StringField()
-    solution = models.StringField()
-    answer = models.StringField()
-    is_correct = models.BooleanField()
-    is_skipped = models.BooleanField()
-
-
 def generate_puzzle(player: Player):
     session = player.session
     if session.config.get('captcha_testing'):
@@ -79,56 +54,67 @@ def check_answer(solution: str, answer: str):
     return answer.lower() == solution
 
 
-# generic game function, independent from above specific
+class PuzzleRecord(ExtraModel):
+    """A model to keep record of all generated puzzles"""
+    player = models.Link(Player)
+
+    timestamp = models.FloatField(initial=0)
+    iteration = models.IntegerField(initial=0)
+
+    difficulty = models.FloatField()
+    puzzle = models.StringField()
+    solution = models.StringField()
+
+    answer = models.StringField()
+    is_correct = models.BooleanField()
+    is_skipped = models.BooleanField()
+
 
 def play_captcha(player: Player, data: dict):
     """Handles iteration of the game"""
-    now = time.time()
-    # create or retrieve current state
     if 'start' in data:
-        # initial= doesn't work
-        current = PuzzleGame.create(player=player, start_time=now, iteration=0)
-    else:
-        current = PuzzleGame.objects_get(player=player)
-
-    # record current answer
-    if 'answer' in data:
+        iteration = 0
+    elif 'answer' in data:
         answer = data['answer']
-        correct = check_answer(current.solution, answer)
-        PuzzleRecord.create(
-            player=player,
-            elapsed=now - current.start_time,
-            iteration=current.iteration,
-            difficulty=current.difficulty,
-            puzzle=current.puzzle,
-            solution=current.solution,
-            answer=answer,
-            is_correct=correct,
-            is_skipped=(answer == "")
-        )
-        if correct:
+        is_skipped = (answer == "")
+        # get last unanswered task
+        task = PuzzleRecord.filter(player=player, answer=None)[-1]
+        # check answer
+        is_correct = check_answer(task.solution, answer)
+        # update task
+        task.answer = answer
+        task.is_correct = is_correct
+        task.is_skipped = is_skipped
+        if is_correct:
+            # update player stats
             player.total_solved += 1
 
-    # generate next puzzle
-    difficulty, puzzle, solution = generate_puzzle(player)
-
-    # save current puzzle
-    current.iteration += 1
-    current.difficulty = difficulty
-    current.puzzle = puzzle
-    current.solution = solution
+        iteration = task.iteration + 1
+    else:
+        raise ValueError("invalid data from client!")
 
     # update player stats
     player.total_puzzles += 1
 
+    # new task
+    difficulty, puzzle, solution = generate_puzzle(player)
+    task = PuzzleRecord.create(
+        player=player,
+        timestamp=time.time(),
+        iteration=iteration,
+        difficulty=difficulty,
+        puzzle=puzzle,
+        solution=solution
+    )
+
     # send the puzzle as image
-    image = generate_image(puzzle)
+    image = generate_image(task.puzzle)
     data = utils.encode_image(image)
     return {player.id_in_group: {'image': data}}
 
 
 def custom_export(players):
-    """Dumps all the puzzles displayed"""
+    """Dumps all the puzzles generated"""
     yield ['session', 'participant_code',
            'time', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct', 'is_skipped']
     for p in players:
@@ -136,7 +122,8 @@ def custom_export(players):
         session = p.session
         for z in PuzzleRecord.filter(player=p):
             yield [session.code, participant.code,
-                   z.elapsed, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct, z.is_skipped]
+                   z.timestamp, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct, z.is_skipped]
+
 
 # PAGES
 
@@ -148,11 +135,6 @@ class Game(Page):
     timeout_seconds = Constants.game_duration * 60
 
     live_method = play_captcha
-
-    @staticmethod
-    def before_next_page(player: Player, timeout_happened):
-        # cleanup
-        PuzzleGame.objects_get(player=player).delete()
 
 
 class Results(Page):
