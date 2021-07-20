@@ -11,6 +11,7 @@ Features:
 
 Puzzle types implemented:
 - `captcha`: classic distorted text (configurable characters and length)
+- `arithmetics`: solving equations in form of "A + B ="
 - `matrices`: matrices of 0 and 1 (configurable symbols and size)
 - `symmatrices`: version of matrices with special symbols
 

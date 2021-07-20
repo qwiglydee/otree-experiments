@@ -20,6 +20,11 @@ SESSION_CONFIGS = [
         matrix_size=7
     ),
     dict(
+        name='arithmetics',
+        num_demo_participants=1,
+        app_sequence=['arithmetics']
+    ),
+    dict(
         name='captcha_testing',
         num_demo_participants=1,
         app_sequence=['captcha'],
@@ -29,6 +34,12 @@ SESSION_CONFIGS = [
         name='matrices_testing',
         num_demo_participants=1,
         app_sequence=['matrices'],
+        testing=True
+    ),
+    dict(
+        name='arithmetics_testing',
+        num_demo_participants=1,
+        app_sequence=['arithmetics'],
         testing=True
     ),
 ]
