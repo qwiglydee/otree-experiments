@@ -8,6 +8,12 @@ SESSION_CONFIGS = [
         captcha_length=3
     ),
     dict(
+        name='matrices',
+        num_demo_participants=1,
+        app_sequence=['matrices'],
+        matrix_size=3
+    ),
+    dict(
         name='captcha_testing',
         num_demo_participants=1,
         app_sequence=['captcha'],
