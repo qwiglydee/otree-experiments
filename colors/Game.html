@@ -1,0 +1,42 @@
+{{ block styles }}
+<style>
+    .otree-btn-next {
+        display: none;
+    }
+</style>
+{{ endblock }}
+
+{{ block title }}
+Captcha page
+{{ endblock }}
+
+{{ block content }}
+<div class="d-flex flex-column align-items-center">
+    <img class="captcha m-1" id="captcha-img">
+</div>
+
+{{ next_button }}
+
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    let $image = null;
+
+    $(function () {
+        $image = $("#captcha-img");
+        $('body').keydown(ev => {
+            if( ev.key in js_vars.color_keys ) submit(js_vars.color_keys[ev.key]);
+        });
+        liveSend({ start: true });
+    })
+
+    function liveRecv(data) {
+        $image.prop('src', data.image);
+    }
+
+    function submit(color) {
+        liveSend({ answer: color });
+    }
+</script>
+{{ endblock }}
