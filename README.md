@@ -14,6 +14,7 @@ Puzzle types implemented:
 - `arithmetics`: solving equations in form of "A + B ="
 - `matrices`: matrices of 0 and 1 (configurable symbols and size)
 - `symmatrices`: version of matrices with special symbols
+- `colors`: random color names rendered in random color
 
 
 ## Development
