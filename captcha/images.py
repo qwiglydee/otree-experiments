@@ -1,5 +1,5 @@
 """
-Utilities to generate captcha text and captcha image
+Utilities to generate and manipulate images
 """
 from pathlib import Path
 from io import BytesIO
@@ -8,14 +8,6 @@ import string
 import random
 
 from PIL import Image, ImageDraw, ImageFont, ImageMorph
-
-
-
-CHARACTERS = string.ascii_uppercase + string.digits
-
-
-def generate_text(length):
-    return "".join((random.choice(CHARACTERS) for i in range(length)))
 
 
 TEXT_SIZE = 32
@@ -47,6 +39,6 @@ def distort_image(image):
 def encode_image(image):
     buf = BytesIO()
     image.save(buf, "PNG")
-    bytes = b64encode(buf.getvalue(), )
-    datauri = b"data:text/plain;base64," + bytes
+    buf64 = b64encode(buf.getvalue())
+    datauri = b"data:text/plain;base64," + buf64
     return datauri.decode('ascii')

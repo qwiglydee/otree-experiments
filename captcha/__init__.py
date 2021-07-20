@@ -1,7 +1,8 @@
 import time
+import random
 from otree.api import *
 
-from . import utils
+from . import images
 
 
 doc = """
@@ -14,6 +15,7 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
+    characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     default_captcha_length = 5
     game_duration = 1
 
@@ -38,15 +40,15 @@ def generate_puzzle(player: Player):
     if session.config.get('captcha_testing'):
         text = f"{player.total_puzzles:03}"
         return 0, text, text
-    difficulty = session.config.get('captcha_length', Constants.default_captcha_length)
-    text = utils.generate_text(difficulty)
+    length = session.config.get('captcha_length', Constants.default_captcha_length)
+    text = "".join((random.choice(Constants.characters) for i in range(length)))
     # difficulty, puzzle, solution
-    return difficulty, text, text.lower()
+    return length, text, text.lower()
 
 
 def generate_image(text):
-    image = utils.generate_image(text)
-    image = utils.distort_image(image)
+    image = images.generate_image(text)
+    image = images.distort_image(image)
     return image
 
 
@@ -109,7 +111,7 @@ def play_captcha(player: Player, data: dict):
 
     # send the puzzle as image
     image = generate_image(task.puzzle)
-    data = utils.encode_image(image)
+    data = images.encode_image(image)
     return {player.id_in_group: {'image': data}}
 
 
