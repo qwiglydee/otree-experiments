@@ -14,6 +14,12 @@ SESSION_CONFIGS = [
         matrix_size=3
     ),
     dict(
+        name='symmatrices',
+        num_demo_participants=1,
+        app_sequence=['symmatrices'],
+        matrix_size=7
+    ),
+    dict(
         name='captcha_testing',
         num_demo_participants=1,
         app_sequence=['captcha'],
