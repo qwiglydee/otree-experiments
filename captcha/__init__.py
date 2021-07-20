@@ -52,10 +52,6 @@ def generate_image(text):
     return image
 
 
-def check_answer(solution: str, answer: str):
-    return answer.lower() == solution
-
-
 class PuzzleRecord(ExtraModel):
     """A model to keep record of all generated puzzles"""
     player = models.Link(Player)
@@ -79,10 +75,13 @@ def play_captcha(player: Player, data: dict):
     elif 'answer' in data:
         answer = data['answer']
         is_skipped = (answer == "")
+        if not is_skipped:
+            answer = answer.lower()
+
         # get last unanswered task
         task = PuzzleRecord.filter(player=player, answer=None)[-1]
         # check answer
-        is_correct = check_answer(task.solution, answer)
+        is_correct = not is_skipped and answer == task.solution
         # update task
         task.answer = answer
         task.is_correct = is_correct
