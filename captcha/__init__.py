@@ -37,7 +37,7 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    if session.config.get('captcha_testing'):
+    if session.config.get('testing'):
         text = f"{player.total_puzzles:03}"
         return 0, text, text
     length = session.config.get('captcha_length', Constants.default_captcha_length)
@@ -77,7 +77,6 @@ def play_captcha(player: Player, data: dict):
         is_skipped = (answer == "")
         if not is_skipped:
             answer = answer.lower()
-
         # get last unanswered task
         task = PuzzleRecord.filter(player=player, answer=None)[-1]
         # check answer

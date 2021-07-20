@@ -18,10 +18,10 @@ def call_live_method(method, **kwargs):
     method(1, {'start': True})
     # 3 correct answers
     for i in range(0, 3):
-        method(1, {'answer': f"{i:03}"})
+        method(1, {'answer': f"{i+1:03}"})
     # 5 incorrect answers
     for i in range(0, 5):
-        method(1, {'answer': "999"})
+        method(1, {'answer': "xxx"})
     # 7 skipped
     for i in range(0, 7):
         method(1, {'answer': ""})

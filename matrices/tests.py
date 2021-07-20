@@ -14,14 +14,14 @@ class PlayerBot(Bot):
 
 
 def call_live_method(method, **kwargs):
-    # expecting predictable captchas like NNN
+    # expecting predictable counts == iteration + 1
     method(1, {'start': True})
     # 3 correct answers
     for i in range(0, 3):
-        method(1, {'answer': f"{i:03}"})
+        method(1, {'answer': i+1})
     # 5 incorrect answers
     for i in range(0, 5):
-        method(1, {'answer': "999"})
+        method(1, {'answer': 0})
     # 7 skipped
     for i in range(0, 7):
         method(1, {'answer': ""})

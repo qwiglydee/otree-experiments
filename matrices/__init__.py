@@ -40,10 +40,12 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    if session.config.get('captcha_testing'):
-        raise NotImplementedError()
     size = session.config.get('matrix_size', Constants.default_matrix_size)
     length = size * size
+    if session.config.get('testing'):
+        count = player.total_puzzles
+        string = (Constants.counted_char * count) + ('x' * (length - 1))
+        return size, string, count
     string = "".join((random.choice(Constants.characters) for i in range(length)))
     count = string.count(Constants.counted_char)
     # difficulty, puzzle, solution

@@ -23,7 +23,13 @@ SESSION_CONFIGS = [
         name='captcha_testing',
         num_demo_participants=1,
         app_sequence=['captcha'],
-        captcha_testing=True
+        testing=True
+    ),
+    dict(
+        name='matrices_testing',
+        num_demo_participants=1,
+        app_sequence=['matrices'],
+        testing=True
     ),
 ]
 
