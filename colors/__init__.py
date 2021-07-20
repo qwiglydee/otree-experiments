@@ -15,6 +15,7 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
     game_duration = 1
+
     colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan']
     color_values = {  # RRGGBB hexcodes
         'red': "#FF0000",
@@ -55,7 +56,7 @@ def generate_puzzle(player: Player):
     return color, text
 
 
-class PuzzleRecord(ExtraModel):
+class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
     player = models.Link(Player)
 
@@ -71,7 +72,7 @@ class PuzzleRecord(ExtraModel):
     is_skipped = models.BooleanField()
 
 
-def play_colors(player: Player, data: dict):
+def play_game(player: Player, data: dict):
     """Handles iteration of the game"""
     if 'start' in data:
         iteration = 0
@@ -79,7 +80,7 @@ def play_colors(player: Player, data: dict):
         answer = data['answer']
         is_skipped = (answer == "")
         # get last unanswered task
-        task = PuzzleRecord.filter(player=player, answer=None)[-1]
+        task = Trial.filter(player=player, answer=None)[-1]
         # check answer
         is_correct = not is_skipped and answer == task.color
         # update task
@@ -100,7 +101,7 @@ def play_colors(player: Player, data: dict):
 
     # new task
     text, color = generate_puzzle(player)
-    PuzzleRecord.create(
+    Trial.create(
         player=player,
         timestamp=time.time(),
         iteration=iteration,
@@ -122,7 +123,7 @@ def custom_export(players):
     for p in players:
         participant = p.participant
         session = p.session
-        for z in PuzzleRecord.filter(player=p):
+        for z in Trial.filter(player=p):
             yield [session.code, participant.code,
                    z.timestamp, z.iteration, z.text, z.color, z.congruent, z.answer, z.is_correct, z.is_skipped]
 
@@ -135,7 +136,7 @@ class Intro(Page):
 
 class Game(Page):
     timeout_seconds = Constants.game_duration * 60
-    live_method = play_colors
+    live_method = play_game
 
     @staticmethod
     def js_vars(player: Player):

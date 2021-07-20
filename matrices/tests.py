@@ -8,9 +8,9 @@ class PlayerBot(Bot):
         yield Game
         # yield Results
 
-        expect(len(PuzzleRecord.filter(player=self.player, is_correct=True)), 3)
-        expect(len(PuzzleRecord.filter(player=self.player, is_correct=False, is_skipped=False)), 5)
-        expect(len(PuzzleRecord.filter(player=self.player, is_correct=False, is_skipped=True)), 7)
+        expect(len(Trial.filter(player=self.player, is_correct=True)), 3)
+        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5)
+        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7)
 
 
 def call_live_method(method, **kwargs):

@@ -45,15 +45,15 @@ def generate_puzzle(player: Player):
     return length, text, text.lower()
 
 
-class PuzzleRecord(ExtraModel):
+class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
     player = models.Link(Player)
 
     timestamp = models.FloatField(initial=0)
     iteration = models.IntegerField(initial=0)
 
-    difficulty = models.FloatField()
-    puzzle = models.StringField()
+    length = models.FloatField()
+    text = models.StringField()
     solution = models.StringField()
 
     answer = models.StringField()
@@ -61,7 +61,7 @@ class PuzzleRecord(ExtraModel):
     is_skipped = models.BooleanField()
 
 
-def play_captcha(player: Player, data: dict):
+def play_game(player: Player, data: dict):
     """Handles iteration of the game"""
     if 'start' in data:
         iteration = 0
@@ -71,7 +71,7 @@ def play_captcha(player: Player, data: dict):
         if not is_skipped:
             answer = answer.lower()
         # get last unanswered task
-        task = PuzzleRecord.filter(player=player, answer=None)[-1]
+        task = Trial.filter(player=player, answer=None)[-1]
         # check answer
         is_correct = not is_skipped and answer == task.solution
         # update task
@@ -90,18 +90,18 @@ def play_captcha(player: Player, data: dict):
     player.total_puzzles += 1
 
     # new task
-    difficulty, puzzle, solution = generate_puzzle(player)
-    PuzzleRecord.create(
+    length, text, solution = generate_puzzle(player)
+    Trial.create(
         player=player,
         timestamp=time.time(),
         iteration=iteration,
-        difficulty=difficulty,
-        puzzle=puzzle,
+        length=length,
+        text=text,
         solution=solution
     )
 
     # send the puzzle as image
-    image = generate_image(puzzle)
+    image = generate_image(text)
     image = images.distort_image(image)
     data = encode_image(image)
     return {player.id_in_group: {'image': data}}
@@ -110,13 +110,13 @@ def play_captcha(player: Player, data: dict):
 def custom_export(players):
     """Dumps all the puzzles generated"""
     yield ['session', 'participant_code',
-           'time', 'iteration', 'difficulty', 'puzzle', 'solution', 'answer', 'is_correct', 'is_skipped']
+           'time', 'iteration', 'length', 'text', 'solution', 'answer', 'is_correct', 'is_skipped']
     for p in players:
         participant = p.participant
         session = p.session
-        for z in PuzzleRecord.filter(player=p):
+        for z in Trial.filter(player=p):
             yield [session.code, participant.code,
-                   z.timestamp, z.iteration, z.difficulty, z.puzzle, z.solution, z.answer, z.is_correct, z.is_skipped]
+                   z.timestamp, z.iteration, z.length, z.text, z.solution, z.answer, z.is_correct, z.is_skipped]
 
 
 # PAGES
@@ -128,7 +128,7 @@ class Intro(Page):
 class Game(Page):
     timeout_seconds = Constants.game_duration * 60
 
-    live_method = play_captcha
+    live_method = play_game
 
 
 class Results(Page):
