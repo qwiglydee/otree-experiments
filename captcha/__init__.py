@@ -2,7 +2,7 @@ import time
 import random
 from otree.api import *
 
-from . import images
+from .images import generate_image, distort_image, encode_image
 
 
 doc = """
@@ -41,15 +41,8 @@ def generate_puzzle(player: Player):
         text = f"{player.total_puzzles:03}"
         return 0, text, text
     length = session.config.get('captcha_length', Constants.default_captcha_length)
-    text = "".join((random.choice(Constants.characters) for i in range(length)))
-    # difficulty, puzzle, solution
+    text = "".join((random.choice(Constants.characters) for _ in range(length)))
     return length, text, text.lower()
-
-
-def generate_image(text):
-    image = images.generate_image(text)
-    image = images.distort_image(image)
-    return image
 
 
 class PuzzleRecord(ExtraModel):
@@ -98,7 +91,7 @@ def play_captcha(player: Player, data: dict):
 
     # new task
     difficulty, puzzle, solution = generate_puzzle(player)
-    task = PuzzleRecord.create(
+    PuzzleRecord.create(
         player=player,
         timestamp=time.time(),
         iteration=iteration,
@@ -108,8 +101,9 @@ def play_captcha(player: Player, data: dict):
     )
 
     # send the puzzle as image
-    image = generate_image(task.puzzle)
-    data = images.encode_image(image)
+    image = generate_image(puzzle)
+    image = images.distort_image(image)
+    data = encode_image(image)
     return {player.id_in_group: {'image': data}}
 
 

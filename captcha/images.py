@@ -4,15 +4,13 @@ Utilities to generate and manipulate images
 from pathlib import Path
 from io import BytesIO
 from base64 import b64encode
-import string
-import random
 
 from PIL import Image, ImageDraw, ImageFont, ImageMorph
 
 
 TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
-TEXT_FONT = str(Path(__file__).parent / "FreeSansBold.otf")
+TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSerifBold.otf")
 
 
 def generate_image(text):
@@ -26,7 +24,8 @@ def generate_image(text):
 
 
 # undocumented pil distorsion operators
-distorsion = [ImageMorph.MorphOp(op_name="erosion4"), ImageMorph.MorphOp(op_name="dilation8")]
+# distorsion = [ImageMorph.MorphOp(op_name="erosion4"), ImageMorph.MorphOp(op_name="dilation4")]
+distorsion = [ImageMorph.MorphOp(op_name="dilation4")]
 
 
 def distort_image(image):

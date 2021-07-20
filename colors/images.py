@@ -4,17 +4,15 @@ Utilities to generate and manipulate images
 from pathlib import Path
 from io import BytesIO
 from base64 import b64encode
-import string
-import random
 
-from PIL import Image, ImageDraw, ImageFont, ImageMorph
+from PIL import Image, ImageDraw, ImageFont
 
 
 TEXT_SIZE = 32
 IMAGE_WIDTH = 32 * 8
 IMAGE_HEIGHT = 32 * 2
 TEXT_PADDING = TEXT_SIZE
-TEXT_FONT = str(Path(__file__).parent / "FreeSansBold.otf")
+TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSansBold.otf")
 
 
 def generate_image(text, color):

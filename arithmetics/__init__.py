@@ -2,7 +2,7 @@ import time
 import random
 from otree.api import *
 
-from captcha.images import generate_image, encode_image
+from .images import generate_image, encode_image
 
 
 doc = """

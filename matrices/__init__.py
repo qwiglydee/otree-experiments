@@ -2,7 +2,7 @@ import time
 import random
 from otree.api import *
 
-from . import images
+from .images import generate_image, encode_image
 
 
 doc = """
@@ -50,11 +50,6 @@ def generate_puzzle(player: Player):
     count = string.count(Constants.counted_char)
     # difficulty, puzzle, solution
     return size, string, count
-
-
-def generate_image(size: int, content: str):
-    return images.generate_image(size, content)
-
 
 class PuzzleRecord(ExtraModel):
     """A model to keep record of all generated puzzles"""
@@ -115,8 +110,8 @@ def play_captcha(player: Player, data: dict):
     )
 
     # send the puzzle as image
-    image = images.generate_image(task.difficulty, task.puzzle)
-    data = images.encode_image(image)
+    image = generate_image(difficulty, puzzle)
+    data = encode_image(image)
     return {player.id_in_group: {'image': data}}
 
 
