@@ -9,11 +9,10 @@ Features:
 - recording each iteration, elapsed time, puzzle, solution, given answer, correctness, and if the puzzle was skipped
 - custom export of all recorded data
 
-Puzzle types implemented or to be implemented:
-- captcha: classic distorted text
-- digits matrices: TODO
-- counts symbols: TODO
-- arithmetic: TODO
+Puzzle types implemented:
+- `captcha`: classic distorted text (configurable characters and length)
+- `matrices`: matrices of 0 and 1 (configurable symbols and size)
+- `symmatrices`: version of matrices with special symbols
 
 
 ## Development
