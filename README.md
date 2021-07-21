@@ -19,7 +19,7 @@ Puzzle types implemented:
 
 ## Development
 
-0. clone this repo into working directory
+0. clone this repo into some working directory
    ```bash
    git clone ...
    cd ...
@@ -40,6 +40,24 @@ Puzzle types implemented:
    otree devserver
    ```
 
-## Integration into your code
+## Development with PyCharm
+
+0. Clone this repo into some working directory
+1. Start Pycharm and open project from the working directory
+2. Run "Add python interpreter" from popup, or from Settings/Project/Python interpreter
+   - Location := WORKINGDIR/.venv  or somewhere else
+3. Open files `requirements.txt` and `requirements.devel.txt` and invoke "install requirements" from top popup line
+4. Setup Debugger:
+   - Menu Run/Edit Configurations
+   - Add new, "Python"
+   - Working directory: the working directory
+   - Script path := .vent/bin/otree
+   - Parameters := devserver_inner
+6. To run/debug devserver with Shift-F10 or Shift-F9
+   - autoreloading on files changes won't work, press Ctrl-5 to reload manually
+   - breakpoints will work, including live pages code
+   
+
+## Using in your project
 
 TODO
