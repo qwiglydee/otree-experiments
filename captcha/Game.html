@@ -1,11 +1,3 @@
-{{ block styles }}
-<style>
-    .otree-btn-next {
-        display: none;
-    }
-</style>
-{{ endblock }}
-
 {{ block title }}
 Captcha page
 {{ endblock }}
@@ -14,24 +6,28 @@ Captcha page
 <div class="d-flex flex-column align-items-center">
     <img class="captcha m-1" id="captcha-img">
 
-    <input type="text" id="answer-inp" class="form-control m-1" name="answer" placeholder="enter text from the captcha and press Enter">
+    <input type="text" id="answer-inp" class="form-control m-1" name="answer"
+           placeholder="enter text from the captcha and press Enter">
 </div>
-
-{{ next_button }}
 
 {{ endblock }}
 
 {{ block scripts }}
 <script>
-    let $image = null, $input = null;
+
+    let $image = document.getElementById('captcha-img');
+    let $input = document.getElementById('answer-inp');
+    $input.onkeydown = function () {
+
+    }
 
     $(function () {
         $image = $("#captcha-img");
-        $input = $("#answer-inp");
+        $input = $("#");
         $input.keydown(ev => {
-            if( ev.key == 'Enter' ) submit();
+            if (ev.key === 'Enter') submit();
         });
-        liveSend({ start: true });
+        liveSend({start: true});
     })
 
     function liveRecv(data) {
@@ -40,7 +36,7 @@ Captcha page
     }
 
     function submit() {
-        liveSend({ answer: $input.val() });
+        liveSend({answer: $input.val()});
     }
 </script>
 {{ endblock }}
