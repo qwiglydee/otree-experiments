@@ -15,7 +15,7 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
-    digits = (1, 2, 3, 4, 5, 6, 7, 8, 9)  # excluding 0
+    digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]  # excluding 0
     game_duration = 1
 
 

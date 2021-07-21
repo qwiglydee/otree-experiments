@@ -6,37 +6,29 @@ Captcha page
 <div class="d-flex flex-column align-items-center">
     <img class="captcha m-1" id="captcha-img">
 
-    <input type="text" id="answer-inp" class="form-control m-1" name="answer"
+    <input type="text" id="answer-inp" class="form-control m-1"
            placeholder="enter text from the captcha and press Enter">
 </div>
 
-{{ endblock }}
-
-{{ block scripts }}
 <script>
 
-    let $image = document.getElementById('captcha-img');
-    let $input = document.getElementById('answer-inp');
-    $input.onkeydown = function () {
-
+    let image = document.getElementById('captcha-img');
+    let input = document.getElementById('answer-inp');
+    input.onkeydown = function (ev) {
+        if (ev.key === 'Enter') submit();
     }
 
-    $(function () {
-        $image = $("#captcha-img");
-        $input = $("#");
-        $input.keydown(ev => {
-            if (ev.key === 'Enter') submit();
-        });
+    document.addEventListener("DOMContentLoaded", (event) => {
         liveSend({start: true});
-    })
+    });
 
     function liveRecv(data) {
-        $image.prop('src', data.image);
-        $input.val("");
+        image.src = data.image;
+        input.value = "";
     }
 
     function submit() {
-        liveSend({answer: $input.val()});
+        liveSend({answer: input.value});
     }
 </script>
 {{ endblock }}
