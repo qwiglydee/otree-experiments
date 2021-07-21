@@ -17,7 +17,7 @@ class Constants(BaseConstants):
 
     characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     default_captcha_length = 5
-    game_duration = 1
+    instructions_template = __name__ + '/instructions.html'
 
 
 class Subsession(BaseSubsession):
@@ -35,6 +35,7 @@ class Player(BasePlayer):
 
 # puzzle-specific stuff
 
+
 def generate_puzzle(player: Player):
     session = player.session
     if session.config.get('testing'):
@@ -47,6 +48,7 @@ def generate_puzzle(player: Player):
 
 class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
+
     player = models.Link(Player)
 
     timestamp = models.FloatField(initial=0)
@@ -67,7 +69,7 @@ def play_game(player: Player, data: dict):
         iteration = 0
     elif 'answer' in data:
         answer = data['answer']
-        is_skipped = (answer == "")
+        is_skipped = answer == ""
         if not is_skipped:
             answer = answer.lower()
         # get last unanswered task
@@ -84,7 +86,7 @@ def play_game(player: Player, data: dict):
 
         iteration = task.iteration + 1
     else:
-        raise ValueError("invalid data from client!")
+        raise ValueError("Invalid data from client")
 
     # update player stats
     player.total_puzzles += 1
@@ -97,7 +99,7 @@ def play_game(player: Player, data: dict):
         iteration=iteration,
         length=length,
         text=text,
-        solution=solution
+        solution=solution,
     )
 
     # send the puzzle as image
@@ -107,26 +109,8 @@ def play_game(player: Player, data: dict):
     return {player.id_in_group: {'image': data}}
 
 
-def custom_export(players):
-    """Dumps all the puzzles generated"""
-    yield ['session', 'participant_code',
-           'time', 'iteration', 'length', 'text', 'solution', 'answer', 'is_correct', 'is_skipped']
-    for p in players:
-        participant = p.participant
-        session = p.session
-        for z in Trial.filter(player=p):
-            yield [session.code, participant.code,
-                   z.timestamp, z.iteration, z.length, z.text, z.solution, z.answer, z.is_correct, z.is_skipped]
-
-
-# PAGES
-
-class Intro(Page):
-    pass
-
-
 class Game(Page):
-    timeout_seconds = Constants.game_duration * 60
+    timeout_seconds = 60
 
     live_method = play_game
 
@@ -135,4 +119,4 @@ class Results(Page):
     pass
 
 
-page_sequence = [Intro, Game, Results]
+page_sequence = [Game, Results]
