@@ -5,7 +5,15 @@ from pathlib import Path
 from io import BytesIO
 from base64 import b64encode
 
-from PIL import Image, ImageDraw, ImageFont, ImageMorph
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    import sys
+
+    sys.tracebacklimit = 0
+    raise SystemExit(
+        f"FAILURE: Missing imaging library required in `{__name__}`\nYou need to install it using `pip install Pillow`"
+    )
 
 
 TEXT_SIZE = 32
@@ -23,9 +31,17 @@ def generate_image(text):
     return image
 
 
-# undocumented pil distorsion operators
-# distorsion = [ImageMorph.MorphOp(op_name="erosion4"), ImageMorph.MorphOp(op_name="dilation4")]
-distorsion = [ImageMorph.MorphOp(op_name="dilation4")]
+try:
+    from PIL import ImageMorph
+
+    # undocumented pil distorsion operators
+    # distorsion = [ImageMorph.MorphOp(op_name="erosion4"), ImageMorph.MorphOp(op_name="dilation4")]
+    distorsion = [ImageMorph.MorphOp(op_name="dilation4")]
+except ImportError:
+    print(
+        "Image generation won't work. You need to install a module use `pip install Pillow`"
+    )
+    distorsion = []
 
 
 def distort_image(image):

@@ -5,7 +5,15 @@ from pathlib import Path
 from io import BytesIO
 from base64 import b64encode
 
-from PIL import Image, ImageDraw, ImageFont
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    import sys
+
+    sys.tracebacklimit = 0
+    raise SystemExit(
+        f"FAILURE: Missing imaging library required in `{__name__}`\nYou need to install it using `pip install Pillow`"
+    )
 
 
 TEXT_SIZE = 32
