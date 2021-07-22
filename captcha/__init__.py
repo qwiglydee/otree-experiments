@@ -29,8 +29,10 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    total_puzzles = models.IntegerField(initial=0)
-    total_solved = models.IntegerField(initial=0)
+    total = models.IntegerField(initial=0)
+    answered = models.IntegerField(initial=0)
+    correct = models.IntegerField(initial=0)
+    incorrect = models.IntegerField(initial=0)
 
 
 # puzzle-specific stuff
@@ -61,6 +63,15 @@ class Trial(ExtraModel):
     # the following fields remain null for unanswered trials
     answer = models.StringField()
     is_correct = models.BooleanField()
+
+
+def summarize_trials(player: Player):
+    player.total = len(Trial.filter(player=player))
+    # expect at least 1 unanswered because of timeout, more if skipping allowed
+    unanswered = len(Trial.filter(player=player, answer=None))
+    player.answered = player.total - unanswered
+    player.correct = len(Trial.filter(player=player, is_correct=True))
+    player.incorrect = len(Trial.filter(player=player, is_correct=False))
 
 
 def play_game(player: Player, data: dict):
@@ -155,6 +166,11 @@ class Game(Page):
     @staticmethod
     def js_vars(player: Player):
         return dict(delay=1000, allow_skip=True)
+
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        summarize_trials(player)
+        player.payoff = player.correct - player.incorrect
 
 
 class Results(Page):

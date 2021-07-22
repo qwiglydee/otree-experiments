@@ -4,6 +4,8 @@
 
 {{ block content }}
 
-    <p>You have been displayed {{ player.total_puzzles }} equations and you solved {{ player.total_solved }} of them.</p>
+    <p>You have tried {{ player.answered }} puzzles, successfully solved {{ player.correct }} of them, and failed {{ player.incorrect }}.</p>
+
+    <p>Your payoff for this round is {{ player.payoff }}</p>
 
 {{ endblock }}
