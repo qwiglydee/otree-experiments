@@ -14,7 +14,6 @@ class Constants(BaseConstants):
     name_in_url = "matrices"
     players_per_group = None
     num_rounds = 1
-    trial_delay = 1.0
 
     characters = "01"
     counted_char = "0"
@@ -96,7 +95,8 @@ def play_game(player: Player, data: dict):
 
     # generate and return first or next puzzle
     if "next" in data:
-        if trial and now - trial.timestamp < Constants.trial_delay:
+        trial_delay = player.session.config.get('trial_delay', 1.0)
+        if trial and now - trial.timestamp < trial_delay:
             raise RuntimeError("Client is too fast!")
 
         size, content, count = generate_puzzle(player)
@@ -137,7 +137,10 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(delay=Constants.trial_delay, allow_skip=True)
+        return dict(
+            trial_delay=player.session.config.get('trial_delay', 1.0),
+            allow_skip=player.session.config.get('allow_skip', False),
+        )
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

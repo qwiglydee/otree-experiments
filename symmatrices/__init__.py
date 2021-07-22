@@ -13,7 +13,6 @@ class Constants(BaseConstants):
     name_in_url = "symmatrices"
     players_per_group = None
     num_rounds = 1
-    trial_delay = 1.0
 
     characters = "♠♡♢♣♤♥♦♧"
     counted_char = "♠"
@@ -97,7 +96,8 @@ def play_game(player: Player, data: dict):
 
     # generate and return first or next puzzle
     if "next" in data:
-        if trial and now - trial.timestamp < Constants.trial_delay:
+        trial_delay = player.session.config.get('trial_delay', 1.0)
+        if trial and now - trial.timestamp < trial_delay:
             raise RuntimeError("Client is too fast!")
         if trial and trial.is_correct is not True:
             raise ValueError("Attempted to advance over unsolved puzzle!")
@@ -174,7 +174,10 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(delay=Constants.trial_delay)
+        return dict(
+            trial_delay=player.session.config.get('trial_delay', 1.0),
+            allow_skip=player.session.config.get('allow_skip', False),
+        )
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
