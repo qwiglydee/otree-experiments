@@ -63,6 +63,7 @@ class Trial(ExtraModel):
     content = models.StringField()
     solution = models.IntegerField()
 
+    retries = models.IntegerField(initial=0)
     # the following fields remain null for unanswered trials
     answer = models.IntegerField()
     is_correct = models.BooleanField()
@@ -94,17 +95,20 @@ def play_game(player: Player, data: dict):
 
     # generate and return first or next puzzle
     if "next" in data:
-        length, text, solution = generate_puzzle(player)
+        if trial and trial.is_correct is not True:
+            raise ValueError("Attempted to advance over unsolved puzzle!")
+
+        size, content, count = generate_puzzle(player)
         Trial.create(
             player=player,
             timestamp=time.time(),
             iteration=iteration + 1,
-            length=length,
-            text=text,
-            solution=solution,
+            size=size,
+            content=content,
+            solution=count,
         )
 
-        image = generate_image(text)
+        image = generate_image(size, content)
         data = encode_image(image)
         return {player.id_in_group: {"image": data}}
 
@@ -112,10 +116,14 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         answer = data["answer"]
 
-        if answer != "":
+        try:
             answer = int(answer)
-            trial.answer = answer
-            trial.is_correct = answer == trial.solution
+        except ValueError:
+            ValueError("Bogus answer from client!")
+
+        trial.answer = answer
+        trial.is_correct = answer == trial.solution
+        trial.retries += 1
 
         return {player.id_in_group: {'feedback': trial.is_correct}}
 
@@ -123,26 +131,55 @@ def play_game(player: Player, data: dict):
     raise ValueError("Invalid message from client!")
 
 
+def custom_export(players):
+    """Dumps all the puzzles generated"""
+    yield [
+        "session",
+        "participant_code",
+        "time",
+        "iteration",
+        "size",
+        "content",
+        "solution",
+        "answer",
+        "retries",
+    ]
+    for p in players:
+        participant = p.participant
+        session = p.session
+        for z in Trial.filter(player=p):
+            yield [
+                session.code,
+                participant.code,
+                z.timestamp,
+                z.iteration,
+                z.size,
+                z.content,
+                z.solution,
+                z.answer,
+                z.retries,
+            ]
+
+
 # PAGES
 
 
 class Game(Page):
-    template_name = "matrices/Game.html"
     timeout_seconds = 60
     live_method = play_game
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(delay=1000, allow_skip=True)
+        return dict(delay=1000)
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
         summarize_trials(player)
-        player.payoff = player.correct - player.incorrect
+        player.payoff = player.correct
 
 
 class Results(Page):
-    template_name = "matrices/Results.html"
+    pass
 
 
 page_sequence = [Game, Results]

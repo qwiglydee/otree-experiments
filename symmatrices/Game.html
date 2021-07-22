@@ -20,8 +20,6 @@ Captcha page
             let val = input.value;
             if (val != "") {
                 submit(val);
-            } else if (js_vars.allow_skip) {
-                skip();
             }
         }
     }
@@ -57,12 +55,12 @@ Captcha page
         if (result === true) {
             input.classList.remove("is-invalid");
             input.classList.add("is-valid");
+            next();
         }
         if (result === false) {
             input.classList.remove("is-valid");
             input.classList.add("is-invalid");
         }
-        next();
     }
 
     function next() {
