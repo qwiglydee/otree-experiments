@@ -3,6 +3,7 @@
     .otree-btn-next {
         display: none;
     }
+
 </style>
 {{ endblock }}
 
@@ -13,6 +14,7 @@ Captcha page
 {{ block content }}
 <div class="d-flex flex-column align-items-center">
     <img class="captcha m-1" id="captcha-img">
+    <input id="answer-inp" class="form-control m-1" disabled>
 </div>
 
 {{ next_button }}
@@ -21,22 +23,49 @@ Captcha page
 
 {{ block scripts }}
 <script>
-    let $image = null;
+    let image = document.getElementById('captcha-img');
+    let input = document.getElementById('answer-inp');
 
-    $(function () {
-        $image = $("#captcha-img");
-        $('body').keydown(ev => {
-            if( ev.key in js_vars.color_keys ) submit(js_vars.color_keys[ev.key]);
-        });
-        liveSend({ start: true });
-    })
+    document.querySelector('body').onkeydown = function (ev) {
+        if (ev.key === 'Escape' && js_vars.allow_skip) {
+            image.src="";
+            window.setTimeout(next, js_vars.delay);
+        }
 
-    function liveRecv(data) {
-        $image.prop('src', data.image);
+        if (ev.key in js_vars.color_keys) {
+            val = js_vars.color_keys[ev.key];
+            input.value = val;
+            submit(val);
+            window.setTimeout(next, js_vars.delay);
+        }
     }
 
-    function submit(color) {
-        liveSend({ answer: color });
+    document.addEventListener("DOMContentLoaded", (event) => {
+        next();
+    });
+
+    function liveRecv(data) {
+        if ('image' in data ) {
+            image.src = data.image;
+            input.value = "";
+            input.classList.remove("is-valid", "is-invalid");
+        } else if ('feedback' in data) {
+            // feedback can be null
+            if( data.feedback === true ) {
+                input.classList.add("is-valid");
+            }
+            if( data.feedback === false ) {
+                input.classList.add("is-invalid");
+            }
+        }
+    }
+
+    function submit(answer) {
+        liveSend({answer: answer});
+    }
+
+    function next() {
+        liveSend({next: true});
     }
 </script>
 {{ endblock }}

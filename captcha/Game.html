@@ -9,26 +9,53 @@ Captcha page
     <input type="text" id="answer-inp" class="form-control m-1"
            placeholder="enter text from the captcha and press Enter">
 </div>
+{{ endblock }}
 
+{{ block scripts }}
 <script>
 
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
+
     input.onkeydown = function (ev) {
-        if (ev.key === 'Enter') submit();
+        if (ev.key === 'Enter') {
+            let val = input.value;
+            if (val != "") {
+                submit(val);
+                window.setTimeout(next, js_vars.delay);
+            } else if (js_vars.allow_skip) {
+                image.src = "";
+                window.setTimeout(next, js_vars.delay);
+            }
+        }
     }
 
     document.addEventListener("DOMContentLoaded", (event) => {
-        liveSend({start: true});
+        next();
     });
 
     function liveRecv(data) {
-        image.src = data.image;
-        input.value = "";
+        if ('image' in data ) {
+            image.src = data.image;
+            input.value = "";
+            input.classList.remove("is-valid", "is-invalid");
+        } else if ('feedback' in data) {
+            // feedback can be null
+            if( data.feedback === true ) {
+                input.classList.add("is-valid");
+            }
+            if( data.feedback === false ) {
+                input.classList.add("is-invalid");
+            }
+        }
     }
 
-    function submit() {
-        liveSend({answer: input.value});
+    function submit(answer) {
+        liveSend({answer: answer});
+    }
+
+    function next() {
+        liveSend({next: true});
     }
 </script>
 {{ endblock }}

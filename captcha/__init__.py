@@ -58,61 +58,103 @@ class Trial(ExtraModel):
     text = models.StringField()
     solution = models.StringField()
 
+    # the following fields remain null for unanswered trials
     answer = models.StringField()
     is_correct = models.BooleanField()
-    is_skipped = models.BooleanField()
 
 
 def play_game(player: Player, data: dict):
-    """Handles iteration of the game"""
-    if "start" in data:
-        iteration = 0
-    elif "answer" in data:
+    """Handles iterations of the game on a live page
+
+    Messages:
+    - server < client {'next': true} -- request for next (or first) puzzle
+    - server > client {'image': data} -- puzzle image
+    - server < client {'answer': data} -- answer to a puzzle
+    - server > client {'feedback': true|false|null} -- feedback on the answer (null for empty answer)
+    """
+
+    # get last trial, if any
+    trials = Trial.filter(player=player)
+    trial = trials[-1] if len(trials) else None
+    iteration = trial.iteration if trial else 0
+
+    # generate and return first or next puzzle
+    if "next" in data:
+        length, text, solution = generate_puzzle(player)
+        Trial.create(
+            player=player,
+            timestamp=time.time(),
+            iteration=iteration + 1,
+            length=length,
+            text=text,
+            solution=solution,
+        )
+
+        image = generate_image(text)
+        image = images.distort_image(image)
+        data = encode_image(image)
+        return {player.id_in_group: {"image": data}}
+
+    # check given answer and return feedback
+    if "answer" in data:
         answer = data["answer"]
-        is_skipped = answer == ""
-        if not is_skipped:
+
+        if answer != "":
             answer = answer.lower()
-        # get last unanswered task
-        task = Trial.filter(player=player, answer=None)[-1]
-        # check answer
-        is_correct = not is_skipped and answer == task.solution
-        # update task
-        task.answer = answer
-        task.is_correct = is_correct
-        task.is_skipped = is_skipped
-        if is_correct:
-            # update player stats
-            player.total_solved += 1
+            trial.answer = answer
+            trial.is_correct = answer == trial.solution
 
-        iteration = task.iteration + 1
-    else:
-        raise ValueError("Invalid data from client")
+        return {player.id_in_group: {'feedback': trial.is_correct}}
 
-    # update player stats
-    player.total_puzzles += 1
+    # otherwise
+    raise ValueError("Invalid message from client!")
 
-    # new task
-    length, text, solution = generate_puzzle(player)
-    Trial.create(
-        player=player,
-        timestamp=time.time(),
-        iteration=iteration,
-        length=length,
-        text=text,
-        solution=solution,
-    )
 
-    # send the puzzle as image
-    image = generate_image(text)
-    image = images.distort_image(image)
-    data = encode_image(image)
-    return {player.id_in_group: {"image": data}}
+def custom_export(players):
+    """Dumps all the puzzles generated"""
+    yield [
+        "session",
+        "participant_code",
+        "time",
+        "iteration",
+        "length",
+        "text",
+        "solution",
+        "answer",
+        "is_correct",
+    ]
+    for p in players:
+        participant = p.participant
+        session = p.session
+        for z in Trial.filter(player=p):
+            yield [
+                session.code,
+                participant.code,
+                z.timestamp,
+                z.iteration,
+                z.length,
+                z.text,
+                z.solution,
+                z.answer,
+                z.is_correct,
+            ]
+
+
+# PAGES
+
+
+class Intro(Page):
+    pass
 
 
 class Game(Page):
     timeout_seconds = 60
 
     live_method = play_game
+
+    @staticmethod
+    def js_vars(player: Player):
+        return dict(delay=1000, allow_skip=True)
 
 
 class Results(Page):

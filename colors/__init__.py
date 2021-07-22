@@ -69,53 +69,54 @@ class Trial(ExtraModel):
     text = models.StringField()
     congruent = models.BooleanField()
 
+    # the following fields remain null for unanswered trials
     answer = models.StringField()
     is_correct = models.BooleanField()
-    is_skipped = models.BooleanField()
 
 
 def play_game(player: Player, data: dict):
-    """Handles iteration of the game"""
-    if "start" in data:
-        iteration = 0
-    elif "answer" in data:
+    """Handles iterations of the game on a live page
+
+    Messages:
+    - server < client {'next': true} -- request for next (or first) puzzle
+    - server > client {'image': data} -- puzzle image
+    - server < client {'answer': data} -- answer to a puzzle
+    - server > client {'feedback': true|false|null} -- feedback on the answer (null for empty answer)
+    """
+
+    # get last trial, if any
+    trials = Trial.filter(player=player)
+    trial = trials[-1] if len(trials) else None
+    iteration = trial.iteration if trial else 0
+
+    # generate and return first or next puzzle
+    if "next" in data:
+
+        color, text = generate_puzzle(player)
+        Trial.create(
+            player=player,
+            timestamp=time.time(),
+            iteration=iteration + 1,
+            color=color,
+            text=text,
+        )
+
+        image = generate_image(text, Constants.color_values[color])
+        data = encode_image(image)
+        return {player.id_in_group: {"image": data}}
+
+    # check given answer and return feedback
+    if "answer" in data:
         answer = data["answer"]
-        is_skipped = answer == ""
-        # get last unanswered task
-        task = Trial.filter(player=player, answer=None)[-1]
-        # check answer
-        is_correct = not is_skipped and answer == task.color
-        # update task
-        task.answer = answer
-        task.is_correct = is_correct
-        task.is_skipped = is_skipped
 
-        if is_correct:
-            # update player stats
-            player.total_solved += 1
+        if answer != "":
+            trial.answer = answer
+            trial.is_correct = answer == trial.color
 
-        iteration = task.iteration + 1
-    else:
-        raise ValueError("invalid data from client!")
+        return {player.id_in_group: {'feedback': trial.is_correct}}
 
-    # update player stats
-    player.total_puzzles += 1
-
-    # new task
-    text, color = generate_puzzle(player)
-    Trial.create(
-        player=player,
-        timestamp=time.time(),
-        iteration=iteration,
-        color=color,
-        text=text,
-        congruent=(text == color),
-    )
-
-    # send the puzzle as image
-    image = generate_image(text, color)
-    data = images.encode_image(image)
-    return {player.id_in_group: {"image": data}}
+    # otherwise
+    raise ValueError("Invalid message from client!")
 
 
 def custom_export(players):
@@ -130,7 +131,6 @@ def custom_export(players):
         "congruent",
         "answer",
         "is_correct",
-        "is_skipped",
     ]
     for p in players:
         participant = p.participant
@@ -146,7 +146,6 @@ def custom_export(players):
                 z.congruent,
                 z.answer,
                 z.is_correct,
-                z.is_skipped,
             ]
 
 
@@ -163,7 +162,7 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(color_keys=Constants.color_keys)
+        return dict(color_keys=Constants.color_keys, delay=1000, allow_skip=False)
 
 
 class Results(Page):
