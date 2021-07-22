@@ -26,12 +26,12 @@ Configurable features, via session config:
 - `force_solve`: do not advance to next trial until current puzzle is correctly solved
 
 
-## Development
+## Development with command-line
 
-0. clone this repo into some working directory
+0. download/unzip content of this repo into some working directory, or clone it using git 
    ```bash
-   git clone ...
-   cd ...
+   git clone https://github.com/qwiglydee/otree-experiments/
+   cd otree-experiments
    ```
 1. create and activate virtualenv in working directory
    ```bash
@@ -44,29 +44,35 @@ Configurable features, via session config:
    pip install -r requirements.txt
    pip install -r requirements.devel.txt
    ```
-3. run the server
+3. run the development server
    ```bash
    otree devserver
    ```
+4. open browser at `http://localhost:8000/`
 
 ## Development with PyCharm
 
-0. Clone this repo into some working directory
+0. download/unzip content of this repo into some working directory, or clone it using git 
 1. Start Pycharm and open project from the working directory
-2. Run "Add python interpreter" from popup, or from Settings/Project/Python interpreter
-   - Location := WORKINGDIR/.venv  or somewhere else
-3. Open files `requirements.txt` and `requirements.devel.txt` and invoke "install requirements" from top popup line
-4. Setup Debugger:
-   - Menu Run/Edit Configurations
-   - Add new, "Python"
-   - Working directory: the working directory
-   - Script path := .vent/bin/otree
+2. Create virtual environment
+   - Open Settings / Project: otree-experiments / Python interpreter
+   - Open "⚙" / "Add..."
+   - Select "Virtual environment"
+   - Select "New environment"
+   - Set Location := WORKINGDIR/.venv  or somewhere else
+3. Install requirements
+   - Open internal terminal from the very bottom
+   - Make sure it displays "venv" in prompt
+   - ```bash
+      pip install -r requirements.txt
+      pip install -r requirements.devel.txt
+     ```
+5. Setup Debugger:
+   - Menu / Run / Edit Configurations / Add new
+   - Select "Python"
+   - Set Working directory
+   - Set Script path := .venv/bin/otree  or a full path to venv otree
    - Parameters := devserver_inner
-6. To run/debug devserver with Shift-F10 or Shift-F9
+6. To run and debug devserver with Shift-F10 or Shift-F9
    - autoreloading on files changes won't work, press Ctrl-5 to reload manually
-   - breakpoints will work, including live pages code
-   
-
-## Using in your project
-
-TODO
+   - breakpoints will work, including code of `live_method`
