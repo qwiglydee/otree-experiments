@@ -2,50 +2,46 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name='captcha',
+        name="captcha",
         num_demo_participants=1,
-        app_sequence=['captcha'],
-        captcha_length=3
+        app_sequence=["captcha"],
+        captcha_length=3,
+    ),
+    dict(name="arithmetics", num_demo_participants=1, app_sequence=["arithmetics"]),
+    dict(
+        name="matrices",
+        num_demo_participants=1,
+        app_sequence=["matrices"],
+        matrix_size=3,
     ),
     dict(
-        name='arithmetics',
+        name="symmatrices",
         num_demo_participants=1,
-        app_sequence=['arithmetics']
+        app_sequence=["symmatrices"],
+        matrix_size=7,
     ),
     dict(
-        name='matrices',
+        name="colors",
         num_demo_participants=1,
-        app_sequence=['matrices'],
-        matrix_size=3
+        app_sequence=["colors"],
     ),
     dict(
-        name='symmatrices',
+        name="captcha_testing",
         num_demo_participants=1,
-        app_sequence=['symmatrices'],
-        matrix_size=7
+        app_sequence=["captcha"],
+        testing=True,
     ),
     dict(
-        name='colors',
+        name="matrices_testing",
         num_demo_participants=1,
-        app_sequence=['colors'],
+        app_sequence=["matrices"],
+        testing=True,
     ),
     dict(
-        name='captcha_testing',
+        name="arithmetics_testing",
         num_demo_participants=1,
-        app_sequence=['captcha'],
-        testing=True
-    ),
-    dict(
-        name='matrices_testing',
-        num_demo_participants=1,
-        app_sequence=['matrices'],
-        testing=True
-    ),
-    dict(
-        name='arithmetics_testing',
-        num_demo_participants=1,
-        app_sequence=['arithmetics'],
-        testing=True
+        app_sequence=["arithmetics"],
+        testing=True,
     ),
 ]
 
@@ -63,16 +59,16 @@ SESSION_FIELDS = []
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans
-LANGUAGE_CODE = 'en'
+LANGUAGE_CODE = "en"
 
 # e.g. EUR, GBP, CNY, JPY
-REAL_WORLD_CURRENCY_CODE = 'USD'
+REAL_WORLD_CURRENCY_CODE = "USD"
 USE_POINTS = True
 
-ADMIN_USERNAME = 'admin'
+ADMIN_USERNAME = "admin"
 # for security, best to set admin password in an environment variable
-ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
+ADMIN_PASSWORD = environ.get("OTREE_ADMIN_PASSWORD")
 
 DEMO_PAGE_INTRO_HTML = """ """
 
-SECRET_KEY = '2015765205890'
+SECRET_KEY = "2015765205890"

@@ -1,2 +1,3 @@
 flake8
-requests
+black
+requests~=2.0

@@ -9,19 +9,23 @@ class PlayerBot(Bot):
         # yield Results
 
         expect(len(Trial.filter(player=self.player, is_correct=True)), 3)
-        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5)
-        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7)
+        expect(
+            len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5
+        )
+        expect(
+            len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7
+        )
 
 
 def call_live_method(method, **kwargs):
     # expecting predictable captchas like NNN
-    method(1, {'start': True})
+    method(1, {"start": True})
     # 3 correct answers
     for i in range(0, 3):
-        method(1, {'answer': f"{i+1:03}"})
+        method(1, {"answer": f"{i+1:03}"})
     # 5 incorrect answers
     for i in range(0, 5):
-        method(1, {'answer': "xxx"})
+        method(1, {"answer": "xxx"})
     # 7 skipped
     for i in range(0, 7):
-        method(1, {'answer': ""})
+        method(1, {"answer": ""})

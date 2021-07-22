@@ -11,7 +11,7 @@ Experimental arithmetics game
 
 
 class Constants(BaseConstants):
-    name_in_url = 'arithmetics'
+    name_in_url = "arithmetics"
     players_per_group = None
     num_rounds = 1
 
@@ -34,22 +34,24 @@ class Player(BasePlayer):
 
 # puzzle-specific stuff
 
+
 def generate_puzzle(player: Player):
     session = player.session
-    if session.config.get('testing'):
+    if session.config.get("testing"):
         a = b = player.total_puzzles
         text = f"{a} + {b} ="
-        return 0, text, a+b
+        return 0, text, a + b
 
     a = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     b = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     text = f"{a} + {b} = "
-    solution = a+b
+    solution = a + b
     return text, solution
 
 
 class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
+
     player = models.Link(Player)
 
     timestamp = models.FloatField(initial=0)
@@ -65,11 +67,11 @@ class Trial(ExtraModel):
 
 def play_game(player: Player, data: dict):
     """Handles iteration of the game"""
-    if 'start' in data:
+    if "start" in data:
         iteration = 0
-    elif 'answer' in data:
-        answer = data['answer']
-        is_skipped = (answer == "")
+    elif "answer" in data:
+        answer = data["answer"]
+        is_skipped = answer == ""
         if not is_skipped:
             answer = int(answer)
         # get last unanswered task
@@ -98,28 +100,47 @@ def play_game(player: Player, data: dict):
         timestamp=time.time(),
         iteration=iteration,
         puzzle=puzzle,
-        solution=solution
+        solution=solution,
     )
 
     # send the puzzle as image
     image = generate_image(task.puzzle)
     data = encode_image(image)
-    return {player.id_in_group: {'image': data}}
+    return {player.id_in_group: {"image": data}}
 
 
 def custom_export(players):
     """Dumps all the puzzles generated"""
-    yield ['session', 'participant_code',
-           'time', 'iteration', 'puzzle', 'solution', 'answer', 'is_correct', 'is_skipped']
+    yield [
+        "session",
+        "participant_code",
+        "time",
+        "iteration",
+        "puzzle",
+        "solution",
+        "answer",
+        "is_correct",
+        "is_skipped",
+    ]
     for p in players:
         participant = p.participant
         session = p.session
         for z in Trial.filter(player=p):
-            yield [session.code, participant.code,
-                   z.timestamp, z.iteration, z.puzzle, z.solution, z.answer, z.is_correct, z.is_skipped]
+            yield [
+                session.code,
+                participant.code,
+                z.timestamp,
+                z.iteration,
+                z.puzzle,
+                z.solution,
+                z.answer,
+                z.is_correct,
+                z.is_skipped,
+            ]
 
 
 # PAGES
+
 
 class Intro(Page):
     pass

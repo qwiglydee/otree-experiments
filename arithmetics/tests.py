@@ -9,19 +9,23 @@ class PlayerBot(Bot):
         # yield Results
 
         expect(len(Trial.filter(player=self.player, is_correct=True)), 3)
-        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5)
-        expect(len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7)
+        expect(
+            len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5
+        )
+        expect(
+            len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7
+        )
 
 
 def call_live_method(method, **kwargs):
     # expecting predictable equations like iter_number + ter_number
-    method(1, {'start': True})
+    method(1, {"start": True})
     # 3 correct answers
     for i in range(1, 4):
-        method(1, {'answer': f"{i+i:03}"})
+        method(1, {"answer": f"{i+i:03}"})
     # 5 incorrect answers
     for i in range(0, 5):
-        method(1, {'answer': "0"})
+        method(1, {"answer": "0"})
     # 7 skipped
     for i in range(0, 7):
-        method(1, {'answer': ""})
+        method(1, {"answer": ""})

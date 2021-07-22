@@ -14,10 +14,10 @@ TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSerifBold.otf")
 
 
 def generate_image(text):
-    dumb = Image.new('RGB', (0, 0))
+    dumb = Image.new("RGB", (0, 0))
     font = ImageFont.truetype(TEXT_FONT, TEXT_SIZE)
     w, h = ImageDraw.ImageDraw(dumb).textsize(text, font)
-    image = Image.new('RGB', (w + TEXT_PADDING * 2, h + TEXT_PADDING * 2))
+    image = Image.new("RGB", (w + TEXT_PADDING * 2, h + TEXT_PADDING * 2))
     draw = ImageDraw.Draw(image)
     draw.text((TEXT_PADDING, TEXT_PADDING), text, font=font)
     return image
@@ -29,7 +29,7 @@ distorsion = [ImageMorph.MorphOp(op_name="dilation4")]
 
 
 def distort_image(image):
-    img = image.convert('L')
+    img = image.convert("L")
     for op in distorsion:
         _, img = op.apply(img)
     return img
@@ -40,4 +40,4 @@ def encode_image(image):
     image.save(buf, "PNG")
     buf64 = b64encode(buf.getvalue())
     datauri = b"data:text/plain;base64," + buf64
-    return datauri.decode('ascii')
+    return datauri.decode("ascii")

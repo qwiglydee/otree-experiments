@@ -11,27 +11,27 @@ Experimental colors game
 
 
 class Constants(BaseConstants):
-    name_in_url = 'colors'
+    name_in_url = "colors"
     players_per_group = None
     num_rounds = 1
     game_duration = 1
 
-    colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan']
+    colors = ["red", "green", "blue", "yellow", "magenta", "cyan"]
     color_values = {  # RRGGBB hexcodes
-        'red': "#FF0000",
-        'green': "#00FF00",
-        'blue': "#0000FF",
-        'yellow': "#FFFF00",
-        'magenta': "#FF00FF",
-        'cyan': "#00FFFF"
+        "red": "#FF0000",
+        "green": "#00FF00",
+        "blue": "#0000FF",
+        "yellow": "#FFFF00",
+        "magenta": "#FF00FF",
+        "cyan": "#00FFFF",
     }
     color_keys = {
-        'r': 'red',
-        'g': 'green',
-        'b': 'blue',
-        'y': 'yellow',
-        'm': 'magenta',
-        'c': 'cyan'
+        "r": "red",
+        "g": "green",
+        "b": "blue",
+        "y": "yellow",
+        "m": "magenta",
+        "c": "cyan",
     }
 
 
@@ -50,6 +50,7 @@ class Player(BasePlayer):
 
 # puzzle-specific stuff
 
+
 def generate_puzzle(player: Player):
     color = random.choice(Constants.colors)
     text = random.choice(Constants.colors)
@@ -58,6 +59,7 @@ def generate_puzzle(player: Player):
 
 class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
+
     player = models.Link(Player)
 
     timestamp = models.FloatField(initial=0)
@@ -74,11 +76,11 @@ class Trial(ExtraModel):
 
 def play_game(player: Player, data: dict):
     """Handles iteration of the game"""
-    if 'start' in data:
+    if "start" in data:
         iteration = 0
-    elif 'answer' in data:
-        answer = data['answer']
-        is_skipped = (answer == "")
+    elif "answer" in data:
+        answer = data["answer"]
+        is_skipped = answer == ""
         # get last unanswered task
         task = Trial.filter(player=player, answer=None)[-1]
         # check answer
@@ -107,28 +109,49 @@ def play_game(player: Player, data: dict):
         iteration=iteration,
         color=color,
         text=text,
-        congruent=(text == color)
+        congruent=(text == color),
     )
 
     # send the puzzle as image
     image = generate_image(text, color)
     data = images.encode_image(image)
-    return {player.id_in_group: {'image': data}}
+    return {player.id_in_group: {"image": data}}
 
 
 def custom_export(players):
     """Dumps all the puzzles generated"""
-    yield ['session', 'participant_code',
-           'time', 'iteration', 'text', 'color', 'congruent', 'answer', 'is_correct', 'is_skipped']
+    yield [
+        "session",
+        "participant_code",
+        "time",
+        "iteration",
+        "text",
+        "color",
+        "congruent",
+        "answer",
+        "is_correct",
+        "is_skipped",
+    ]
     for p in players:
         participant = p.participant
         session = p.session
         for z in Trial.filter(player=p):
-            yield [session.code, participant.code,
-                   z.timestamp, z.iteration, z.text, z.color, z.congruent, z.answer, z.is_correct, z.is_skipped]
+            yield [
+                session.code,
+                participant.code,
+                z.timestamp,
+                z.iteration,
+                z.text,
+                z.color,
+                z.congruent,
+                z.answer,
+                z.is_correct,
+                z.is_skipped,
+            ]
 
 
 # PAGES
+
 
 class Intro(Page):
     pass

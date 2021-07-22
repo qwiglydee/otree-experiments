@@ -16,12 +16,14 @@ TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSansBold.otf")
 
 
 def generate_image(text, color):
-    dumb = Image.new('RGB', (0, 0))
+    dumb = Image.new("RGB", (0, 0))
     font = ImageFont.truetype(TEXT_FONT, TEXT_SIZE)
     # take maximal size to keep all images same
-    image = Image.new('RGB', (IMAGE_WIDTH, IMAGE_HEIGHT))
+    image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT))
     draw = ImageDraw.Draw(image)
-    draw.text((IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2), text, font=font, anchor="mm", fill=color)
+    draw.text(
+        (IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2), text, font=font, anchor="mm", fill=color
+    )
     return image
 
 
@@ -30,4 +32,4 @@ def encode_image(image):
     image.save(buf, "PNG")
     buf64 = b64encode(buf.getvalue())
     datauri = b"data:text/plain;base64," + buf64
-    return datauri.decode('ascii')
+    return datauri.decode("ascii")

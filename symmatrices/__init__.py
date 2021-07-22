@@ -10,7 +10,7 @@ Experimental captcha game
 
 
 class Constants(BaseConstants):
-    name_in_url = 'symmatrices'
+    name_in_url = "symmatrices"
     players_per_group = None
     num_rounds = 1
 
@@ -37,11 +37,11 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    size = session.config.get('matrix_size', Constants.default_matrix_size)
+    size = session.config.get("matrix_size", Constants.default_matrix_size)
     length = size * size
-    if session.config.get('testing'):
+    if session.config.get("testing"):
         count = player.total_puzzles
-        string = (Constants.counted_char * count) + ('x' * (length - 1))
+        string = (Constants.counted_char * count) + ("x" * (length - 1))
         return size, string, count
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
@@ -68,10 +68,10 @@ class Trial(ExtraModel):
 
 def play_game(player: Player, data: dict):
     """Handles iteration of the game"""
-    if 'start' in data:
+    if "start" in data:
         iteration = 0
-    elif 'answer' in data:
-        answer = data['answer']
+    elif "answer" in data:
+        answer = data["answer"]
         is_skipped = answer == ""
         if not is_skipped:
             answer = int(answer)
@@ -111,7 +111,7 @@ def play_game(player: Player, data: dict):
     # send the puzzle as image
     image = generate_image(size, content)
     data = encode_image(image)
-    return {player.id_in_group: {'image': data}}
+    return {player.id_in_group: {"image": data}}
 
 
 # PAGES
