@@ -72,14 +72,16 @@ Captcha page
     }
 
     function feedback(result) {
-        if( result === true ) {
+        if (result === true) {
             input.classList.add("is-valid");
+            next();
         }
-        if( result === false ) {
+        if (result === false) {
             input.classList.add("is-invalid");
+            if (!js_vars.force_solve) {
+                next();
+            }
         }
-
-        next();
     }
 
     function next() {

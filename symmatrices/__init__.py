@@ -63,10 +63,10 @@ class Trial(ExtraModel):
     content = models.StringField()
     solution = models.IntegerField()
 
-    retries = models.IntegerField(initial=0)
     # the following fields remain null for unanswered trials
     answer = models.IntegerField()
     is_correct = models.BooleanField()
+    retries = models.IntegerField(initial=0)
 
 
 def summarize_trials(player: Player):
@@ -99,7 +99,8 @@ def play_game(player: Player, data: dict):
         trial_delay = player.session.config.get('trial_delay', 1.0)
         if trial and now - trial.timestamp < trial_delay:
             raise RuntimeError("Client is too fast!")
-        if trial and trial.is_correct is not True:
+        force_solve = player.session.config.get('force_solve', False)
+        if trial and force_solve and trial.is_correct is not True:
             raise ValueError("Attempted to advance over unsolved puzzle!")
 
         size, content, count = generate_puzzle(player)
@@ -177,6 +178,7 @@ class Game(Page):
         return dict(
             trial_delay=player.session.config.get('trial_delay', 1.0),
             allow_skip=player.session.config.get('allow_skip', False),
+            force_solve=player.session.config.get('force_solve', False),
         )
 
     @staticmethod

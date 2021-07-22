@@ -73,6 +73,9 @@ Captcha page
         }
         if (result === false) {
             input.classList.add("is-invalid");
+            if (!js_vars.force_solve) {
+                next();
+            }
         }
     }
 
