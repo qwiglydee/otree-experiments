@@ -14,6 +14,7 @@ class Constants(BaseConstants):
     name_in_url = "captcha"
     players_per_group = None
     num_rounds = 1
+    trial_delay = 1.0
 
     characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     default_captcha_length = 5
@@ -87,13 +88,17 @@ def play_game(player: Player, data: dict):
     trials = Trial.filter(player=player)
     trial = trials[-1] if len(trials) else None
     iteration = trial.iteration if trial else 0
+    now = time.time()
 
     # generate and return first or next puzzle
     if "next" in data:
+        if trial and now - trial.timestamp < Constants.trial_delay:
+            raise RuntimeError("Client is too fast!")
+
         length, text, solution = generate_puzzle(player)
         Trial.create(
             player=player,
-            timestamp=time.time(),
+            timestamp=now,
             iteration=iteration + 1,
             length=length,
             text=text,
@@ -166,7 +171,7 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(delay=1000, allow_skip=True)
+        return dict(delay=Constants.trial_delay, allow_skip=True)
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

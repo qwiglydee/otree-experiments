@@ -14,7 +14,7 @@ class Constants(BaseConstants):
     name_in_url = "colors"
     players_per_group = None
     num_rounds = 1
-    game_duration = 1
+    trial_delay = 1.0
 
     colors = ["red", "green", "blue", "yellow", "magenta", "cyan"]
     color_values = {  # RRGGBB hexcodes
@@ -102,13 +102,17 @@ def play_game(player: Player, data: dict):
     trials = Trial.filter(player=player)
     trial = trials[-1] if len(trials) else None
     iteration = trial.iteration if trial else 0
+    now = time.time()
 
     # generate and return first or next puzzle
     if "next" in data:
+        if trial and now - trial.timestamp < Constants.trial_delay:
+            raise RuntimeError("Client is too fast!")
+
         color, text = generate_puzzle(player)
         Trial.create(
             player=player,
-            timestamp=time.time(),
+            timestamp=now,
             iteration=iteration + 1,
             color=color,
             text=text,
@@ -172,12 +176,16 @@ class Intro(Page):
 
 
 class Game(Page):
-    timeout_seconds = Constants.game_duration * 60
+    timeout_seconds = 60
     live_method = play_game
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(color_keys=Constants.color_keys, delay=1000, allow_skip=False)
+        return dict(
+            color_keys=Constants.color_keys,
+            delay=Constants.trial_delay,
+            allow_skip=False,
+        )
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

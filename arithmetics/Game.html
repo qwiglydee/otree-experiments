@@ -82,7 +82,7 @@ Captcha page
     function next() {
         window.setTimeout(function() {
             liveSend({next: true});
-        }, js_vars.delay);
+        }, js_vars.delay * 1000);
     }
 </script>
 {{ endblock }}
