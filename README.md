@@ -2,19 +2,28 @@
 
 Some experimental implementation of games for oTree v5
 
-Features:
-- live page with infinite iterations (micro-rounds) and timeout
-- generating each puzzle on the fly
-- showing a puzzle as an image on the live page
-- recording each iteration, elapsed time, puzzle, solution, given answer, correctness, and if the puzzle was skipped
-- custom export of all recorded data
-
-Puzzle types implemented:
+Games:
 - `captcha`: classic distorted text (configurable characters and length)
 - `arithmetics`: solving equations in form of "A + B ="
 - `matrices`: matrices of 0 and 1 (configurable symbols and size)
 - `symmatrices`: version of matrices with special symbols
 - `colors`: random color names rendered in random color
+
+The task units are referenced as 'puzzles' in docs and code.
+
+Common features:
+- live page with infinite iterations (micro-rounds) and timeout
+- generating randomized puzzle on the fly
+- creating images for each puzzle on the fly
+- showing the images on the live page
+- recording outcome of each trial in database
+- custom export of all recorded data
+- some server-side anti-cheating and anti-script-kiddies protection
+
+Configurable features, via session config:
+- `trial_delay`: a delay between trials
+- `allow_skip`: allow user to skip a trial without giving an answer
+- `force_solve`: do not advance to next trial until current puzzle is correctly solved
 
 
 ## Development
