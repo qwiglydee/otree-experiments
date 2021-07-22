@@ -112,10 +112,13 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         answer = data["answer"]
 
-        if answer != "":
+        try:
             answer = int(answer)
-            trial.answer = answer
-            trial.is_correct = answer == trial.solution
+        except ValueError:
+            ValueError("Bogus input from client!")
+
+        trial.answer = answer
+        trial.is_correct = answer == trial.solution
 
         return {player.id_in_group: {'feedback': trial.is_correct}}
 

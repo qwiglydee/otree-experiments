@@ -119,7 +119,7 @@ def play_game(player: Player, data: dict):
         try:
             answer = int(answer)
         except ValueError:
-            ValueError("Bogus answer from client!")
+            ValueError("Bogus input from client!")
 
         trial.answer = answer
         trial.is_correct = answer == trial.solution

@@ -105,7 +105,6 @@ def play_game(player: Player, data: dict):
 
     # generate and return first or next puzzle
     if "next" in data:
-
         color, text = generate_puzzle(player)
         Trial.create(
             player=player,
@@ -123,9 +122,11 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         answer = data["answer"]
 
-        if answer != "":
-            trial.answer = answer
-            trial.is_correct = answer == trial.color
+        if answer not in Constants.colors:
+            raise ValueError("Bogus input from client")
+
+        trial.answer = answer
+        trial.is_correct = answer == trial.color
 
         return {player.id_in_group: {'feedback': trial.is_correct}}
 
