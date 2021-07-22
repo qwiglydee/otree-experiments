@@ -23,7 +23,6 @@ Captcha page
 
 {{ block scripts }}
 <script>
-
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
 
@@ -32,40 +31,54 @@ Captcha page
             let val = input.value;
             if (val != "") {
                 submit(val);
-                window.setTimeout(next, js_vars.delay);
             } else if (js_vars.allow_skip) {
-                image.src = "";
-                window.setTimeout(next, js_vars.delay);
+                skip();
             }
         }
     }
 
     document.addEventListener("DOMContentLoaded", (event) => {
-        next();
+        liveSend({next: true});
     });
 
     function liveRecv(data) {
         if ('image' in data ) {
-            image.src = data.image;
-            input.value = "";
-            input.classList.remove("is-valid", "is-invalid");
+            new_puzzle(data.image);
         } else if ('feedback' in data) {
-            // feedback can be null
-            if( data.feedback === true ) {
-                input.classList.add("is-valid");
-            }
-            if( data.feedback === false ) {
-                input.classList.add("is-invalid");
-            }
+            feedback(data.feedback);
         }
+    }
+
+    function new_puzzle(img) {
+        image.src = img;
+        input.value = "";
+        input.classList.remove("is-valid", "is-invalid");
+    }
+
+    function skip() {
+        image.src = "";
+        next();
     }
 
     function submit(answer) {
         liveSend({answer: answer});
     }
 
+    function feedback(result) {
+        if( result === true ) {
+            input.classList.add("is-valid");
+        }
+        if( result === false ) {
+            input.classList.add("is-invalid");
+        }
+
+        next();
+    }
+
     function next() {
-        liveSend({next: true});
+        window.setTimeout(function() {
+            liveSend({next: true});
+        }, js_vars.delay);
     }
 </script>
 {{ endblock }}
