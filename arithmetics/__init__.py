@@ -40,9 +40,7 @@ class Player(BasePlayer):
 def generate_puzzle(player: Player):
     session = player.session
     if session.config.get("testing"):
-        a = b = player.total_puzzles
-        text = f"{a} + {b} ="
-        return 0, text, a + b
+        return "12 + 34 =", 46
 
     a = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     b = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
@@ -175,4 +173,4 @@ class Results(Page):
     pass
 
 
-page_sequence = [Intro, Game, Results]
+page_sequence = [Game, Results]

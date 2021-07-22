@@ -3,7 +3,6 @@
     .otree-btn-next {
         display: none;
     }
-
 </style>
 {{ endblock }}
 
@@ -15,6 +14,13 @@ Captcha page
 <div class="d-flex flex-column align-items-center">
     <img class="captcha m-1" id="captcha-img">
     <input id="answer-inp" class="form-control m-1" disabled>
+
+    <h6>Press a key:</h6>
+    <ul>
+        {{ for k, v in Constants.color_keys.items }}
+        <li>{{k}}: {{v}}</li>
+        {{ endfor }}
+    </ul>
 </div>
 
 {{ next_button }}

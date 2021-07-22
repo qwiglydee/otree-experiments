@@ -4,28 +4,31 @@ from . import *
 
 class PlayerBot(Bot):
     def play_round(self):
-        yield Intro
         yield Game
-        # yield Results
 
         expect(len(Trial.filter(player=self.player, is_correct=True)), 3)
-        expect(
-            len(Trial.filter(player=self.player, is_correct=False, is_skipped=False)), 5
-        )
-        expect(
-            len(Trial.filter(player=self.player, is_correct=False, is_skipped=True)), 7
-        )
+        expect(len(Trial.filter(player=self.player, is_correct=False)), 5)
+        expect(len(Trial.filter(player=self.player, answer=None)), 7)
+
+        expect(self.player.total, 15)
+        expect(self.player.answered, 8)
+        expect(self.player.correct, 3)
+        expect(self.player.incorrect, 5)
 
 
 def call_live_method(method, **kwargs):
-    # expecting predictable equations like iter_number + ter_number
-    method(1, {"start": True})
+    # expecting all captchas 46
+
     # 3 correct answers
-    for i in range(1, 4):
-        method(1, {"answer": f"{i+i:03}"})
+    for i in range(0, 3):
+        method(1, {"next": True})
+        response = method(1, {"answer": "46"})
+        assert response[1]['feedback'] is True
     # 5 incorrect answers
     for i in range(0, 5):
-        method(1, {"answer": "0"})
+        method(1, {"next": True})
+        response = method(1, {"answer": "99"})
+        assert response[1]['feedback'] is False
     # 7 skipped
     for i in range(0, 7):
-        method(1, {"answer": ""})
+        method(1, {"next": True})

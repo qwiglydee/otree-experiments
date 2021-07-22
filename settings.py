@@ -43,6 +43,12 @@ SESSION_CONFIGS = [
         app_sequence=["arithmetics"],
         testing=True,
     ),
+    dict(
+        name="colors_testing",
+        num_demo_participants=1,
+        app_sequence=["colors"],
+        testing=True,
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs

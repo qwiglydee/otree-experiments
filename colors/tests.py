@@ -17,17 +17,17 @@ class PlayerBot(Bot):
 
 
 def call_live_method(method, **kwargs):
-    # expecting all captchas "123"
+    # expecting all puzzles be "yellow"
 
     # 3 correct answers
     for i in range(0, 3):
         method(1, {"next": True})
-        response = method(1, {"answer": "123"})
+        response = method(1, {"answer": "yellow"})
         assert response[1]['feedback'] is True
     # 5 incorrect answers
     for i in range(0, 5):
         method(1, {"next": True})
-        response = method(1, {"answer": "xxx"})
+        response = method(1, {"answer": "blue"})
         assert response[1]['feedback'] is False
     # 7 skipped
     for i in range(0, 7):

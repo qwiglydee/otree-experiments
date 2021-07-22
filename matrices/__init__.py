@@ -43,9 +43,8 @@ def generate_puzzle(player: Player):
     size = session.config.get("matrix_size", Constants.default_matrix_size)
     length = size * size
     if session.config.get("testing"):
-        count = player.total_puzzles
-        string = (Constants.counted_char * count) + ("x" * (length - 1))
-        return size, string, count
+        string = (Constants.counted_char * 1) + ("x" * (length - 1))
+        return size, string, 1
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
     # difficulty, puzzle, solution
