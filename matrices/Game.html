@@ -17,6 +17,10 @@ Captcha page
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
 
+    input.oninput = function (ev) {
+        input.classList.remove("is-valid", "is-invalid");
+    }
+
     input.onkeydown = function (ev) {
         if (ev.key === 'Enter') {
             let val = input.value;
@@ -57,11 +61,9 @@ Captcha page
 
     function feedback(result) {
         if (result === true) {
-            input.classList.remove("is-invalid");
             input.classList.add("is-valid");
         }
         if (result === false) {
-            input.classList.remove("is-valid");
             input.classList.add("is-invalid");
         }
         next();
