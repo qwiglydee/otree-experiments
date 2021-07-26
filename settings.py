@@ -5,25 +5,46 @@ SESSION_CONFIGS = [
         name="captcha",
         num_demo_participants=1,
         app_sequence=["captcha"],
-        captcha_length=3,
     ),
-    dict(name="arithmetics", num_demo_participants=1, app_sequence=["arithmetics"]),
+    dict(
+        name="arithmetics",
+        num_demo_participants=1,
+        app_sequence=["arithmetics"],
+        force_solve=False,
+    ),
     dict(
         name="matrices",
         num_demo_participants=1,
         app_sequence=["matrices"],
-        matrix_size=3,
-    ),
-    dict(
-        name="symmatrices",
-        num_demo_participants=1,
-        app_sequence=["symmatrices"],
-        matrix_size=7,
     ),
     dict(
         name="colors",
         num_demo_participants=1,
         app_sequence=["colors"],
+    ),
+    dict(
+        name="captcha_forcing",
+        num_demo_participants=1,
+        app_sequence=["captcha"],
+        force_solve=True,
+    ),
+    dict(
+        name="arithmetics_forcing",
+        num_demo_participants=1,
+        app_sequence=["arithmetics"],
+        force_solve=True,
+    ),
+    dict(
+        name="matrices_forcing",
+        num_demo_participants=1,
+        app_sequence=["matrices"],
+        force_solve=True,
+    ),
+    dict(
+        name="colors_forcing",
+        num_demo_participants=1,
+        app_sequence=["colors"],
+        force_solve=True,
     ),
 ]
 

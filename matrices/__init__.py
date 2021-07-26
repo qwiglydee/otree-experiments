@@ -54,6 +54,7 @@ class Trial(ExtraModel):
     solution = models.IntegerField()
 
     # the following fields remain null for unanswered trials
+    answer_timestamp = models.FloatField()
     answer = models.IntegerField()
     is_correct = models.BooleanField()
     retries = models.IntegerField(initial=0)
@@ -128,6 +129,12 @@ def play_game(player: Player, data: dict):
     - server < client {'answer': data} -- answer to a puzzle
     - server > client {'feedback': true|false} -- feedback on the answer
     """
+    conf = player.session.config
+    trial_delay = conf.get('trial_delay', 1.0)
+    retry_delay = conf.get('retry_delay', 1.0)
+    force_solve = conf.get('force_solve', False)
+    allow_skip = conf.get('allow_skip', False)
+
     now = time.time()
 
     # get last trial, if any
@@ -135,12 +142,13 @@ def play_game(player: Player, data: dict):
 
     # generate first or next puzzle and return image
     if "next" in data:
-        trial_delay = player.session.config.get('trial_delay', 1.0)
-        if last and now - last.timestamp < trial_delay:
-            raise RuntimeError("Client is too fast!")
-        force_solve = player.session.config.get('force_solve', False)
-        if last and force_solve and last.is_correct is not True:
-            raise ValueError("Attempted to advance over unsolved puzzle!")
+        if last:
+            if now - last.timestamp < trial_delay:
+                raise RuntimeError("Client advancing too fast!")
+            if force_solve and last.is_correct is not True:
+                raise RuntimeError("Attempted to skip unsolved puzzle!")
+            if not allow_skip and last.answer is None:
+                raise RuntimeError("Attempted to skip unsolved puzzle!")
 
         # new trial
         trial = generate_puzzle(player)
@@ -153,7 +161,13 @@ def play_game(player: Player, data: dict):
 
     # check given answer and return feedback
     if "answer" in data:
+        if not last:
+            raise RuntimeError("Missing current puzzle")
+        if last.answer_timestamp and now - last.answer_timestamp < retry_delay:
+            raise RuntimeError("Client retrying too fast!")
+
         check_answer(last, data["answer"])
+        last.answer_timestamp = now
         last.retries += 1
 
         # get total counters
@@ -172,10 +186,12 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
+        conf = player.session.config
         return dict(
-            trial_delay=player.session.config.get('trial_delay', 1.0),
-            allow_skip=player.session.config.get('allow_skip', False),
-            force_solve=player.session.config.get('force_solve', False),
+            trial_delay=conf.get('trial_delay', 1.0),
+            retry_delay=conf.get('retry_delay', 1.0),
+            force_solve=conf.get('force_solve', False),
+            allow_skip=conf.get('allow_skip', False),
         )
 
     @staticmethod

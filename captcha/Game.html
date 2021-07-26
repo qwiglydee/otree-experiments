@@ -18,6 +18,8 @@ Captcha page
 
     <input type="text" id="answer-inp" class="form-control m-1"
            placeholder="enter text from the captcha and press Enter">
+
+    <p class="warn" id="warning-txt"></p>
 </div>
 
 {{ next_button }}
@@ -28,6 +30,7 @@ Captcha page
 <script>
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
+    let warn = document.getElementById('warning-txt');
     let fields = {
         iter: document.getElementById('iter-txt'),
         solved: document.getElementById('solved-txt'),
@@ -76,6 +79,7 @@ Captcha page
     }
 
     function submit(answer) {
+        input.classList.remove("is-valid", "is-invalid");
         liveSend({answer: answer});
     }
 
@@ -86,11 +90,30 @@ Captcha page
         }
         if (result === false) {
             input.classList.add("is-invalid");
-            if (!js_vars.force_solve) {
+            if (js_vars.force_solve) {
+                wait_retry();
+            } else {
                 next();
             }
         }
     }
+
+    function wait_retry() {
+        let countdown = js_vars.retry_delay;
+        input.disabled = true;
+        warn.textContent = `Wait ${countdown} seconds before retry`;
+        let timer = window.setInterval(function() {
+            countdown -= 1;
+            if (countdown > 0) {
+                warn.textContent = `Wait ${countdown} seconds before retry`;
+            } else {
+                input.disabled = false;
+                warn.textContent = "";
+                clearInterval(timer);
+            }
+        }, 1000);
+    }
+
 
     function stats(stats) {
         fields.iter.textContent = stats.total;

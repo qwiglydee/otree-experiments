@@ -21,9 +21,12 @@ Common features:
 - some server-side anti-cheating and anti-script-kiddies protection
 
 Configurable features, via session config:
-- `trial_delay`: a delay between trials
 - `allow_skip`: allow user to skip a trial without giving an answer
 - `force_solve`: do not advance to next trial until current puzzle is correctly solved
+
+Anti-cheating parameters:
+- `trial_delay`: minimal delay between iterations
+- `retry_delay`: minimal delay before next retry after wrong answer 
 
 
 ## Development with command-line
