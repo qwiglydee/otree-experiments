@@ -16,7 +16,6 @@ class Constants(BaseConstants):
     num_rounds = 1
 
     characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    default_captcha_length = 5
     instructions_template = __name__ + "/instructions.html"
 
 
@@ -38,13 +37,6 @@ class Player(BasePlayer):
 # puzzle-specific stuff
 
 
-def generate_puzzle(player: Player):
-    session = player.session
-    length = session.config.get("captcha_length", Constants.default_captcha_length)
-    text = "".join((random.choice(Constants.characters) for _ in range(length)))
-    return length, text, text.lower()
-
-
 class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
 
@@ -61,6 +53,13 @@ class Trial(ExtraModel):
     answer = models.StringField()
     is_correct = models.BooleanField()
     retries = models.IntegerField(initial=0)
+
+
+def generate_puzzle(player: Player):
+    session = player.session
+    length = session.config.get("captcha_length", 3)
+    text = "".join((random.choice(Constants.characters) for _ in range(length)))
+    return length, text, text.lower()
 
 
 def summarize_trials(player: Player):

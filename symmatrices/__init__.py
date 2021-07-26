@@ -16,7 +16,6 @@ class Constants(BaseConstants):
 
     characters = "♠♡♢♣♤♥♦♧"
     counted_char = "♠"
-    default_matrix_size = 5
 
 
 class Subsession(BaseSubsession):
@@ -39,7 +38,7 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    size = session.config.get("matrix_size", Constants.default_matrix_size)
+    size = session.config.get("matrix_size", 5)
     length = size * size
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
