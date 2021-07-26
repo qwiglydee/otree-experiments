@@ -52,12 +52,6 @@ class Player(BasePlayer):
 # puzzle-specific stuff
 
 
-def generate_puzzle(player: Player):
-    color = random.choice(Constants.colors)
-    text = random.choice(Constants.colors)
-    return color, text
-
-
 class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
 
@@ -76,6 +70,37 @@ class Trial(ExtraModel):
     retries = models.IntegerField(initial=0)
 
 
+def generate_puzzle(player: Player):
+    """Create new puzzle for a player"""
+    return Trial.create(
+        player=player,
+        color=random.choice(Constants.colors),
+        text=random.choice(Constants.colors),
+    )
+
+
+def encode_puzzle(trial: Trial):
+    """Create an image for a puzzle"""
+    image = generate_image(trial.text, trial.color)
+    data = encode_image(image)
+    return data
+
+
+def get_last_trial(player):
+    """Get last (current) puzzle for a player"""
+    trials = Trial.filter(player=player)
+    trial = trials[-1] if len(trials) else None
+    return trial
+
+
+def check_answer(trial: Trial, answer: str):
+    """Check given answer for a puzzle and update its status"""
+    if answer == "":
+        raise ValueError("Unexpected empty answer from client")
+    trial.answer = answer
+    trial.is_correct = answer == trial.color
+
+
 def summarize_trials(player: Player):
     player.total = len(Trial.filter(player=player))
     # expect at least 1 unanswered because of timeout, more if skipping allowed
@@ -85,6 +110,9 @@ def summarize_trials(player: Player):
     player.incorrect = len(Trial.filter(player=player, is_correct=False))
 
 
+# gameplay logic
+
+
 def play_game(player: Player, data: dict):
     """Handles iterations of the game on a live page
 
@@ -92,16 +120,15 @@ def play_game(player: Player, data: dict):
     - server < client {'next': true} -- request for next (or first) puzzle
     - server > client {'image': data} -- puzzle image
     - server < client {'answer': data} -- answer to a puzzle
-    - server > client {'feedback': true|false|null} -- feedback on the answer (null for empty answer)
+    - server > client {'feedback': true|false} -- feedback on the answer
     """
-
-    # get last trial, if any
-    trials = Trial.filter(player=player)
-    trial = trials[-1] if len(trials) else None
-    iteration = trial.iteration if trial else 0
     now = time.time()
 
-    # generate and return first or next puzzle
+    # get last trial, if any
+    trial = get_last_trial(player)
+    iteration = trial.iteration if trial else 0
+
+    # generate first or next puzzle and return image
     if "next" in data:
         trial_delay = player.session.config.get('trial_delay', 1.0)
         if trial and now - trial.timestamp < trial_delay:
@@ -110,30 +137,21 @@ def play_game(player: Player, data: dict):
         if trial and force_solve and trial.is_correct is not True:
             raise ValueError("Attempted to advance over unsolved puzzle!")
 
-        color, text = generate_puzzle(player)
-        Trial.create(
-            player=player,
-            timestamp=now,
-            iteration=iteration + 1,
-            color=color,
-            text=text,
-        )
+        # new trial
+        trial = generate_puzzle(player)
+        trial.timestamp = now
+        trial.iteration = iteration + 1
 
-        image = generate_image(text, Constants.color_values[color])
-        data = encode_image(image)
+        # return image
+        data = encode_puzzle(trial)
         return {player.id_in_group: {"image": data}}
 
     # check given answer and return feedback
     if "answer" in data:
-        answer = data["answer"]
-
-        if answer not in Constants.colors:
-            raise ValueError("Bogus input from client")
-
-        trial.answer = answer
-        trial.is_correct = answer == trial.color
+        check_answer(trial, data["answer"])
         trial.retries += 1
 
+        # return feedback
         return {player.id_in_group: {'feedback': trial.is_correct}}
 
     # otherwise

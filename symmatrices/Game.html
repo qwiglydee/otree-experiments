@@ -1,12 +1,3 @@
-{{ block styles }}
-<style>
-    .otree-btn-next {
-        display: none;
-    }
-</style>
-{{ endblock }}
-
-
 {{ block title }}
 Captcha page
 {{ endblock }}
@@ -35,6 +26,8 @@ Captcha page
             let val = input.value;
             if (val != "") {
                 submit(val);
+            } else if (js_vars.allow_skip) {
+                skip();
             }
         }
     }
