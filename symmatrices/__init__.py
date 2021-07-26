@@ -2,7 +2,7 @@ import time
 import random
 from otree.api import *
 
-from matrices.images import generate_image, encode_image
+from .images import generate_image, encode_image
 
 doc = """
 Experimental captcha game

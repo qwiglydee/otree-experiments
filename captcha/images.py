@@ -18,12 +18,12 @@ except ImportError:
 
 TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
-TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSerifBold.otf")
+TEXT_FONT = Path(__file__).parent / "FreeSerifBold.otf"
 
 
 def generate_image(text):
     dumb = Image.new("RGB", (0, 0))
-    font = ImageFont.truetype(TEXT_FONT, TEXT_SIZE)
+    font = ImageFont.truetype(str(TEXT_FONT), TEXT_SIZE)
     w, h = ImageDraw.ImageDraw(dumb).textsize(text, font)
     image = Image.new("RGB", (w + TEXT_PADDING * 2, h + TEXT_PADDING * 2))
     draw = ImageDraw.Draw(image)

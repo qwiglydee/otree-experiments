@@ -20,12 +20,12 @@ TEXT_SIZE = 32
 IMAGE_WIDTH = 32 * 8
 IMAGE_HEIGHT = 32 * 2
 TEXT_PADDING = TEXT_SIZE
-TEXT_FONT = str(Path(__file__).parent.parent / "_static" / "FreeSansBold.otf")
+TEXT_FONT = Path(__file__).parent / "FreeSansBold.otf"
 
 
 def generate_image(text, color):
     dumb = Image.new("RGB", (0, 0))
-    font = ImageFont.truetype(TEXT_FONT, TEXT_SIZE)
+    font = ImageFont.truetype(str(TEXT_FONT), TEXT_SIZE)
     # take maximal size to keep all images same
     image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT))
     draw = ImageDraw.Draw(image)
