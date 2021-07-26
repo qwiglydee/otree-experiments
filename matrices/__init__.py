@@ -11,7 +11,7 @@ Experimental matrix counting game
 
 
 class Constants(BaseConstants):
-    name_in_url = "symmatrices"
+    name_in_url = "matrices"
     players_per_group = None
     num_rounds = 1
 
@@ -28,6 +28,9 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    matrix_w = models.IntegerField(initial=10)
+    matrix_h = models.IntegerField(initial=5)
+
     total = models.IntegerField(initial=0)
     answered = models.IntegerField(initial=0)
     correct = models.IntegerField(initial=0)
@@ -45,7 +48,8 @@ class Trial(ExtraModel):
     timestamp = models.FloatField(initial=0)
     iteration = models.IntegerField(initial=0)
 
-    size = models.IntegerField()
+    matrix_w = models.IntegerField()
+    matrix_h = models.IntegerField()
     content = models.StringField()
     solution = models.IntegerField()
 
@@ -57,14 +61,15 @@ class Trial(ExtraModel):
 
 def generate_puzzle(player: Player) -> Trial:
     """Create new puzzle for a player"""
-    session = player.session
-    size = session.config.get("matrix_size", 5)
-    length = size * size
+    w = player.matrix_w
+    h = player.matrix_h
+    length = w * h
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
     return Trial.create(
         player=player,
-        size=size,
+        matrix_w=w,
+        matrix_h=h,
         content=content,
         solution=count,
     )
@@ -72,7 +77,7 @@ def generate_puzzle(player: Player) -> Trial:
 
 def encode_puzzle(trial: Trial):
     """Create an image for a puzzle"""
-    image = generate_image(trial.size, trial.content)
+    image = generate_image((trial.matrix_w, trial.matrix_h), trial.content)
     data = encode_image(image)
     return data
 

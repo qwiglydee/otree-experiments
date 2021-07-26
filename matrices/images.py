@@ -21,20 +21,22 @@ TEXT_PADDING = 16
 TEXT_FONT = Path(__file__).parent / "FreeSansBold.otf"
 
 
-def generate_image(size: int, content: str):
+def generate_image(size: tuple, content: str):
     font = ImageFont.truetype(str(TEXT_FONT), TEXT_SIZE)
-    cell_w = TEXT_SIZE + TEXT_PADDING * 2
-    grid_w = cell_w * size
-    image = Image.new("RGB", (grid_w, grid_w))
+    grid_c = TEXT_SIZE + TEXT_PADDING * 2
+    grid_w = grid_c * size[0]
+    grid_h = grid_c * size[1]
+    image = Image.new("RGB", (grid_w, grid_h))
     draw = ImageDraw.Draw(image)
 
+    w = size[0]
     for i, char in enumerate(content):
-        row = i // size
-        col = i % size
-        x = col * cell_w
-        y = row * cell_w
-        mid = cell_w * 0.5
-        draw.rectangle([x, y, x + cell_w, y + cell_w])
+        row = i // w
+        col = i % w
+        x = col * grid_c
+        y = row * grid_c
+        mid = grid_c * 0.5
+        draw.rectangle([x, y, x + grid_c, y + grid_c])
         draw.text((x + mid, y + mid), char, font=font, anchor="mm")
 
     return image

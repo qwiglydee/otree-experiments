@@ -28,6 +28,8 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    captcha_length = models.IntegerField(initial=3)
+
     total = models.IntegerField(initial=0)
     correct = models.IntegerField(initial=0)
     incorrect = models.IntegerField(initial=0)
@@ -56,8 +58,7 @@ class Trial(ExtraModel):
 
 def generate_puzzle(player: Player) -> Trial:
     """Create new puzzle for a player"""
-    session = player.session
-    length = session.config.get("captcha_length", 3)
+    length = player.captcha_length
     text = "".join((random.choice(Constants.characters) for _ in range(length)))
     return Trial.create(
         player=player,
