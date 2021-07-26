@@ -29,7 +29,6 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
     total = models.IntegerField(initial=0)
-    answered = models.IntegerField(initial=0)
     correct = models.IntegerField(initial=0)
     incorrect = models.IntegerField(initial=0)
 
@@ -92,12 +91,22 @@ def check_answer(trial: Trial, answer: str):
 
 
 def summarize_trials(player: Player):
-    player.total = len(Trial.filter(player=player))
+    """Returns summary stats for a player
+
+    Used to provide info for client, and to update player after a game round
+    """
+    total = len(Trial.filter(player=player))
     # expect at least 1 unanswered because of timeout, more if skipping allowed
     unanswered = len(Trial.filter(player=player, answer=None))
-    player.answered = player.total - unanswered
-    player.correct = len(Trial.filter(player=player, is_correct=True))
-    player.incorrect = len(Trial.filter(player=player, is_correct=False))
+    correct = len(Trial.filter(player=player, is_correct=True))
+    incorrect = len(Trial.filter(player=player, is_correct=False))
+    return {
+        'total': total,
+        'answered': total - unanswered,
+        'unanswered': unanswered,
+        'correct': correct,
+        'incorrect': incorrect,
+    }
 
 
 # gameplay logic
@@ -115,22 +124,21 @@ def play_game(player: Player, data: dict):
     now = time.time()
 
     # get last trial, if any
-    trial = get_last_trial(player)
-    iteration = trial.iteration if trial else 0
+    last = get_last_trial(player)
 
     # generate first or next puzzle and return image
     if "next" in data:
         trial_delay = player.session.config.get('trial_delay', 1.0)
-        if trial and now - trial.timestamp < trial_delay:
+        if last and now - last.timestamp < trial_delay:
             raise RuntimeError("Client is too fast!")
         force_solve = player.session.config.get('force_solve', False)
-        if trial and force_solve and trial.is_correct is not True:
+        if last and force_solve and last.is_correct is not True:
             raise ValueError("Attempted to advance over unsolved puzzle!")
 
         # new trial
         trial = generate_puzzle(player)
         trial.timestamp = now
-        trial.iteration = iteration + 1
+        trial.iteration = last.iteration + 1 if last else 1
 
         # return image
         data = encode_puzzle(trial)
@@ -138,11 +146,14 @@ def play_game(player: Player, data: dict):
 
     # check given answer and return feedback
     if "answer" in data:
-        check_answer(trial, data["answer"])
-        trial.retries += 1
+        check_answer(last, data["answer"])
+        last.retries += 1
+
+        # get total counters
+        stats = summarize_trials(player)
 
         # return feedback
-        return {player.id_in_group: {'feedback': trial.is_correct}}
+        return {player.id_in_group: {'feedback': last.is_correct, 'stats': stats}}
 
     # otherwise
     raise ValueError("Invalid message from client!")
@@ -200,7 +211,10 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        summarize_trials(player)
+        stats = summarize_trials(player)
+        player.total = stats['total']
+        player.correct = stats['correct']
+        player.incorrect = stats['incorrect']
         player.payoff = player.correct - player.incorrect
 
 

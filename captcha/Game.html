@@ -12,6 +12,8 @@ Captcha page
 
 {{ block content }}
 <div class="d-flex flex-column align-items-center">
+    <h3>Iteration <span id="iter-txt">1</span></h3>
+    <p>Solved: <span id="solved-txt">0</span>. Failed: <span id="failed-txt">0</span>.</p>
     <img class="captcha m-1" id="captcha-img">
 
     <input type="text" id="answer-inp" class="form-control m-1"
@@ -26,6 +28,11 @@ Captcha page
 <script>
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
+    let fields = {
+        iter: document.getElementById('iter-txt'),
+        solved: document.getElementById('solved-txt'),
+        failed: document.getElementById('failed-txt'),
+    }
 
     input.oninput = function (ev) {
         input.classList.remove("is-valid", "is-invalid");
@@ -51,6 +58,9 @@ Captcha page
             new_puzzle(data.image);
         } else if ('feedback' in data) {
             feedback(data.feedback);
+        }
+        if ('stats' in data) {
+            stats(data.stats);
         }
     }
 
@@ -80,6 +90,12 @@ Captcha page
                 next();
             }
         }
+    }
+
+    function stats(stats) {
+        fields.iter.textContent = stats.total;
+        fields.solved.textContent = stats.correct;
+        fields.failed.textContent = stats.incorrect;
     }
 
     function next() {
