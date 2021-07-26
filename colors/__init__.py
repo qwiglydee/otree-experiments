@@ -53,9 +53,6 @@ class Player(BasePlayer):
 
 
 def generate_puzzle(player: Player):
-    session = player.session
-    if session.config.get("testing"):
-        return "yellow", "yellow"
     color = random.choice(Constants.colors)
     text = random.choice(Constants.colors)
     return color, text

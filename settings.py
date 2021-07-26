@@ -25,38 +25,6 @@ SESSION_CONFIGS = [
         num_demo_participants=1,
         app_sequence=["colors"],
     ),
-    dict(
-        name="captcha_testing",
-        num_demo_participants=1,
-        app_sequence=["captcha"],
-        testing=True,
-        trial_delay=0,
-        allow_skip=True,
-    ),
-    dict(
-        name="matrices_testing",
-        num_demo_participants=1,
-        app_sequence=["matrices"],
-        testing=True,
-        trial_delay=0,
-        allow_skip=True,
-    ),
-    dict(
-        name="arithmetics_testing",
-        num_demo_participants=1,
-        app_sequence=["arithmetics"],
-        testing=True,
-        trial_delay=0,
-        allow_skip=True,
-    ),
-    dict(
-        name="colors_testing",
-        num_demo_participants=1,
-        app_sequence=["colors"],
-        testing=True,
-        trial_delay=0,
-        allow_skip=True,
-    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs

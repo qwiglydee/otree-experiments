@@ -40,8 +40,6 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    if session.config.get("testing"):
-        return 0, "123", "123"
     length = session.config.get("captcha_length", Constants.default_captcha_length)
     text = "".join((random.choice(Constants.characters) for _ in range(length)))
     return length, text, text.lower()

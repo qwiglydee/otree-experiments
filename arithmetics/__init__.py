@@ -39,9 +39,6 @@ class Player(BasePlayer):
 
 def generate_puzzle(player: Player):
     session = player.session
-    if session.config.get("testing"):
-        return "12 + 34 =", 46
-
     a = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     b = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     text = f"{a} + {b} = "
