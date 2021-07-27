@@ -63,6 +63,7 @@ class Trial(ExtraModel):
     color = models.StringField()
     text = models.StringField()
     congruent = models.BooleanField()
+    solution = models.StringField()
 
     # the following fields remain null for unanswered trials
     answer_timestamp = models.FloatField()
@@ -73,16 +74,14 @@ class Trial(ExtraModel):
 
 def generate_puzzle(player: Player):
     """Create new puzzle for a player"""
-    return Trial.create(
-        player=player,
-        color=random.choice(Constants.colors),
-        text=random.choice(Constants.colors),
-    )
+    color = random.choice(Constants.colors)
+    text = random.choice(Constants.colors)
+    return Trial.create(player=player, color=color, text=text, solution=color)
 
 
 def encode_puzzle(trial: Trial):
     """Create an image for a puzzle"""
-    image = generate_image(trial.text, trial.color)
+    image = generate_image(trial.text, Constants.color_values[trial.color])
     data = encode_image(image)
     return data
 
