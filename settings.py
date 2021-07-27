@@ -5,6 +5,7 @@ SESSION_CONFIGS = [
         name="captcha",
         num_demo_participants=1,
         app_sequence=["captcha"],
+        num_iterations=10,
     ),
     dict(
         name="arithmetics",

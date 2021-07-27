@@ -12,7 +12,10 @@ Captcha page
 
 {{ block content }}
 <div class="d-flex flex-column align-items-center">
-    <h3>Iteration <span id="iter-txt">1</span></h3>
+    <h3>
+        Iteration <span id="iter-txt">1</span>
+        {{ if session.config.num_iterations }}/{{ session.config.num_iterations }}{{ endif }}
+    </h3>
     <p>Solved: <span id="solved-txt">0</span>. Failed: <span id="failed-txt">0</span>.</p>
     <img class="captcha m-1" id="captcha-img">
 
@@ -59,8 +62,12 @@ Captcha page
     function liveRecv(data) {
         if ('image' in data ) {
             new_puzzle(data.image);
-        } else if ('feedback' in data) {
+        }
+        if ('feedback' in data) {
             feedback(data.feedback);
+        }
+        if ('gameover' in data) {
+            gameover();
         }
         if ('stats' in data) {
             stats(data.stats);
@@ -125,6 +132,10 @@ Captcha page
         window.setTimeout(function() {
             liveSend({next: true});
         }, js_vars.trial_delay * 1000);
+    }
+
+    function gameover() {
+        document.querySelector("#form").submit();
     }
 </script>
 {{ endblock }}

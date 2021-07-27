@@ -128,6 +128,7 @@ def play_game(player: Player, data: dict):
     retry_delay = conf.get('retry_delay', 1.0)
     force_solve = conf.get('force_solve', False)
     allow_skip = conf.get('allow_skip', False)
+    max_iter = conf.get('num_iterations', None)
 
     now = time.time()
 
@@ -143,6 +144,9 @@ def play_game(player: Player, data: dict):
                 raise RuntimeError("Attempted to skip unsolved puzzle!")
             if not allow_skip and last.answer is None:
                 raise RuntimeError("Attempted to skip unsolved puzzle!")
+
+            if max_iter and last.iteration == max_iter:
+                return {player.id_in_group: {"gameover": True}}
 
         # new trial
         trial = generate_puzzle(player)
