@@ -11,23 +11,12 @@ RETRY_DELAY = 0.2
 
 class PlayerBot(Bot):
     def play_round(self):
-        conf = self.player.session.config
-        force_solve = conf.get('force_solve', False)
-
         yield Game
 
-        trials = Trial.filter(player=self.player)
-
-        if force_solve:
-            expect(len(trials), 3)
-            expect(self.player.total, 3)
-            expect(self.player.correct, 3)
-            expect(self.player.incorrect, 0)
-        else:
-            expect(len(trials), 5)
-            expect(self.player.total, 5)
-            expect(self.player.correct, 2)
-            expect(self.player.incorrect, 3)
+        player = self.player
+        expect(player.total, len(Trial.filter(player=player)))
+        expect(player.correct, len(Trial.filter(player=player, is_correct=True)))
+        expect(player.incorrect, len(Trial.filter(player=player, is_correct=False)))
 
 
 @contextmanager
@@ -53,19 +42,28 @@ def call_live_method(method, group: Group, **kwargs):
     conf['retry_delay'] = RETRY_DELAY
 
     force_solve = conf.get('force_solve', False)
-
-    last = None
-    response = {}
+    allow_skip = conf.get('allow_skip', False)
+    max_iterations = conf.get('num_iterations')
 
     def move_forward():
         _response = method(1, {'next': True})[1]
         return _response, get_last_trial(player)
 
-    def expect_forwarded(_trial, _response):
-        if last:
-            expect(_trial.timestamp, ">", last.timestamp)
-            expect(_trial.iteration, ">", last.iteration)
+    def expect_forwarded(_last, _trial):
+        if _last:
+            expect(_trial.id, "!=", _last.id)
+            expect(_trial.timestamp, ">", _last.timestamp)
+            expect(_trial.iteration, ">", _last.iteration)
+
+    def expect_not_forwarded(_last, _trial):
+        if _last:
+            expect(_trial.id, "==", _last.id)
+            expect(_trial.timestamp, "==", _last.timestamp)
+            expect(_trial.iteration, "==", _last.iteration)
+
+    def expect_image(_response):
         expect('image', 'in', _response)
+        expect(_response['image'].startswith("data:text/plain;base64"), True)
 
     def give_answer(ans):
         _response = method(1, {'answer': ans})[1]
@@ -73,51 +71,98 @@ def call_live_method(method, group: Group, **kwargs):
 
     def expect_answered(_trial, _response, ans, valid):
         expect(_trial.answer, ans)
+        expect(_trial.answer_timestamp, '>', _trial.timestamp)
         expect(_trial.is_correct, valid)
         expect(_response['feedback'], valid)
 
-    # 2 correct answers
-    for i in range(2):
-        time.sleep(TRIAL_DELAY)
+    def expect_stats(_last_stats, _stats, **updates):
+        for key, val in _stats.items():
+            upd = updates.get(key, 0)
+            exp = _last_stats[key] + upd if _last_stats else upd
+            if val != exp:
+                raise ExpectError(
+                    f"Stats key `{key}`: expected to be {exp}, actual {val}"
+                )
+
+    last = None
+    last_stats = {}
+    response = {}
+
+    # fail to submit bogus message
+    with expect_failure(ValueError):
+        _response = method(1, "BOGUS")
+
+    # fail to answer w/out start
+    with expect_failure(RuntimeError):
+        _response = method(1, {'answer': "123"})
+
+    # start
+    time.sleep(TRIAL_DELAY)
+    response, trial = move_forward()
+    expect_forwarded(last, trial)
+    expect_image(response)
+
+    # fail to advance w/out delay ####
+    with expect_failure(RuntimeError):
         response, trial = move_forward()
-        expect_forwarded(trial, response)
+    expect_not_forwarded(last, trial)
 
-        answer = trial.solution
-        response, trial = give_answer(answer)
-        expect_answered(trial, response, answer, True)
+    # fail to submit empty answer
+    with expect_failure(ValueError):
+        _response = method(1, {'answer': ""})
 
-        last = get_last_trial(player)
+    # 1 correct answer
+    answer = trial.solution
+    response, trial = give_answer(answer)
+    expect_answered(trial, response, answer, True)
+    stats = response['stats']
+    expect_stats({}, stats, total=1, answered=1, correct=1)
 
-    expect(
-        response['stats'],
-        {'total': 2, 'answered': 2, 'unanswered': 0, 'correct': 2, 'incorrect': 0},
-    )
+    last = trial
+    last_stats = stats
+
+    # fail to answer again w/out delay
+    with expect_failure(RuntimeError):
+        give_answer(answer)
+
+    # succeed to answer again after delay
+    time.sleep(RETRY_DELAY)
+    response, trial = give_answer(answer)
+    expect_answered(trial, response, answer, True)
+    # stats shan't change though
+    expect_stats(response['stats'], last_stats)
 
     if force_solve:
+        # create new trial
         time.sleep(TRIAL_DELAY)
         response, trial = move_forward()
-        expect_forwarded(trial, response)
+        expect_forwarded(last, trial)
 
         # give incorrect answer
         answer1 = "0"
         response, trial = give_answer(answer1)
         expect_answered(trial, response, answer1, False)
 
-        # try to skip
-        with expect_failure(RuntimeError):
-            time.sleep(TRIAL_DELAY)
-            move_forward()
+        stats = response['stats']
+        expect_stats(last_stats, stats, total=1, answered=1, incorrect=1)
 
-        # should stay with same trial
-        expect(get_last_trial(player), trial)
+        last = trial
+        last_stats = stats
 
-        # retry w/out waiting
+        # fail to retry w/out delay
         answer2 = trial.solution
         with expect_failure(RuntimeError):
             response, trial = give_answer(answer2)
 
-        # trial stays with old answer
+        # trial should stay with old answer
         expect_answered(trial, response, answer1, False)
+
+        # fail to skip
+        with expect_failure(RuntimeError):
+            time.sleep(TRIAL_DELAY)
+            move_forward()
+
+        expect_not_forwarded(last, trial)
 
         # retry with waiting
         answer3 = trial.solution
@@ -128,24 +173,70 @@ def call_live_method(method, group: Group, **kwargs):
 
         expect(trial.retries, 2)  # 1st and 3rd
 
-        expect(
-            response['stats'],
-            {'total': 3, 'answered': 3, 'unanswered': 0, 'correct': 3, 'incorrect': 0},
-        )
+        stats = response['stats']
+        expect_stats(last_stats, stats, incorrect=-1, correct=1)
+        last_stats = stats
+
+    elif allow_skip:
+        # create new trial
+        time.sleep(TRIAL_DELAY)
+        response, trial = move_forward()
+        expect_forwarded(last, trial)
+        last = trial
+
+        # skip to next
+        time.sleep(TRIAL_DELAY)
+        response, trial = move_forward()
+        expect_forwarded(last, trial)
+
+        # answer
+        answer = trial.solution
+        response, trial = give_answer(answer)
+        expect_answered(trial, response, answer, True)
+
+        stats = response['stats']
+        expect_stats(last_stats, stats, total=2, unanswered=1, answered=1, correct=1)
+
+        last = trial
+        last_stats = stats
     else:
-        # give 3 incorrect answers
-        for i in range(3):
+        # create new trial
+        time.sleep(TRIAL_DELAY)
+        response, trial = move_forward()
+        expect_forwarded(last, trial)
+        last = trial
+
+        # fail to skip
+        with expect_failure(RuntimeError):
             time.sleep(TRIAL_DELAY)
             response, trial = move_forward()
-            expect_forwarded(trial, response)
 
-            # give incorrect answer
-            answer = "0"
+        expect_not_forwarded(last, trial)
+
+        # answer incorrectly
+        answer = "0"
+        response, trial = give_answer(answer)
+        expect_answered(trial, response, answer, False)
+
+        stats = response['stats']
+        expect_stats(last_stats, stats, total=1, answered=1, incorrect=1)
+
+        last = trial
+        last_stats = stats
+
+    if max_iterations:
+        # exhaust all iterations
+        for _ in range(stats['total'], max_iterations):
+            time.sleep(TRIAL_DELAY)
+            response, trial = move_forward()
+            expect_forwarded(last, trial)
+            expect('image', 'in', response)
+
+            answer = trial.solution
             response, trial = give_answer(answer)
-            expect_answered(trial, response, answer, False)
+            expect_answered(trial, response, answer, True)
 
-            last = get_last_trial(player)
-        expect(
-            response['stats'],
-            {'total': 5, 'answered': 5, 'unanswered': 0, 'correct': 2, 'incorrect': 3},
-        )
+        time.sleep(TRIAL_DELAY)
+        response, trial = move_forward()
+        expect_forwarded(last, trial)
+        expect('gameover', 'in', response)

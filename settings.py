@@ -5,13 +5,29 @@ SESSION_CONFIGS = [
         name="captcha",
         num_demo_participants=1,
         app_sequence=["captcha"],
+    ),
+    dict(
+        name="captcha_10",
+        num_demo_participants=1,
+        app_sequence=["captcha"],
         num_iterations=10,
+    ),
+    dict(
+        name="captcha_forcing",
+        num_demo_participants=1,
+        app_sequence=["captcha"],
+        force_solve=True,
+    ),
+    dict(
+        name="captcha_skippable",
+        num_demo_participants=1,
+        app_sequence=["captcha"],
+        allow_skip=True,
     ),
     dict(
         name="arithmetics",
         num_demo_participants=1,
         app_sequence=["arithmetics"],
-        force_solve=False,
     ),
     dict(
         name="matrices",
@@ -22,30 +38,7 @@ SESSION_CONFIGS = [
         name="colors",
         num_demo_participants=1,
         app_sequence=["colors"],
-    ),
-    dict(
-        name="captcha_forcing",
-        num_demo_participants=1,
-        app_sequence=["captcha"],
-        force_solve=True,
-    ),
-    dict(
-        name="arithmetics_forcing",
-        num_demo_participants=1,
-        app_sequence=["arithmetics"],
-        force_solve=True,
-    ),
-    dict(
-        name="matrices_forcing",
-        num_demo_participants=1,
-        app_sequence=["matrices"],
-        force_solve=True,
-    ),
-    dict(
-        name="colors_forcing",
-        num_demo_participants=1,
-        app_sequence=["colors"],
-        force_solve=True,
+        num_iterations=10,
     ),
 ]
 
