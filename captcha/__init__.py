@@ -119,9 +119,10 @@ def play_game(player: Player, data: dict):
 
     Messages:
     - server < client {'next': true} -- request for next (or first) puzzle
-    - server > client {'image': data} -- puzzle image
+    - server > client {'image': data, 'stats': ...} -- puzzle image
     - server < client {'answer': data} -- answer to a puzzle
-    - server > client {'feedback': true|false} -- feedback on the answer
+    - server > client {'feedback': true|false, 'stats': ...} -- feedback on the answer
+    - server > client {'gameover': true} -- all iterations played
     """
     conf = player.session.config
     trial_delay = conf.get('trial_delay', 1.0)
@@ -143,7 +144,7 @@ def play_game(player: Player, data: dict):
             if force_solve and last.is_correct is not True:
                 raise RuntimeError("Attempted to skip unsolved puzzle!")
             if not allow_skip and last.answer is None:
-                raise RuntimeError("Attempted to skip unsolved puzzle!")
+                raise RuntimeError("Attempted to skip unanswered puzzle!")
 
             if max_iter and last.iteration == max_iter:
                 return {player.id_in_group: {"gameover": True}}
@@ -153,9 +154,12 @@ def play_game(player: Player, data: dict):
         trial.timestamp = now
         trial.iteration = last.iteration + 1 if last else 1
 
+        # get total counters
+        stats = summarize_trials(player)
+
         # return image
         data = encode_puzzle(trial)
-        return {player.id_in_group: {"image": data}}
+        return {player.id_in_group: {"image": data, "stats": stats}}
 
     # check given answer and return feedback
     if "answer" in data:

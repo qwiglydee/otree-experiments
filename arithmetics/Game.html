@@ -13,8 +13,8 @@ Captcha page
 {{ block content }}
 <div class="d-flex flex-column align-items-center">
     <h3>
-        Iteration <span id="iter-txt">1</span>
-        {{ if session.config.num_iterations }}/{{ session.config.num_iterations }}{{ endif }}
+        Iteration <span id="iter-txt"></span>
+        {{ if 'num_iterations' in session.config }}/{{ session.config.num_iterations }}{{ endif }}
     </h3>
     <p>Solved: <span id="solved-txt">0</span>. Failed: <span id="failed-txt">0</span>.</p>
     <img class="captcha m-1" id="captcha-img">
