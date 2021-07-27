@@ -15,8 +15,8 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
-    characters = "01"
-    counted_char = "0"
+    characters = "←↓"
+    counted_char = "←"
 
 
 class Subsession(BaseSubsession):
@@ -68,11 +68,7 @@ def generate_puzzle(player: Player) -> Trial:
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
     return Trial.create(
-        player=player,
-        matrix_w=w,
-        matrix_h=h,
-        content=content,
-        solution=count,
+        player=player, matrix_w=w, matrix_h=h, content=content, solution=count,
     )
 
 

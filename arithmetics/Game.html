@@ -1,11 +1,3 @@
-{{ block styles }}
-<style>
-    .otree-btn-next {
-        display: none;
-    }
-</style>
-{{ endblock }}
-
 {{ block title }}
 Captcha page
 {{ endblock }}
@@ -20,12 +12,11 @@ Captcha page
     <img class="captcha m-1" id="captcha-img">
 
     <input type="text" id="answer-inp" class="form-control m-1"
-           placeholder="enter text from the captcha and press Enter">
+           placeholder="Enter the solution">
 
     <p class="warn" id="warning-txt"></p>
 </div>
 
-{{ next_button }}
 
 {{ endblock }}
 
@@ -135,7 +126,7 @@ Captcha page
     }
 
     function gameover() {
-        document.querySelector("#form").submit();
+        document.getElementById("form").submit();
     }
 </script>
 {{ endblock }}

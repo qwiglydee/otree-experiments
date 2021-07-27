@@ -1,11 +1,3 @@
-{{ block styles }}
-<style>
-    .otree-btn-next {
-        display: none;
-    }
-</style>
-{{ endblock }}
-
 {{ block title }}
 Captcha page
 {{ endblock }}
@@ -30,8 +22,6 @@ Captcha page
 
     <p class="warn" id="warning-txt"></p>
 </div>
-
-{{ next_button }}
 
 {{ endblock }}
 
@@ -136,7 +126,7 @@ Captcha page
     }
 
     function gameover() {
-        document.querySelector("#form").submit();
+        document.getElementById("form").submit();
     }
 </script>
 
