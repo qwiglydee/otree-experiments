@@ -1,6 +1,7 @@
 import time
 import random
 from otree.api import *
+from otree import settings
 
 from .images import generate_image, distort_image, encode_image
 
@@ -128,6 +129,9 @@ def play_game(player: Player, data: dict):
     - server < client {'answer': data} -- answer to a puzzle
     - server > client {'feedback': true|false, 'stats': ...} -- feedback on the answer
     - server > client {'gameover': true} -- all iterations played
+    if DEBUG=1
+    - server < client {'cheat': true} -- request solution
+    - server > client {'solution': str} -- solution
     """
     conf = player.session.config
     trial_delay = conf.get('trial_delay', 1.0)
@@ -202,6 +206,11 @@ def play_game(player: Player, data: dict):
         # return feedback
         return {player.id_in_group: {'feedback': last.is_correct, 'stats': stats}}
 
+    if "cheat" in data and settings.DEBUG:
+        if not last:
+            raise RuntimeError("Missing current puzzle")
+        return {player.id_in_group: {'solution': last.solution}}
+
     # otherwise
     raise ValueError("Invalid message from client!")
 
@@ -253,6 +262,10 @@ class Game(Page):
     timeout_seconds = 60
 
     live_method = play_game
+
+    @staticmethod
+    def vars_for_template(player: Player):
+        return dict(DEBUG=settings.DEBUG)
 
     @staticmethod
     def js_vars(player: Player):

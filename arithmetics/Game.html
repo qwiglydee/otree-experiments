@@ -21,6 +21,9 @@ Captcha page
     </div>
 
     <p class="warn" id="warning-txt"></p>
+    {{ if DEBUG }}
+    <button type="button" id="cheat-btn" class="btn btn-dark">Cheat</button>
+    {{ endif }}
 </div>
 
 
@@ -84,6 +87,9 @@ Captcha page
         }
         if ('stats' in data) {
             stats(data.stats);
+        }
+        if ('solution' in data) {
+            cheat(data.solution);
         }
     }
 
@@ -181,4 +187,17 @@ Captcha page
     });
 
 </script>
+{{ if DEBUG }}
+<script>
+    let cheat_btn = document.getElementById('cheat-btn');
+    cheat_btn.onclick = function() {
+        liveSend({cheat: true});
+    }
+
+    function cheat(solution) {
+        input.value = solution;
+    }
+</script>
+{{ endif }}
+
 {{ endblock }}

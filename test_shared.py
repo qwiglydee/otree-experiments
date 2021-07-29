@@ -1,9 +1,8 @@
 import time
 from contextlib import contextmanager
 from otree.api import *
+from otree import settings
 from importlib import import_module
-
-# NB: some operations on sqlite may be slow
 
 TEST_CASES = [
     # normal flow
@@ -25,9 +24,11 @@ TEST_CASES = [
     'retrying_incorrect',  # answering the same puzzle incorrectly after correct answer, for no reason
     'retrying_nodelay',  # retrying w/out delay
     'iter_limit',  # reaching maximum number of iterations
+    'cheat_debug',
+    'cheat_nodebug',
 ]
 
-# TEST_CASES = ['iter_limit']
+# TEST_CASES = ['cheat_debug', 'cheat_nodebug']
 
 
 @contextmanager
@@ -461,6 +462,27 @@ def call_live_method(method, group, case, **kwargs):
         expect_not_forwarded(player, last)
         expect('gameover', 'in', resp)
 
+        return
+
+    if case == 'cheat_debug':
+        settings.DEBUG = True
+        restart(player)
+
+        resp = method(player.id_in_group, {'cheat': True})[player.id_in_group]
+        expect('solution', 'in', resp)
+
+        answer = resp['solution']
+        resp = give_answer(player, answer)
+        expect_answered_correctly(player, answer)
+        expect_response_correct(resp)
+
+        return
+
+    if case == 'cheat_nodebug':
+        settings.DEBUG = False
+        restart(player)
+        with expect_failure(ValueError):
+            method(player.id_in_group, {'cheat': True})
         return
 
     raise NotImplementedError("missing test case", case)  # or missing `return`
