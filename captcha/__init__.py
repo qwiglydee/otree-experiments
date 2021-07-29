@@ -86,7 +86,7 @@ def get_last_trial(player):
 
 def check_answer(trial: Trial, answer: str):
     """Check given answer for a puzzle and update its status"""
-    if answer == "":
+    if answer == "" or answer is None:
         raise ValueError("Unexpected empty answer from client")
     trial.answer = answer
     trial.is_correct = answer.lower() == trial.solution
@@ -98,14 +98,10 @@ def summarize_trials(player: Player):
     Used to provide info for client, and to update player after a game round
     """
     total = len(Trial.filter(player=player))
-    # expect at least 1 unanswered because of timeout, more if skipping allowed
-    unanswered = len(Trial.filter(player=player, answer=None))
     correct = len(Trial.filter(player=player, is_correct=True))
     incorrect = len(Trial.filter(player=player, is_correct=False))
     return {
         'total': total,
-        'answered': total - unanswered,
-        'unanswered': unanswered,
         'correct': correct,
         'incorrect': incorrect,
     }
@@ -129,7 +125,7 @@ def play_game(player: Player, data: dict):
     retry_delay = conf.get('retry_delay', 1.0)
     force_solve = conf.get('force_solve', False)
     allow_skip = conf.get('allow_skip', False)
-    max_iter = conf.get('num_iterations', None)
+    max_iter = conf.get('num_iterations', 0)
 
     now = time.time()
 
@@ -145,8 +141,7 @@ def play_game(player: Player, data: dict):
                 raise RuntimeError("Attempted to skip unsolved puzzle!")
             if not allow_skip and last.answer is None:
                 raise RuntimeError("Attempted to skip unanswered puzzle!")
-
-            if max_iter and last.iteration == max_iter:
+            if max_iter and last.iteration >= max_iter:
                 return {player.id_in_group: {"gameover": True}}
 
         # new trial
@@ -165,8 +160,11 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         if not last:
             raise RuntimeError("Missing current puzzle")
-        if last.answer_timestamp and now - last.answer_timestamp < retry_delay:
-            raise RuntimeError("Client retrying too fast!")
+        else:
+            if last.answer is not None and not force_solve:
+                raise RuntimeError("Client retries the same puzzle!")
+            if last.answer_timestamp and now - last.answer_timestamp < retry_delay:
+                raise RuntimeError("Client retrying too fast!")
 
         check_answer(last, data["answer"])
         last.answer_timestamp = now
@@ -241,7 +239,6 @@ class Game(Page):
         player.total = stats['total']
         player.correct = stats['correct']
         player.incorrect = stats['incorrect']
-        player.payoff = player.correct - player.incorrect
 
 
 class Results(Page):
