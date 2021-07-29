@@ -31,8 +31,13 @@ class Player(BasePlayer):
     matrix_w = models.IntegerField(initial=10)
     matrix_h = models.IntegerField(initial=5)
 
+    # current state of the game
+    # for multi-round games: increment the round and reset iteration
+    game_round = models.IntegerField(initial=0)
+    game_iteration = models.IntegerField(initial=0)
+
+    # stats are updated after game round, in before_next_page
     total = models.IntegerField(initial=0)
-    answered = models.IntegerField(initial=0)
     correct = models.IntegerField(initial=0)
     incorrect = models.IntegerField(initial=0)
 
@@ -44,9 +49,9 @@ class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
 
     player = models.Link(Player)
-
-    timestamp = models.FloatField(initial=0)
+    round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
+    timestamp = models.FloatField(initial=0)
 
     matrix_w = models.IntegerField()
     matrix_h = models.IntegerField()
@@ -131,7 +136,7 @@ def play_game(player: Player, data: dict):
     retry_delay = conf.get('retry_delay', 1.0)
     force_solve = conf.get('force_solve', False)
     allow_skip = conf.get('allow_skip', False)
-    max_iter = conf.get('num_iterations', None)
+    max_iter = conf.get('num_iterations', 0)
 
     now = time.time()
 
@@ -147,13 +152,14 @@ def play_game(player: Player, data: dict):
                 raise RuntimeError("Attempted to skip unsolved puzzle!")
             if not allow_skip and last.answer is None:
                 raise RuntimeError("Attempted to skip unanswered puzzle!")
-            if max_iter and last.iteration == max_iter:
+            if max_iter and last.iteration >= max_iter:
                 return {player.id_in_group: {"gameover": True}}
 
         # new trial
         trial = generate_puzzle(player)
         trial.timestamp = now
         trial.iteration = last.iteration + 1 if last else 1
+        player.game_iteration = trial.iteration
 
         # get total counters
         stats = summarize_trials(player)
@@ -206,7 +212,6 @@ class Game(Page):
         player.total = stats['total']
         player.correct = stats['correct']
         player.incorrect = stats['incorrect']
-        player.payoff = player.correct - player.incorrect
 
 
 class Results(Page):

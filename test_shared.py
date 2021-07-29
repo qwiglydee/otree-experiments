@@ -51,9 +51,11 @@ def get_trial_class(player):
 def end_game_assertions(player):
     Trial = get_trial_class(player)
 
-    expect(player.total, len(Trial.filter(player=player)))
-    expect(player.correct, len(Trial.filter(player=player, is_correct=True)))
-    expect(player.incorrect, len(Trial.filter(player=player, is_correct=False)))
+    expect(player.total, len(Trial.filter(player=player, round=0)))
+    expect(player.correct, len(Trial.filter(player=player, round=0, is_correct=True)))
+    expect(
+        player.incorrect, len(Trial.filter(player=player, round=0, is_correct=False))
+    )
 
 
 def call_live_method(method, group, case, **kwargs):
@@ -73,7 +75,7 @@ def call_live_method(method, group, case, **kwargs):
     )
 
     def get_last_trial(player):
-        trials = Trial.filter(player=player)
+        trials = Trial.filter(player=player, round=0, iteration=player.game_iteration)
         trial = trials[-1] if len(trials) else None
         return trial
 
@@ -88,9 +90,9 @@ def call_live_method(method, group, case, **kwargs):
 
     def get_stats(player):
         return {
-            'total': len(Trial.filter(player=player)),
-            'correct': len(Trial.filter(player=player, is_correct=True)),
-            'incorrect': len(Trial.filter(player=player, is_correct=False)),
+            'total': len(Trial.filter(player=player, round=0)),
+            'correct': len(Trial.filter(player=player, round=0, is_correct=True)),
+            'incorrect': len(Trial.filter(player=player, round=0, is_correct=False)),
         }
 
     def move_forward(player):

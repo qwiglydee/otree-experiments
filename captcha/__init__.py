@@ -30,6 +30,12 @@ class Group(BaseGroup):
 class Player(BasePlayer):
     captcha_length = models.IntegerField(initial=3)
 
+    # current state of the game
+    # for multi-round games: increment the round and reset iteration
+    game_round = models.IntegerField(initial=0)
+    game_iteration = models.IntegerField(initial=0)
+
+    # stats are updated after game round, in before_next_page
     total = models.IntegerField(initial=0)
     correct = models.IntegerField(initial=0)
     incorrect = models.IntegerField(initial=0)
@@ -42,9 +48,9 @@ class Trial(ExtraModel):
     """A model to keep record of all generated puzzles"""
 
     player = models.Link(Player)
-
-    timestamp = models.FloatField(initial=0)
+    round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
+    timestamp = models.FloatField(initial=0)
 
     length = models.FloatField()
     text = models.StringField()
@@ -79,7 +85,9 @@ def encode_puzzle(trial: Trial):
 
 def get_last_trial(player):
     """Get last (current) puzzle for a player"""
-    trials = Trial.filter(player=player)
+    trials = Trial.filter(
+        player=player, round=player.game_round, iteration=player.game_iteration
+    )
     trial = trials[-1] if len(trials) else None
     return trial
 
@@ -148,6 +156,7 @@ def play_game(player: Player, data: dict):
         trial = generate_puzzle(player)
         trial.timestamp = now
         trial.iteration = last.iteration + 1 if last else 1
+        player.game_iteration = trial.iteration
 
         # get total counters
         stats = summarize_trials(player)
