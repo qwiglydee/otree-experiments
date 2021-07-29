@@ -194,13 +194,16 @@ def custom_export(players):
     yield [
         "session",
         "participant_code",
-        "time",
-        "iteration",
+        "game_round",
+        "game_iteration",
+        "timestamp",
         "length",
         "text",
         "solution",
-        "answer_timestamp" "answer",
+        "answer_timestamp",
+        "answer",
         "is_correct",
+        "retries",
     ]
     for p in players:
         participant = p.participant
@@ -209,14 +212,16 @@ def custom_export(players):
             yield [
                 session.code,
                 participant.code,
-                z.timestamp,
+                z.round,
                 z.iteration,
+                z.timestamp,
                 z.length,
                 z.text,
                 z.solution,
                 z.answer_timestamp,
                 z.answer,
                 z.is_correct,
+                z.retries,
             ]
 
 

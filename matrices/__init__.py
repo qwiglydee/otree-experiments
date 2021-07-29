@@ -192,6 +192,47 @@ def play_game(player: Player, data: dict):
     raise ValueError("Invalid message from client!")
 
 
+def custom_export(players):
+    """Dumps all the puzzles generated"""
+    yield [
+        "session",
+        "participant_code",
+        "game_round",
+        "game_iteration",
+        "timestamp",
+        "width",
+        "height",
+        "content",
+        "solution",
+        "answer_timestamp",
+        "answer",
+        "is_correct",
+        "retries",
+    ]
+    for p in players:
+        participant = p.participant
+        session = p.session
+        for z in Trial.filter(player=p):
+            yield [
+                session.code,
+                participant.code,
+                z.round,
+                z.iteration,
+                z.timestamp,
+                z.matrix_w,
+                z.matrix_h,
+                z.content,
+                z.solution,
+                z.answer_timestamp,
+                z.answer,
+                z.is_correct,
+                z.retries,
+            ]
+
+
+# PAGES
+
+
 class Game(Page):
     timeout_seconds = 60
     live_method = play_game
