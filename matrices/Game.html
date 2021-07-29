@@ -11,8 +11,14 @@ Captcha page
     <p>Solved: <span id="solved-txt">0</span>. Failed: <span id="failed-txt">0</span>.</p>
     <img class="captcha m-1" id="captcha-img">
 
-    <input type="text" id="answer-inp" class="form-control m-1"
-           placeholder="Enter the number of {{ Constants.counted_char }} characters and press Enter">
+    <div class="input-group m-1">
+        <input type="number" id="answer-inp" class="form-control"
+               placeholder="Enter the number of {{ Constants.counted_char }} characters">
+        <button type="button" id="submit-btn" class="btn btn-outline-secondary">Submit</button>
+        {{ if 'manual_advance' in session.config and session.config.manual_advance }}
+            <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
+        {{ endif }}
+    </div>
 
     <p class="warn" id="warning-txt"></p>
 </div>
@@ -24,6 +30,8 @@ Captcha page
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
     let warn = document.getElementById('warning-txt');
+    let submit_btn = document.getElementById('submit-btn');
+    let next_btn = document.getElementById('next-btn');
     let fields = {
         iter: document.getElementById('iter-txt'),
         solved: document.getElementById('solved-txt'),
@@ -35,19 +43,33 @@ Captcha page
     }
 
     input.onkeydown = function (ev) {
-        if (ev.key === 'Enter') {
-            let val = input.value;
-            if (val != "") {
-                submit(val);
-            } else if (js_vars.allow_skip) {
-                skip();
-            }
+        if (ev.key == 'Enter' && !submit_btn.disabled) {
+            submit();
         }
     }
 
-    document.addEventListener("DOMContentLoaded", (event) => {
-        liveSend({next: true});
-    });
+    submit_btn.onclick = function (ev) {
+        submit();
+    }
+
+    function submit() {
+        let val = input.value;
+        input.disabled = true;
+        submit_btn.disabled = true;
+
+        if (val != "") {
+            send_answer(val);
+        } else if (js_vars.allow_skip) {
+            skip();
+        }
+    }
+
+    if (js_vars.manual_advance) {
+        next_btn.onclick = function(ev) {
+            clear();
+            next();
+        }
+    }
 
     function liveRecv(data) {
         if ('image' in data ) {
@@ -64,32 +86,57 @@ Captcha page
         }
     }
 
-    function new_puzzle(img) {
-        image.src = img;
+    function clear() {
+        image.src = "";
         input.value = "";
         input.classList.remove("is-valid", "is-invalid");
     }
 
+    function new_puzzle(img) {
+        clear();
+        input.disabled = false;
+        submit_btn.disabled = false;
+        if (js_vars.manual_advance && !js_vars.allow_skip) {
+            next_btn.disabled = true;
+        }
+        image.src = img;
+    }
+
     function skip() {
-        image.src = "";
+        clear();
         next();
     }
 
-    function submit(answer) {
+    function send_answer(answer) {
         input.classList.remove("is-valid", "is-invalid");
         liveSend({answer: answer});
     }
 
     function feedback(result) {
+        if (js_vars.allow_retry || js_vars.force_solve) {
+            input.disabled = false;
+            submit_btn.disabled = false;
+        } else {
+            input.disabled = true;
+            submit_btn.disabled = true;
+        }
+
+        if (js_vars.manual_advance) {
+            next_btn.disabled = false;
+        }
+
         if (result === true) {
             input.classList.add("is-valid");
-            next();
+            if (!js_vars.manual_advance) {
+                next();
+            }
         }
+
         if (result === false) {
             input.classList.add("is-invalid");
-            if (js_vars.force_solve) {
+            if (js_vars.force_solve || js_vars.allow_retry)  {
                 wait_retry();
-            } else {
+            } else if (!js_vars.manual_advance) {
                 next();
             }
         }
@@ -97,14 +144,14 @@ Captcha page
 
     function wait_retry() {
         let countdown = js_vars.retry_delay;
-        input.disabled = true;
+        submit_btn.disabled = true;
         warn.textContent = `Wait ${countdown} seconds before retry`;
         let timer = window.setInterval(function() {
             countdown -= 1;
             if (countdown > 0) {
                 warn.textContent = `Wait ${countdown} seconds before retry`;
             } else {
-                input.disabled = false;
+                submit_btn.disabled = false;
                 warn.textContent = "";
                 clearInterval(timer);
             }
@@ -127,6 +174,10 @@ Captcha page
     function gameover() {
         document.getElementById("form").submit();
     }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+        liveSend({next: true});
+    });
 
 </script>
 {{ endblock }}

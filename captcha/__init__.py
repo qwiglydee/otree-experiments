@@ -133,6 +133,7 @@ def play_game(player: Player, data: dict):
     retry_delay = conf.get('retry_delay', 1.0)
     force_solve = conf.get('force_solve', False)
     allow_skip = conf.get('allow_skip', False)
+    allow_retry = conf.get('allow_retry', False) or force_solve
     max_iter = conf.get('num_iterations', 0)
 
     now = time.time()
@@ -169,10 +170,10 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         if not last:
             raise RuntimeError("Missing current puzzle")
-        else:
-            if last.answer is not None and not force_solve:
+        elif last.answer is not None:  # retrying
+            if not allow_retry:
                 raise RuntimeError("Client retries the same puzzle!")
-            if last.answer_timestamp and now - last.answer_timestamp < retry_delay:
+            if now - last.answer_timestamp < retry_delay:
                 raise RuntimeError("Client retrying too fast!")
 
         check_answer(last, data["answer"])
@@ -243,8 +244,10 @@ class Game(Page):
         return dict(
             trial_delay=conf.get('trial_delay', 1.0),
             retry_delay=conf.get('retry_delay', 1.0),
-            force_solve=conf.get('force_solve', False),
             allow_skip=conf.get('allow_skip', False),
+            allow_retry=conf.get('allow_retry', False),
+            force_solve=conf.get('force_solve', False),
+            manual_advance=conf.get('manual_advance', False),
         )
 
     @staticmethod

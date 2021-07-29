@@ -64,6 +64,7 @@ def call_live_method(method, group, case, **kwargs):
     retry_delay = conf.get('retry_delay')
     allow_skip = conf.get('allow_skip', False)
     force_solve = conf.get('force_solve', False)
+    allow_retry = conf.get('allow_retry', False) or force_solve
     max_iter = conf.get('max_iterations')
 
     player = group.get_players()[0]
@@ -287,7 +288,7 @@ def call_live_method(method, group, case, **kwargs):
         # 2nd correct answer
         answer2 = solution(player)
 
-        if force_solve:
+        if allow_retry:
             give_answer(player, answer2)
             last2 = get_last_trial(player)
             expect_reanswered(player, last)
@@ -318,7 +319,7 @@ def call_live_method(method, group, case, **kwargs):
         # 2nd incorrect answer
         answer2 = "0"
 
-        if force_solve:
+        if allow_retry:
             give_answer(player, answer2)
             expect_reanswered(player, last)
             expect_answered_incorrectly(player, answer2)
@@ -346,6 +347,7 @@ def call_live_method(method, group, case, **kwargs):
         # 2nd correct answer
         answer2 = solution(player)
 
+        # no matter if retry is allowed or not
         with expect_failure(RuntimeError):
             give_answer(player, answer2)
         expect_not_reanswered(player, last)

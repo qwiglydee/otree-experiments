@@ -10,7 +10,7 @@ SESSION_CONFIGS = [
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
-        retry_delay=1.0,
+        retry_delay=5.0,
     ),
     dict(
         name="arithmetics",
@@ -20,7 +20,7 @@ SESSION_CONFIGS = [
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
-        retry_delay=1.0,
+        retry_delay=5.0,
     ),
     dict(
         name="matrices",
@@ -30,7 +30,7 @@ SESSION_CONFIGS = [
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
-        retry_delay=1.0,
+        retry_delay=5.0,
     ),
     dict(
         name="colors",
@@ -38,9 +38,9 @@ SESSION_CONFIGS = [
         app_sequence=["colors"],
         num_iterations=0,
         allow_skip=False,
-        force_solve=False,
+        force_solve=True,
         trial_delay=1.0,
-        retry_delay=1.0,
+        retry_delay=5.0,
     ),
 ]
 

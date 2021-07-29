@@ -11,7 +11,13 @@ Captcha page
     <p>Solved: <span id="solved-txt">0</span>. Failed: <span id="failed-txt">0</span>.</p>
 
     <img class="captcha m-1" id="captcha-img">
-    <input id="answer-inp" class="form-control m-1" readonly>
+
+    <div class="input-group m-1">
+        <input type="text" id="answer-inp" class="form-control" readonly>
+        {{ if 'manual_advance' in session.config and session.config.manual_advance }}
+            <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
+        {{ endif }}
+    </div>
 
     <h6>Press a key:</h6>
     <ul>
@@ -30,6 +36,7 @@ Captcha page
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
     let warn = document.getElementById('warning-txt');
+    let next_btn = document.getElementById('next-btn');
     let fields = {
         iter: document.getElementById('iter-txt'),
         solved: document.getElementById('solved-txt'),
@@ -41,16 +48,30 @@ Captcha page
             skip();
         }
 
-        if (ev.key in js_vars.color_keys) {
+        if (!input.disabled && ev.key in js_vars.color_keys ) {
             val = js_vars.color_keys[ev.key];
             input.value = val;
-            submit(val);
+            submit();
         }
     }
 
-    document.addEventListener("DOMContentLoaded", (event) => {
-        liveSend({next: true});
-    });
+    function submit() {
+        let val = input.value;
+        input.disabled = true;
+
+        if (val != "") {
+            send_answer(val);
+        } else if (js_vars.allow_skip) {
+            skip();
+        }
+    }
+
+    if (js_vars.manual_advance) {
+        next_btn.onclick = function(ev) {
+            clear();
+            next();
+        }
+    }
 
     function liveRecv(data) {
         if ('image' in data ) {
@@ -67,36 +88,59 @@ Captcha page
         }
     }
 
-    function new_puzzle(img) {
-        image.src = img;
+    function clear() {
+        image.src = "";
         input.value = "";
         input.classList.remove("is-valid", "is-invalid");
     }
 
+    function new_puzzle(img) {
+        clear();
+        input.disabled = false;
+        if (js_vars.manual_advance && !js_vars.allow_skip) {
+            next_btn.disabled = true;
+        }
+        image.src = img;
+    }
+
     function skip() {
-        image.src = "";
+        clear();
         next();
     }
 
-    function submit(answer) {
+    function send_answer(answer) {
         input.classList.remove("is-valid", "is-invalid");
         liveSend({answer: answer});
     }
 
     function feedback(result) {
+        if (js_vars.allow_retry || js_vars.force_solve) {
+            input.disabled = false;
+        } else {
+            input.disabled = true;
+        }
+
+        if (js_vars.manual_advance) {
+            next_btn.disabled = false;
+        }
+
         if (result === true) {
             input.classList.add("is-valid");
-            next();
+            if (!js_vars.manual_advance) {
+                next();
+            }
         }
+
         if (result === false) {
             input.classList.add("is-invalid");
-            if (js_vars.force_solve) {
+            if (js_vars.force_solve || js_vars.allow_retry)  {
                 wait_retry();
-            } else {
+            } else if (!js_vars.manual_advance) {
                 next();
             }
         }
     }
+
     function wait_retry() {
         let countdown = js_vars.retry_delay;
         input.disabled = true;
@@ -113,6 +157,7 @@ Captcha page
         }, 1000);
     }
 
+
     function stats(stats) {
         fields.iter.textContent = stats.total;
         fields.solved.textContent = stats.correct;
@@ -128,6 +173,11 @@ Captcha page
     function gameover() {
         document.getElementById("form").submit();
     }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+        liveSend({next: true});
+    });
+
 </script>
 
 
