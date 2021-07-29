@@ -112,6 +112,7 @@ def play_game(player: Player, data: dict):
     """Handles iterations of the game on a live page
 
     Messages:
+    - client > server {} -- empty message means page reload
     - server < client {'next': true} -- request for next (or first) puzzle
     - server > client {'image': data, 'stats': ...} -- puzzle image
     - server < client {'answer': data} -- answer to a puzzle
@@ -131,17 +132,32 @@ def play_game(player: Player, data: dict):
     # get last trial, if any
     last = get_last_trial(player)
 
-    # generate first or next puzzle and return image
+    if data == {}:
+        if last:  # reloaded in middle of round, return current puzzle
+            stats = summarize_trials(player)
+            data = encode_puzzle(last)
+            return {player.id_in_group: {"image": data, "stats": stats}}
+        else:  # initial load, generate first puzzle
+            trial = generate_puzzle(player)
+            trial.timestamp = now
+            trial.iteration = 1
+            player.game_iteration = 1
+            stats = summarize_trials(player)
+            data = encode_puzzle(trial)
+            return {player.id_in_group: {"image": data, "stats": stats}}
+
+    # generate next puzzle and return image
     if "next" in data:
-        if last:
-            if now - last.timestamp < trial_delay:
-                raise RuntimeError("Client advancing too fast!")
-            if force_solve and last.is_correct is not True:
-                raise RuntimeError("Attempted to skip unsolved puzzle!")
-            if not allow_skip and last.answer is None:
-                raise RuntimeError("Attempted to skip unanswered puzzle!")
-            if max_iter and last.iteration >= max_iter:
-                return {player.id_in_group: {"gameover": True}}
+        if not last:
+            raise RuntimeError("Missing current puzzle!")
+        if now - last.timestamp < trial_delay:
+            raise RuntimeError("Client advancing too fast!")
+        if force_solve and last.is_correct is not True:
+            raise RuntimeError("Attempted to skip unsolved puzzle!")
+        if not allow_skip and last.answer is None:
+            raise RuntimeError("Attempted to skip unanswered puzzle!")
+        if max_iter and last.iteration >= max_iter:
+            return {player.id_in_group: {"gameover": True}}
 
         # new trial
         trial = generate_puzzle(player)
@@ -160,7 +176,7 @@ def play_game(player: Player, data: dict):
     if "answer" in data:
         if not last:
             raise RuntimeError("Missing current puzzle")
-        elif last.answer is not None:  # retrying
+        if last.answer is not None:  # retrying
             if not allow_retry:
                 raise RuntimeError("Client retries the same puzzle!")
             if now - last.answer_timestamp < retry_delay:

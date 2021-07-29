@@ -14,8 +14,10 @@ TEST_CASES = [
     'messaging_bogus',  # sending bogus message
     'replying_null',  # giving null as an answer
     'replying_empty',  # giving empty string as an answer
-    'replying_premature',  # giving reply before started
+    'replying_premature',  # giving reply without current puzzle
+    'forward_premature',  # advancing without current puzzle
     'forward_nodelay',  # advancing to a next puzzle w/out delay
+    'reloading',  # page reload in the middle of round
     # optional features
     'skipping_unanswered',  # advancing to a next puzzle w/out replying
     'skipping_incorrect',  # advancing to a next puzzle after incorrect answer
@@ -25,7 +27,7 @@ TEST_CASES = [
     'iter_limit',  # reaching maximum number of iterations
 ]
 
-# TEST_CASES = ['forward_nodelay']
+# TEST_CASES = ['iter_limit']
 
 
 @contextmanager
@@ -65,14 +67,13 @@ def call_live_method(method, group, case, **kwargs):
     allow_skip = conf.get('allow_skip', False)
     force_solve = conf.get('force_solve', False)
     allow_retry = conf.get('allow_retry', False) or force_solve
-    max_iter = conf.get('max_iterations')
+    max_iter = conf.get('num_iterations')
 
     player = group.get_players()[0]
     Trial = get_trial_class(player)
-    module = Trial.__module__
 
     print(
-        f"Testing {module} for {case}, allow_skip={allow_skip}, force_solve={force_solve}, max_iter={max_iter}"
+        f"Testing case '{case}', allow_skip={allow_skip}, force_solve={force_solve}, max_iter={max_iter}"
     )
 
     def get_last_trial(player):
@@ -95,6 +96,9 @@ def call_live_method(method, group, case, **kwargs):
             'correct': len(Trial.filter(player=player, round=0, is_correct=True)),
             'incorrect': len(Trial.filter(player=player, round=0, is_correct=False)),
         }
+
+    def restart(player):
+        return method(player.id_in_group, {})[player.id_in_group]
 
     def move_forward(player):
         return method(player.id_in_group, {'next': True})[player.id_in_group]
@@ -174,48 +178,11 @@ def call_live_method(method, group, case, **kwargs):
 
     # all test cases are run individually in separate sessions
 
-    if case == 'messaging_bogus':
-        with expect_failure(ValueError):
-            method(player.id_in_group, "BOGUS")
-        return
-
-    if case == 'replying_correct':
-        # part of normal flow, checking everything
-        resp = move_forward(player)
-        expect_stats(player, total=1, correct=0, incorrect=0)
-        expect_response_puzzle(resp)
-        expect_response_stats(resp, total=1, correct=0, incorrect=0)
-
-        answer = solution(player)
-        resp = give_answer(player, answer)
-        expect_answered_correctly(player, answer)
-        expect_stats(player, total=1, correct=1, incorrect=0)
-        expect_response_correct(resp)
-        expect_response_stats(resp, total=1, correct=1, incorrect=0)
-
-        return
-
-    if case == 'replying_incorrect':
-        # part of normal flow, checking everything
-        resp = move_forward(player)
-        expect_stats(player, total=1, correct=0, incorrect=0)
-        expect_response_puzzle(resp)
-        expect_response_stats(resp, total=1, correct=0, incorrect=0)
-
-        answer = "0"  # should work as invalid both for string and numeric
-        resp = give_answer(player, answer)
-        expect_answered_incorrectly(player, answer)
-        expect_stats(player, total=1, correct=0, incorrect=1)
-        expect_response_incorrect(resp)
-        expect_response_stats(resp, total=1, correct=0, incorrect=1)
-
-        return
-
     if case == 'normal':
         # part of normal flow, checking everything
 
         # 1st puzzle
-        resp = move_forward(player)
+        resp = restart(player)
         expect_stats(player, total=1, correct=0, incorrect=0)
         expect_response_puzzle(resp)
         expect_response_stats(resp, total=1, correct=0, incorrect=0)
@@ -250,15 +217,69 @@ def call_live_method(method, group, case, **kwargs):
 
         return
 
+    if case == 'replying_correct':
+        # part of normal flow, checking everything
+        resp = restart(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=0)
+
+        answer = solution(player)
+        resp = give_answer(player, answer)
+        expect_answered_correctly(player, answer)
+        expect_stats(player, total=1, correct=1, incorrect=0)
+        expect_response_correct(resp)
+        expect_response_stats(resp, total=1, correct=1, incorrect=0)
+
+        return
+
+    if case == 'replying_incorrect':
+        # part of normal flow, checking everything
+        resp = restart(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=0)
+
+        answer = "0"  # should work as invalid both for string and numeric
+        resp = give_answer(player, answer)
+        expect_answered_incorrectly(player, answer)
+        expect_stats(player, total=1, correct=0, incorrect=1)
+        expect_response_incorrect(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=1)
+
+        return
+
+    if case == 'messaging_bogus':
+        with expect_failure(ValueError):
+            method(player.id_in_group, "BOGUS")
+        return
+
+    if case == 'reloading':
+        restart(player)
+        first = get_last_trial(player)
+
+        restart(player)
+        last = get_last_trial(player)
+
+        expect_not_forwarded(player, first)
+        return
+
+    if case == 'forward_premature':
+        with expect_failure(RuntimeError):
+            move_forward(player)
+        last = get_last_trial_clone(player)
+        expect(last, None)
+        return
+
     if case == 'replying_empty':
-        move_forward(player)
+        restart(player)
         with expect_failure(ValueError):
             give_answer(player, "")
         expect_not_answered(player)
         return
 
     if case == 'replying_null':
-        move_forward(player)
+        restart(player)
         with expect_failure(ValueError):
             give_answer(player, None)
         expect_not_answered(player)
@@ -273,7 +294,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'retrying_correct':
-        move_forward(player)
+        restart(player)
 
         # 1st incorrect answer
         answer1 = "0"
@@ -304,7 +325,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'retrying_incorrect':
-        move_forward(player)
+        restart(player)
 
         # 1st correct answer
         answer1 = solution(player)
@@ -334,7 +355,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'retrying_nodelay':
-        move_forward(player)
+        restart(player)
 
         # 1st incorrect answer
         answer1 = "0"
@@ -358,7 +379,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'forward_nodelay':
-        move_forward(player)
+        restart(player)
         last = get_last_trial(player)
 
         answer = solution(player)
@@ -371,7 +392,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'skipping_unanswered':
-        move_forward(player)
+        restart(player)
         expect_stats(player, total=1, correct=0, incorrect=0)
         last = get_last_trial(player)
 
@@ -389,7 +410,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'skipping_incorrect':
-        move_forward(player)
+        restart(player)
         expect_stats(player, total=1, correct=0, incorrect=0)
         last = get_last_trial(player)
 
@@ -412,23 +433,28 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'iter_limit':
+        # exhaust all iterations
         if max_iter is None:
             return
-        # exhaust all iterations
-        last = None
-        for _ in range(max_iter):
-            time.sleep(trial_delay)
-            resp = move_forward(player)
-            expect_response_puzzle(resp)
 
-            if last:
+        last = None
+
+        for _ in range(max_iter):
+            if _ == 0:
+                resp = restart(player)
+                expect_response_puzzle(resp)
+                last = get_last_trial(player)
+            else:
+                time.sleep(trial_delay)
+                resp = move_forward(player)
                 expect_forwarded(player, last)
-            last = get_last_trial(player)
+                expect_response_puzzle(resp)
+                last = get_last_trial(player)
 
             answer = solution(player)
             resp = give_answer(player, answer)
-            expect_response_correct(resp)
             expect_answered_correctly(player, answer)
+            expect_response_correct(resp)
 
         time.sleep(trial_delay)
         resp = move_forward(player)
