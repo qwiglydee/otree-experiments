@@ -1,40 +1,22 @@
 from os import environ
 
 SESSION_CONFIGS = [
+    # all features with their default values, to make them available in session config UI
     dict(
         name="captcha",
         num_demo_participants=1,
         app_sequence=["captcha"],
-        num_iterations=None,
+        num_iterations=0,
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
         retry_delay=1.0,
     ),
     dict(
-        name="captcha_10",
-        num_demo_participants=1,
-        app_sequence=["captcha"],
-        num_iterations=10,
-    ),
-    dict(
-        name="captcha_forcing",
-        num_demo_participants=1,
-        app_sequence=["captcha"],
-        force_solve=True,
-        retry_delay=5,
-    ),
-    dict(
-        name="captcha_skippable",
-        num_demo_participants=1,
-        app_sequence=["captcha"],
-        allow_skip=True,
-    ),
-    dict(
         name="arithmetics",
         num_demo_participants=1,
         app_sequence=["arithmetics"],
-        num_iterations=None,
+        num_iterations=0,
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
@@ -44,7 +26,7 @@ SESSION_CONFIGS = [
         name="matrices",
         num_demo_participants=1,
         app_sequence=["matrices"],
-        num_iterations=None,
+        num_iterations=0,
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
@@ -54,7 +36,7 @@ SESSION_CONFIGS = [
         name="colors",
         num_demo_participants=1,
         app_sequence=["colors"],
-        num_iterations=None,
+        num_iterations=0,
         allow_skip=False,
         force_solve=False,
         trial_delay=1.0,
@@ -89,3 +71,50 @@ ADMIN_PASSWORD = environ.get("OTREE_ADMIN_PASSWORD")
 DEMO_PAGE_INTRO_HTML = """ """
 
 SECRET_KEY = "2015765205890"
+
+# adjustments for testing
+# generating session configs for all varieties of features
+import sys
+
+if sys.argv[1] == 'test':
+    APPS = ['captcha', 'arithmetics', 'matrices', 'colors']
+    TRIAL_DELAY = 0.2
+    RETRY_DELAY = 0.4  # required anyway because test cases use it
+    MAX_ITERATIONS = 5
+    SESSION_CONFIGS = []
+    for app in APPS:
+        SESSION_CONFIGS.extend(
+            [
+                dict(
+                    name=f"{app}_defaults",
+                    num_demo_participants=1,
+                    app_sequence=[app],
+                    trial_delay=TRIAL_DELAY,
+                    retry_delay=RETRY_DELAY,
+                ),
+                dict(
+                    name=f"{app}_limited",
+                    num_demo_participants=1,
+                    app_sequence=[app],
+                    num_iterations=MAX_ITERATIONS,
+                    trial_delay=TRIAL_DELAY,
+                    retry_delay=RETRY_DELAY,
+                ),
+                dict(
+                    name=f"{app}_skipping",
+                    num_demo_participants=1,
+                    app_sequence=[app],
+                    allow_skip=True,
+                    trial_delay=TRIAL_DELAY,
+                    retry_delay=RETRY_DELAY,
+                ),
+                dict(
+                    name=f"{app}_forcing",
+                    num_demo_participants=1,
+                    app_sequence=[app],
+                    force_solve=True,
+                    trial_delay=TRIAL_DELAY,
+                    retry_delay=RETRY_DELAY,
+                ),
+            ]
+        )

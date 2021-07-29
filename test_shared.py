@@ -1,9 +1,31 @@
-TRIAL_DELAY = 0.1
-RETRY_DELAY = 0.2
 import time
 from contextlib import contextmanager
 from otree.api import *
 from importlib import import_module
+
+# NB: some operations on sqlite may be slow
+
+TEST_CASES = [
+    # normal flow
+    'normal',  # solving 2 puzzles in normal sequence
+    'replying_correct',  # giving a correct answer
+    'replying_incorrect',  # giving an incorrect answer
+    # violations
+    'messaging_bogus',  # sending bogus message
+    'replying_null',  # giving null as an answer
+    'replying_empty',  # giving empty string as an answer
+    'replying_premature',  # giving reply before started
+    'forward_nodelay',  # advancing to a next puzzle w/out delay
+    # optional features
+    'skipping_unanswered',  # advancing to a next puzzle w/out replying
+    'skipping_incorrect',  # advancing to a next puzzle after incorrect answer
+    'retrying_correct',  # answering to the same puzzle correctly after incorrect answer
+    'retrying_incorrect',  # answering the same puzzle incorrectly after correct answer, for no reason
+    'retrying_nodelay',  # retrying w/out delay
+    'iter_limit',  # reaching maximum number of iterations
+]
+
+# TEST_CASES = ['forward_nodelay']
 
 
 @contextmanager
@@ -34,215 +56,381 @@ def end_game_assertions(player):
     expect(player.incorrect, len(Trial.filter(player=player, is_correct=False)))
 
 
-def call_live_method(method, group, **kwargs):
+def call_live_method(method, group, case, **kwargs):
+    conf = group.session.config
+    trial_delay = conf.get('trial_delay')
+    retry_delay = conf.get('retry_delay')
+    allow_skip = conf.get('allow_skip', False)
+    force_solve = conf.get('force_solve', False)
+    max_iter = conf.get('max_iterations')
+
     player = group.get_players()[0]
     Trial = get_trial_class(player)
+    module = Trial.__module__
+
+    print(
+        f"Testing {module} for {case}, allow_skip={allow_skip}, force_solve={force_solve}, max_iter={max_iter}"
+    )
 
     def get_last_trial(player):
         trials = Trial.filter(player=player)
         trial = trials[-1] if len(trials) else None
         return trial
 
-    conf = player.session.config
-    # patch session to speed up tests
-    conf['trial_delay'] = TRIAL_DELAY
-    conf['retry_delay'] = RETRY_DELAY
+    def get_last_trial_clone(player):
+        # makes a clone to check changes of the same instance
+        data = Trial.values_dicts(player=player)
+        if len(data) == 0:
+            return None
+        datum = data[-1]
+        del datum['id']
+        return Trial(**datum)
 
-    force_solve = conf.get('force_solve', False)
-    allow_skip = conf.get('allow_skip', False)
-    max_iterations = conf.get('num_iterations')
+    def get_stats(player):
+        return {
+            'total': len(Trial.filter(player=player)),
+            'correct': len(Trial.filter(player=player, is_correct=True)),
+            'incorrect': len(Trial.filter(player=player, is_correct=False)),
+        }
 
-    def move_forward():
-        _response = method(1, {'next': True})[1]
-        return _response, get_last_trial(player)
+    def move_forward(player):
+        return method(player.id_in_group, {'next': True})[player.id_in_group]
 
-    def expect_forwarded(_last, _trial):
-        if _last:
-            expect(_trial.id, "!=", _last.id)
-            expect(_trial.timestamp, ">", _last.timestamp)
-            expect(_trial.iteration, ">", _last.iteration)
+    def expect_forwarded(player, _last):
+        _trial = get_last_trial(player)
+        expect(_trial.id, "!=", _last.id)
+        expect(_trial.timestamp, ">", _last.timestamp)
+        expect(_trial.iteration, ">", _last.iteration)
 
-    def expect_not_forwarded(_last, _trial):
-        if _last:
-            expect(_trial.id, "==", _last.id)
-            expect(_trial.timestamp, "==", _last.timestamp)
-            expect(_trial.iteration, "==", _last.iteration)
+    def expect_not_forwarded(player, _last):
+        _trial = get_last_trial(player)
+        expect(_trial.id, "==", _last.id)
+        expect(_trial.timestamp, "==", _last.timestamp)
+        expect(_trial.iteration, "==", _last.iteration)
 
-    def expect_image(_response):
-        expect('image', 'in', _response)
-        expect(_response['image'].startswith("data:text/plain;base64"), True)
+    def solution(player):
+        _trial = get_last_trial(player)
+        return _trial.solution
 
-    def give_answer(ans):
-        _response = method(1, {'answer': ans})[1]
-        return _response, get_last_trial(player)
+    def give_answer(player, ans):
+        _response = method(player.id_in_group, {'answer': ans})[player.id_in_group]
+        return _response
 
-    def expect_answered(_trial, _response, ans, valid):
-        expect(_trial.answer, ans)
+    def expect_stats(player, **values):
+        stats = get_stats(player)
+        expect(stats, values)
+
+    def expect_answered(player, ans, correct=None):
+        _trial = get_last_trial(player)
+
+        # make it work for both strings and numbers
+        expect(str(_trial.answer), str(ans))
+
         expect(_trial.answer_timestamp, '>', _trial.timestamp)
-        expect(_trial.is_correct, valid)
-        expect(_response['feedback'], valid)
+        if correct is not None:
+            expect(_trial.is_correct, correct)
 
-    def expect_stats(_last_stats, _stats, **updates):
-        for k, v in updates.items():
-            exp = _last_stats[k] + v if _last_stats else v
-            if _stats[k] != exp:
-                raise AssertionError(
-                    f"Stats key `{k}`: expected to be {exp}, actual {_stats[k]}"
-                )
+    def expect_answered_correctly(player, ans):
+        expect_answered(player, ans, True)
 
-    last = None
-    last_stats = {}
-    response = {}
+    def expect_answered_incorrectly(player, ans):
+        expect_answered(player, ans, False)
 
-    # fail to submit bogus message
-    with expect_failure(ValueError):
-        _response = method(1, "BOGUS")
+    def expect_reanswered(player, last):
+        # NB: `last` should be a clone of Trial
+        _trial = get_last_trial(player)
+        expect(_trial.answer_timestamp, '>', last.answer_timestamp)
+        expect(_trial.retries, '>', last.retries)
 
-    # fail to answer w/out start
-    with expect_failure(RuntimeError):
-        _response = method(1, {'answer': "123"})
+    def expect_not_reanswered(player, last):
+        # NB: `last` should be a clone of Trial
+        _trial = get_last_trial(player)
+        expect(_trial.answer_timestamp, '==', last.answer_timestamp)
+        expect(_trial.retries, '==', last.retries)
 
-    # start
-    time.sleep(TRIAL_DELAY)
-    response, trial = move_forward()
-    expect_forwarded(last, trial)
-    expect_image(response)
+    def expect_not_answered(player):
+        _trial = get_last_trial(player)
+        expect(_trial.answer, None)
+        expect(_trial.is_correct, None)
 
-    # fail to advance w/out delay ####
-    with expect_failure(RuntimeError):
-        response, trial = move_forward()
-    expect_not_forwarded(last, trial)
+    def expect_response_puzzle(response):
+        expect('image', 'in', response)
+        expect(response['image'].startswith("data:text/plain;base64"), True)
 
-    # fail to submit empty answer
-    with expect_failure(ValueError):
-        _response = method(1, {'answer': ""})
+    def expect_response_stats(response, **values):
+        expect('stats', 'in', response)
+        expect(response['stats'], values)
 
-    # 1 correct answer
-    answer = trial.solution
-    response, trial = give_answer(answer)
-    expect_answered(trial, response, answer, True)
-    stats = response['stats']
-    expect_stats(None, stats, total=1, answered=1, correct=1)
+    def expect_response_correct(response):
+        expect('feedback', 'in', response)
+        expect(response['feedback'], True)
 
-    last = trial
-    last_stats = stats
+    def expect_response_incorrect(response):
+        expect('feedback', 'in', response)
+        expect(response['feedback'], False)
 
-    # fail to answer again w/out delay
-    with expect_failure(RuntimeError):
-        give_answer(answer)
+    # all test cases are run individually in separate sessions
 
-    # succeed to answer again after delay
-    time.sleep(RETRY_DELAY)
-    response, trial = give_answer(answer)
-    expect_answered(trial, response, answer, True)
-    # stats shan't change though
-    expect(response['stats'], last_stats)
+    if case == 'messaging_bogus':
+        with expect_failure(ValueError):
+            method(player.id_in_group, "BOGUS")
+        return
 
-    if force_solve:
-        # create new trial
-        time.sleep(TRIAL_DELAY)
-        response, trial = move_forward()
-        expect_forwarded(last, trial)
+    if case == 'replying_correct':
+        # part of normal flow, checking everything
+        resp = move_forward(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=0)
 
-        # give incorrect answer
+        answer = solution(player)
+        resp = give_answer(player, answer)
+        expect_answered_correctly(player, answer)
+        expect_stats(player, total=1, correct=1, incorrect=0)
+        expect_response_correct(resp)
+        expect_response_stats(resp, total=1, correct=1, incorrect=0)
+
+        return
+
+    if case == 'replying_incorrect':
+        # part of normal flow, checking everything
+        resp = move_forward(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=0)
+
+        answer = "0"  # should work as invalid both for string and numeric
+        resp = give_answer(player, answer)
+        expect_answered_incorrectly(player, answer)
+        expect_stats(player, total=1, correct=0, incorrect=1)
+        expect_response_incorrect(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=1)
+
+        return
+
+    if case == 'normal':
+        # part of normal flow, checking everything
+
+        # 1st puzzle
+        resp = move_forward(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=1, correct=0, incorrect=0)
+
+        last = get_last_trial(player)
+
+        answer = solution(player)
+        resp = give_answer(player, answer)
+        expect_answered_correctly(player, answer)
+        expect_stats(player, total=1, correct=1, incorrect=0)
+        expect_not_forwarded(player, last)
+        expect_response_correct(resp)
+        expect_response_stats(resp, total=1, correct=1, incorrect=0)
+
+        time.sleep(trial_delay)
+
+        # 2nd puzzle
+        resp = move_forward(player)
+        expect_stats(player, total=2, correct=1, incorrect=0)
+        expect_response_puzzle(resp)
+        expect_response_stats(resp, total=2, correct=1, incorrect=0)
+
+        last = get_last_trial(player)
+
+        answer = solution(player)
+        resp = give_answer(player, answer)
+        expect_answered_correctly(player, answer)
+        expect_stats(player, total=2, correct=2, incorrect=0)
+        expect_not_forwarded(player, last)
+        expect_response_correct(resp)
+        expect_response_stats(resp, total=2, correct=2, incorrect=0)
+
+        return
+
+    if case == 'replying_empty':
+        move_forward(player)
+        with expect_failure(ValueError):
+            give_answer(player, "")
+        expect_not_answered(player)
+        return
+
+    if case == 'replying_null':
+        move_forward(player)
+        with expect_failure(ValueError):
+            give_answer(player, None)
+        expect_not_answered(player)
+        return
+
+    if case == 'replying_premature':
+        last = get_last_trial(player)
+        expect(last, None)
+        answer = "123"
+        with expect_failure(RuntimeError):
+            give_answer(player, answer)
+        return
+
+    if case == 'retrying_correct':
+        move_forward(player)
+
+        # 1st incorrect answer
         answer1 = "0"
-        response, trial = give_answer(answer1)
-        expect_answered(trial, response, answer1, False)
+        give_answer(player, answer1)
+        expect_answered_incorrectly(player, answer1)
+        expect_stats(player, total=1, correct=0, incorrect=1)
 
-        stats = response['stats']
-        expect_stats(last_stats, stats, total=1, answered=1, incorrect=1)
+        last = get_last_trial_clone(player)
 
-        last = trial
-        last_stats = stats
+        time.sleep(retry_delay)
 
-        # fail to retry w/out delay
-        answer2 = trial.solution
+        # 2nd correct answer
+        answer2 = solution(player)
+
+        if force_solve:
+            give_answer(player, answer2)
+            last2 = get_last_trial(player)
+            expect_reanswered(player, last)
+            expect_answered_correctly(player, answer2)
+            expect_stats(player, total=1, correct=1, incorrect=0)
+        else:
+            with expect_failure(RuntimeError):
+                give_answer(player, answer2)
+            expect_not_reanswered(player, last)
+            # state not changed
+            expect_answered_incorrectly(player, answer1)
+            expect_stats(player, total=1, correct=0, incorrect=1)
+        return
+
+    if case == 'retrying_incorrect':
+        move_forward(player)
+
+        # 1st correct answer
+        answer1 = solution(player)
+        resp = give_answer(player, answer1)
+        expect_answered_correctly(player, answer1)
+        expect_stats(player, total=1, correct=1, incorrect=0)
+
+        last = get_last_trial_clone(player)
+
+        time.sleep(retry_delay)
+
+        # 2nd incorrect answer
+        answer2 = "0"
+
+        if force_solve:
+            give_answer(player, answer2)
+            expect_reanswered(player, last)
+            expect_answered_incorrectly(player, answer2)
+            expect_stats(player, total=1, correct=0, incorrect=1)
+        else:
+            with expect_failure(RuntimeError):
+                give_answer(player, answer2)
+            expect_not_reanswered(player, last)
+            # state not changed
+            expect_answered_correctly(player, answer1)
+            expect_stats(player, total=1, correct=1, incorrect=0)
+        return
+
+    if case == 'retrying_nodelay':
+        move_forward(player)
+
+        # 1st incorrect answer
+        answer1 = "0"
+        resp = give_answer(player, answer1)
+        expect_answered_incorrectly(player, answer1)
+        expect_stats(player, total=1, correct=0, incorrect=1)
+
+        last = get_last_trial_clone(player)
+
+        # 2nd correct answer
+        answer2 = solution(player)
+
         with expect_failure(RuntimeError):
-            response, trial = give_answer(answer2)
+            give_answer(player, answer2)
+        expect_not_reanswered(player, last)
+        # state not changed
+        expect_answered_incorrectly(player, answer1)
+        expect_stats(player, total=1, correct=0, incorrect=1)
 
-        # trial should stay with old answer
-        expect_answered(trial, response, answer1, False)
+        return
 
-        # fail to skip
+    if case == 'forward_nodelay':
+        move_forward(player)
+        last = get_last_trial(player)
+
+        answer = solution(player)
+        give_answer(player, answer)
+
         with expect_failure(RuntimeError):
-            time.sleep(TRIAL_DELAY)
-            move_forward()
+            move_forward(player)
+        expect_not_forwarded(player, last)
 
-        expect_not_forwarded(last, trial)
+        return
 
-        # retry with waiting
-        answer3 = trial.solution
-        time.sleep(RETRY_DELAY)
-        response, trial = give_answer(answer3)
+    if case == 'skipping_unanswered':
+        move_forward(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        last = get_last_trial(player)
 
-        expect_answered(trial, response, answer3, True)
+        time.sleep(trial_delay)
 
-        expect(trial.retries, 2)  # 1st and 3rd
+        if allow_skip:
+            move_forward(player)
+            expect_forwarded(player, last)
+            expect_stats(player, total=2, correct=0, incorrect=0)
+        else:
+            with expect_failure(RuntimeError):
+                move_forward(player)
+            expect_not_forwarded(player, last)
+            expect_stats(player, total=1, correct=0, incorrect=0)
+        return
 
-        stats = response['stats']
-        expect_stats(last_stats, stats, incorrect=-1, correct=1)
-        last_stats = stats
+    if case == 'skipping_incorrect':
+        move_forward(player)
+        expect_stats(player, total=1, correct=0, incorrect=0)
+        last = get_last_trial(player)
 
-    elif allow_skip:
-        # create new trial
-        time.sleep(TRIAL_DELAY)
-        response, trial = move_forward()
-        expect_forwarded(last, trial)
-        last = trial
+        answer = "0"  # should work as invalid both for string and numeric
+        give_answer(player, answer)
+        expect_answered_incorrectly(player, answer)
+        expect_stats(player, total=1, correct=0, incorrect=1)
 
-        # skip to next
-        time.sleep(TRIAL_DELAY)
-        response, trial = move_forward()
-        expect_forwarded(last, trial)
+        time.sleep(trial_delay)
 
-        # answer
-        answer = trial.solution
-        response, trial = give_answer(answer)
-        expect_answered(trial, response, answer, True)
+        if force_solve:
+            with expect_failure(RuntimeError):
+                move_forward(player)
+            expect_not_forwarded(player, last)
+            expect_stats(player, total=1, correct=0, incorrect=1)
+        else:  # just a part of normal flow
+            move_forward(player)
+            expect_forwarded(player, last)
+            expect_stats(player, total=2, correct=0, incorrect=1)
+        return
 
-        stats = response['stats']
-        expect_stats(last_stats, stats, total=2, answered=1, correct=1)
-
-        last = trial
-        last_stats = stats
-    else:
-        # create new trial
-        time.sleep(TRIAL_DELAY)
-        response, trial = move_forward()
-        expect_forwarded(last, trial)
-        last = trial
-
-        # fail to skip
-        with expect_failure(RuntimeError):
-            time.sleep(TRIAL_DELAY)
-            response, trial = move_forward()
-
-        expect_not_forwarded(last, trial)
-
-        # answer incorrectly
-        answer = "0"
-        response, trial = give_answer(answer)
-        expect_answered(trial, response, answer, False)
-
-        stats = response['stats']
-        expect_stats(last_stats, stats, total=1, answered=1, incorrect=1)
-
-        last = trial
-        last_stats = stats
-
-    if max_iterations:
+    if case == 'iter_limit':
+        if max_iter is None:
+            return
         # exhaust all iterations
-        for _ in range(stats['total'], max_iterations):
-            time.sleep(TRIAL_DELAY)
-            response, trial = move_forward()
-            expect_forwarded(last, trial)
-            expect('image', 'in', response)
+        last = None
+        for _ in range(max_iter):
+            time.sleep(trial_delay)
+            resp = move_forward(player)
+            expect_response_puzzle(resp)
 
-            answer = trial.solution
-            response, trial = give_answer(answer)
-            expect_answered(trial, response, answer, True)
+            if last:
+                expect_forwarded(player, last)
+            last = get_last_trial(player)
 
-        time.sleep(TRIAL_DELAY)
-        response, trial = move_forward()
-        expect_forwarded(last, trial)
-        expect('gameover', 'in', response)
+            answer = solution(player)
+            resp = give_answer(player, answer)
+            expect_response_correct(resp)
+            expect_answered_correctly(player, answer)
+
+        time.sleep(trial_delay)
+        resp = move_forward(player)
+        expect_not_forwarded(player, last)
+        expect('gameover', 'in', resp)
+
+        return
+
+    raise NotImplementedError("missing test case", case)  # or missing `return`
