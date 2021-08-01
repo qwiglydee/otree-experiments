@@ -6,9 +6,6 @@ Captcha page
 <div class="d-flex flex-column align-items-center">
     <h3>
         Iteration <span id="iter-txt"></span>
-        {{ if 'num_iterations' in session.config and session.config.num_iterations }}
-            /{{ session.config.num_iterations }}
-        {{ endif }}
     </h3>
     <p>Solved: <span id="solved-txt"></span>. Failed: <span id="failed-txt"></span>.</p>
     <img class="captcha m-1" id="captcha-img">

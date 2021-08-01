@@ -29,8 +29,8 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    matrix_w = models.IntegerField(initial=10)
-    matrix_h = models.IntegerField(initial=5)
+    matrix_w = models.IntegerField(initial=5)
+    matrix_h = models.IntegerField(initial=4)
 
     # current state of the game
     # for multi-round games: increment the round and reset iteration
@@ -74,11 +74,7 @@ def generate_puzzle(player: Player) -> Trial:
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
     return Trial.create(
-        player=player,
-        matrix_w=w,
-        matrix_h=h,
-        content=content,
-        solution=count,
+        player=player, matrix_w=w, matrix_h=h, content=content, solution=count,
     )
 
 
