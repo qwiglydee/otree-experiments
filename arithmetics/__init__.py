@@ -7,7 +7,7 @@ from .images import generate_image, encode_image
 
 
 doc = """
-Experimental arithmetics game
+Arithmetic (summing numbers) task
 """
 
 
@@ -65,11 +65,7 @@ def generate_puzzle(player: Player) -> Trial:
     """Create new puzzle for a player"""
     a = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
     b = random.choice(Constants.digits) * 10 + random.choice(Constants.digits)
-    return Trial.create(
-        player=player,
-        puzzle=f"{a} + {b} = ",
-        solution=a + b,
-    )
+    return Trial.create(player=player, puzzle=f"{a} + {b} = ", solution=a + b,)
 
 
 def encode_puzzle(trial: Trial):
@@ -253,7 +249,11 @@ class Game(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        return dict(DEBUG=settings.DEBUG)
+        session = player.session
+
+        return dict(
+            DEBUG=settings.DEBUG, manual_advance=session.config.get('manual_advance')
+        )
 
     @staticmethod
     def js_vars(player: Player):

@@ -261,7 +261,11 @@ class Game(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        return dict(DEBUG=settings.DEBUG)
+        session = player.session
+
+        return dict(
+            DEBUG=settings.DEBUG, manual_advance=session.config.get('manual_advance')
+        )
 
     @staticmethod
     def js_vars(player: Player):

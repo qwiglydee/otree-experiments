@@ -13,7 +13,7 @@ Captcha page
 
     <div class="input-group m-1">
         <input type="text" id="answer-inp" class="form-control" readonly>
-        {{ if 'manual_advance' in session.config and session.config.manual_advance }}
+        {{ if manual_advance }}
             <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
         {{ endif }}
     </div>

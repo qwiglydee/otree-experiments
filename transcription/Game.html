@@ -14,7 +14,7 @@ Captcha page
         <input type="text" id="answer-inp" class="form-control"
                placeholder="Enter text from the image">
         <button type="button" id="submit-btn" class="btn btn-outline-secondary">Submit</button>
-        {{ if 'manual_advance' in session.config and session.config.manual_advance }}
+        {{ if manual_advance }}
             <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
         {{ endif }}
     </div>
