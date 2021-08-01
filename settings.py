@@ -76,7 +76,15 @@ ADMIN_USERNAME = "admin"
 # for security, best to set admin password in an environment variable
 ADMIN_PASSWORD = environ.get("OTREE_ADMIN_PASSWORD")
 
-DEMO_PAGE_INTRO_HTML = """ """
+DEMO_PAGE_TITLE = "Real-effort tasks"
+DEMO_PAGE_INTRO_HTML = """
+Real-effort tasks with multiple configuration options such as
+        "allow_skip", "force_solve",
+        "allow_retry",
+        "manual_advance",
+        "trial_delay",
+        and "retry_delay" (see settings.py).
+"""
 
 SECRET_KEY = "2015765205890"
 
