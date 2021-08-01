@@ -7,7 +7,7 @@ from .images import generate_image, encode_image
 
 
 doc = """
-Experimental matrix counting game
+Counting symbols in a matrix
 """
 
 
@@ -16,6 +16,8 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
+    matrix_w = 5
+    matrix_h = 4
     characters = "←↓"
     counted_char = "←"
 
@@ -29,8 +31,8 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    matrix_w = models.IntegerField(initial=5)
-    matrix_h = models.IntegerField(initial=4)
+    matrix_w = models.IntegerField(initial=Constants.matrix_w)
+    matrix_h = models.IntegerField(initial=Constants.matrix_h)
 
     # current state of the game
     # for multi-round games: increment the round and reset iteration

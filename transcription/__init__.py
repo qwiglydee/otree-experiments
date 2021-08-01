@@ -18,6 +18,7 @@ class Constants(BaseConstants):
 
     characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     instructions_template = __name__ + "/instructions.html"
+    captcha_length = 3
 
 
 class Subsession(BaseSubsession):
@@ -29,7 +30,7 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    captcha_length = models.IntegerField(initial=3)
+    captcha_length = models.IntegerField(initial=Constants.captcha_length)
 
     # current state of the game
     # for multi-round games: increment the round and reset iteration
@@ -68,12 +69,7 @@ def generate_puzzle(player: Player) -> Trial:
     """Create new puzzle for a player"""
     length = player.captcha_length
     text = "".join((random.choice(Constants.characters) for _ in range(length)))
-    return Trial.create(
-        player=player,
-        length=length,
-        text=text,
-        solution=text.lower(),
-    )
+    return Trial.create(player=player, length=length, text=text, solution=text.lower(),)
 
 
 def encode_puzzle(trial: Trial):
