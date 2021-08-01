@@ -89,9 +89,11 @@ def encode_puzzle(trial: Trial):
 
 def get_last_trial(player):
     """Get last (current) puzzle for a player"""
-    trials = Trial.filter(player=player)
-    trial = trials[-1] if len(trials) else None
-    return trial
+    trials = Trial.filter(
+        player=player, round=player.game_round, iteration=player.game_iteration
+    )
+    if trials:
+        return trials[-1]
 
 
 def check_answer(trial: Trial, answer: str):
@@ -266,7 +268,7 @@ class Game(Page):
         session = player.session
 
         return dict(
-            DEBUG=settings.DEBUG, manual_advance=session.config.get('manual_advance')
+            DEBUG=settings.DEBUG,
         )
 
     @staticmethod

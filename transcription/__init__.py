@@ -85,8 +85,8 @@ def get_last_trial(player):
     trials = Trial.filter(
         player=player, round=player.game_round, iteration=player.game_iteration
     )
-    trial = trials[-1] if len(trials) else None
-    return trial
+    if trials:
+        return trials[-1]
 
 
 def check_answer(trial: Trial, answer: str):
@@ -119,7 +119,7 @@ def play_game(player: Player, data: dict):
     """Handles iterations of the game on a live page
 
     Messages:
-    - client > server {} -- empty message means page reload
+    - server < client {} -- empty message means page reload
     - server < client {'next': true} -- request for next (or first) puzzle
     - server > client {'image': data, 'stats': ...} -- puzzle image
     - server < client {'answer': data} -- answer to a puzzle
@@ -129,50 +129,47 @@ def play_game(player: Player, data: dict):
     - server < client {'cheat': true} -- request solution
     - server > client {'solution': str} -- solution
     """
-    conf = player.session.config
-    trial_delay = conf.get('trial_delay', 1.0)
-    retry_delay = conf.get('retry_delay', 1.0)
-    force_solve = conf.get('force_solve', False)
-    allow_skip = conf.get('allow_skip', False)
-    allow_retry = conf.get('allow_retry', False) or force_solve
-    max_iter = conf.get('num_iterations', 0)
+    config = player.session.config
+    trial_delay = config.get('trial_delay', 1.0)
+    retry_delay = config.get('retry_delay', 1.0)
+    force_solve = config.get('force_solve', False)
+    allow_skip = config.get('allow_skip', False)
+    allow_retry = config.get('allow_retry', False) or force_solve
+    max_iter = config.get('num_iterations', 0)
 
     now = time.time()
 
     # get last trial, if any
-    last = get_last_trial(player)
+    trial = get_last_trial(player)
 
     if data == {}:
-        if last:  # reloaded in middle of round, return current puzzle
-            stats = summarize_trials(player)
-            data = encode_puzzle(last)
-            return {player.id_in_group: {"image": data, "stats": stats}}
-        else:  # initial load, generate first puzzle
+        # initial load, generate first puzzle
+        if not trial:
             trial = generate_puzzle(player)
             trial.timestamp = now
             trial.iteration = 1
             player.game_iteration = 1
-            stats = summarize_trials(player)
-            data = encode_puzzle(trial)
-            return {player.id_in_group: {"image": data, "stats": stats}}
+        stats = summarize_trials(player)
+        data = encode_puzzle(trial)
+        return {player.id_in_group: {"image": data, "stats": stats}}
 
     # generate next puzzle and return image
     if "next" in data:
-        if not last:
+        if not trial:
             raise RuntimeError("Missing current puzzle!")
-        if now - last.timestamp < trial_delay:
+        if now - trial.timestamp < trial_delay:
             raise RuntimeError("Client advancing too fast!")
-        if force_solve and last.is_correct is not True:
+        if force_solve and trial.is_correct is not True:
             raise RuntimeError("Attempted to skip unsolved puzzle!")
-        if not allow_skip and last.answer is None:
+        if not allow_skip and trial.answer is None:
             raise RuntimeError("Attempted to skip unanswered puzzle!")
-        if max_iter and last.iteration >= max_iter:
+        if max_iter and trial.iteration >= max_iter:
             return {player.id_in_group: {"gameover": True}}
 
         # new trial
         trial = generate_puzzle(player)
         trial.timestamp = now
-        trial.iteration = last.iteration + 1 if last else 1
+        trial.iteration = trial.iteration + 1 if trial else 1
         player.game_iteration = trial.iteration
 
         # get total counters
@@ -184,28 +181,28 @@ def play_game(player: Player, data: dict):
 
     # check given answer and return feedback
     if "answer" in data:
-        if not last:
+        if not trial:
             raise RuntimeError("Missing current puzzle")
-        if last.answer is not None:  # retrying
+        if trial.answer is not None:  # retrying
             if not allow_retry:
                 raise RuntimeError("Client retries the same puzzle!")
-            if now - last.answer_timestamp < retry_delay:
+            if now - trial.answer_timestamp < retry_delay:
                 raise RuntimeError("Client retrying too fast!")
 
-        check_answer(last, data["answer"])
-        last.answer_timestamp = now
-        last.retries += 1
+        check_answer(trial, data["answer"])
+        trial.answer_timestamp = now
+        trial.retries += 1
 
         # get total counters
         stats = summarize_trials(player)
 
         # return feedback
-        return {player.id_in_group: {'feedback': last.is_correct, 'stats': stats}}
+        return {player.id_in_group: {'feedback': trial.is_correct, 'stats': stats}}
 
     if "cheat" in data and settings.DEBUG:
-        if not last:
+        if not trial:
             raise RuntimeError("Missing current puzzle")
-        return {player.id_in_group: {'solution': last.solution}}
+        return {player.id_in_group: {'solution': trial.solution}}
 
     # otherwise
     raise ValueError("Invalid message from client!")
@@ -263,9 +260,7 @@ class Game(Page):
     def vars_for_template(player: Player):
         session = player.session
 
-        return dict(
-            DEBUG=settings.DEBUG, manual_advance=session.config.get('manual_advance')
-        )
+        return dict(DEBUG=settings.DEBUG,)
 
     @staticmethod
     def js_vars(player: Player):
@@ -276,7 +271,6 @@ class Game(Page):
             allow_skip=conf.get('allow_skip', False),
             allow_retry=conf.get('allow_retry', False),
             force_solve=conf.get('force_solve', False),
-            manual_advance=conf.get('manual_advance', False),
         )
 
     @staticmethod

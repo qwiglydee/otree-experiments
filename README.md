@@ -24,7 +24,6 @@ Configurable features, via session config:
 - `allow_skip`: allow user to skip a puzzle without giving an answer
 - `allow_retry`: allow user to retry the same puzzle without moving to next  
 - `force_solve`: do not advance to next puzzle until current one isn't solved (implies `allow_retry`)
-- `manual_advance`: do not automatically move to next puzzle, wait for user to press 'next' button 
 - `num_iterations`: complete round after given number of iterations 
   if timeout is also specified for a page, round is terminated by whichever comes first
 

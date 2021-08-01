@@ -11,20 +11,6 @@ SESSION_CONFIGS = [
         allow_skip=False,
         force_solve=False,
         allow_retry=False,
-        manual_advance=False,
-        trial_delay=1.0,
-        retry_delay=5.0,
-    ),
-    dict(
-        name="arithmetics",
-        display_name="solving equations in form of 'A + B ='",
-        num_demo_participants=1,
-        app_sequence=["arithmetics"],
-        num_iterations=0,
-        allow_skip=False,
-        force_solve=False,
-        allow_retry=False,
-        manual_advance=False,
         trial_delay=1.0,
         retry_delay=5.0,
     ),
@@ -37,20 +23,6 @@ SESSION_CONFIGS = [
         allow_skip=False,
         force_solve=False,
         allow_retry=False,
-        manual_advance=False,
-        trial_delay=1.0,
-        retry_delay=5.0,
-    ),
-    dict(
-        name="colors",
-        display_name="Stroop-style task (identifying colors with mismatched text)",
-        num_demo_participants=1,
-        app_sequence=["colors"],
-        num_iterations=0,
-        allow_skip=False,
-        force_solve=True,
-        allow_retry=False,
-        manual_advance=False,
         trial_delay=1.0,
         retry_delay=5.0,
     ),
@@ -85,7 +57,6 @@ DEMO_PAGE_INTRO_HTML = """
 Real-effort tasks with multiple configuration options such as
         "allow_skip", "force_solve",
         "allow_retry",
-        "manual_advance",
         "trial_delay",
         and "retry_delay" (see settings.py).
 """
@@ -97,7 +68,7 @@ SECRET_KEY = "2015765205890"
 import sys
 
 if sys.argv[1] == 'test':
-    APPS = ['transcription', 'arithmetics', 'matrices', 'colors']
+    APPS = ['transcription', 'matrices']
     TRIAL_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
     MAX_ITERATIONS = 5
@@ -143,7 +114,6 @@ if sys.argv[1] == 'test':
                     trial_delay=TRIAL_DELAY,
                     retry_delay=RETRY_DELAY,
                     allow_retry=True,
-                    manual_advance=True,
                 ),
             ]
         )

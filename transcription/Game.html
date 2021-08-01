@@ -14,9 +14,6 @@ Captcha page
         <input type="text" id="answer-inp" class="form-control"
                placeholder="Enter text from the image">
         <button type="button" id="submit-btn" class="btn btn-outline-secondary">Submit</button>
-        {{ if manual_advance }}
-            <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
-        {{ endif }}
     </div>
 
     <p class="warn" id="warning-txt"></p>
@@ -67,13 +64,6 @@ Captcha page
         }
     }
 
-    if (js_vars.manual_advance) {
-        next_btn.onclick = function(ev) {
-            clear();
-            next();
-        }
-    }
-
     function liveRecv(data) {
         if ('image' in data ) {
             new_puzzle(data.image);
@@ -102,9 +92,6 @@ Captcha page
         clear();
         input.disabled = false;
         submit_btn.disabled = false;
-        if (js_vars.manual_advance && !js_vars.allow_skip) {
-            next_btn.disabled = true;
-        }
         image.src = img;
     }
 
@@ -127,22 +114,16 @@ Captcha page
             submit_btn.disabled = true;
         }
 
-        if (js_vars.manual_advance) {
-            next_btn.disabled = false;
-        }
-
         if (result === true) {
             input.classList.add("is-valid");
-            if (!js_vars.manual_advance) {
-                next();
-            }
+            next();
         }
 
         if (result === false) {
             input.classList.add("is-invalid");
             if (js_vars.force_solve || js_vars.allow_retry)  {
                 wait_retry();
-            } else if (!js_vars.manual_advance) {
+            } else {
                 next();
             }
         }
