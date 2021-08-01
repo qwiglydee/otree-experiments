@@ -3,9 +3,10 @@ from os import environ
 SESSION_CONFIGS = [
     # all features with their default values, to make them available in session config UI
     dict(
-        name="captcha",
+        name="transcription",
+        display_name="Transcription of distorted text (configurable characters and length)",
         num_demo_participants=1,
-        app_sequence=["captcha"],
+        app_sequence=["transcription"],
         num_iterations=0,
         allow_skip=False,
         force_solve=False,
@@ -16,6 +17,7 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="arithmetics",
+        display_name="solving equations in form of 'A + B ='",
         num_demo_participants=1,
         app_sequence=["arithmetics"],
         num_iterations=0,
@@ -28,6 +30,7 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="matrices",
+        display_name="matrices of 0 and 1 (configurable symbols and size)",
         num_demo_participants=1,
         app_sequence=["matrices"],
         num_iterations=0,
@@ -40,6 +43,7 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="colors",
+        display_name="Stroop-style task (identifying colors with mismatched text)",
         num_demo_participants=1,
         app_sequence=["colors"],
         num_iterations=0,
@@ -93,7 +97,7 @@ SECRET_KEY = "2015765205890"
 import sys
 
 if sys.argv[1] == 'test':
-    APPS = ['captcha', 'arithmetics', 'matrices', 'colors']
+    APPS = ['transcription', 'arithmetics', 'matrices', 'colors']
     TRIAL_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
     MAX_ITERATIONS = 5

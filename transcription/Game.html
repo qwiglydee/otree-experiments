@@ -1,0 +1,205 @@
+{{ block title }}
+Captcha page
+{{ endblock }}
+
+{{ block content }}
+<div class="d-flex flex-column align-items-center">
+    <h3>
+        Iteration <span id="iter-txt"></span>
+        {{ if 'num_iterations' in session.config and session.config.num_iterations }}
+            /{{ session.config.num_iterations }}
+        {{ endif }}
+    </h3>
+    <p>Solved: <span id="solved-txt"></span>. Failed: <span id="failed-txt"></span>.</p>
+    <img class="captcha m-1" id="captcha-img">
+
+    <div class="input-group m-1">
+        <input type="text" id="answer-inp" class="form-control"
+               placeholder="Enter text from the image">
+        <button type="button" id="submit-btn" class="btn btn-outline-secondary">Submit</button>
+        {{ if 'manual_advance' in session.config and session.config.manual_advance }}
+            <button type="button" id="next-btn" class="btn btn-outline-secondary">Next</button>
+        {{ endif }}
+    </div>
+
+    <p class="warn" id="warning-txt"></p>
+
+    {{ if DEBUG }}
+    <button type="button" id="cheat-btn" class="btn btn-dark">Cheat</button>
+    {{ endif }}
+</div>
+
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    let image = document.getElementById('captcha-img');
+    let input = document.getElementById('answer-inp');
+    let warn = document.getElementById('warning-txt');
+    let submit_btn = document.getElementById('submit-btn');
+    let next_btn = document.getElementById('next-btn');
+    let fields = {
+        iter: document.getElementById('iter-txt'),
+        solved: document.getElementById('solved-txt'),
+        failed: document.getElementById('failed-txt'),
+    }
+
+    input.oninput = function (ev) {
+        input.classList.remove("is-valid", "is-invalid");
+    }
+
+    input.onkeydown = function (ev) {
+        if (ev.key == 'Enter' && !submit_btn.disabled) {
+            submit();
+        }
+    }
+
+    submit_btn.onclick = function (ev) {
+        submit();
+    }
+
+    function submit() {
+        let val = input.value;
+        input.disabled = true;
+        submit_btn.disabled = true;
+
+        if (val != "") {
+            send_answer(val);
+        } else if (js_vars.allow_skip) {
+            skip();
+        }
+    }
+
+    if (js_vars.manual_advance) {
+        next_btn.onclick = function(ev) {
+            clear();
+            next();
+        }
+    }
+
+    function liveRecv(data) {
+        if ('image' in data ) {
+            new_puzzle(data.image);
+        }
+        if ('feedback' in data) {
+            feedback(data.feedback);
+        }
+        if ('gameover' in data) {
+            gameover();
+        }
+        if ('stats' in data) {
+            stats(data.stats);
+        }
+        if ('solution' in data) {
+            cheat(data.solution);
+        }
+    }
+
+    function clear() {
+        image.src = "";
+        input.value = "";
+        input.classList.remove("is-valid", "is-invalid");
+    }
+
+    function new_puzzle(img) {
+        clear();
+        input.disabled = false;
+        submit_btn.disabled = false;
+        if (js_vars.manual_advance && !js_vars.allow_skip) {
+            next_btn.disabled = true;
+        }
+        image.src = img;
+    }
+
+    function skip() {
+        clear();
+        next();
+    }
+
+    function send_answer(answer) {
+        input.classList.remove("is-valid", "is-invalid");
+        liveSend({answer: answer});
+    }
+
+    function feedback(result) {
+        if (js_vars.allow_retry || js_vars.force_solve) {
+            input.disabled = false;
+            submit_btn.disabled = false;
+        } else {
+            input.disabled = true;
+            submit_btn.disabled = true;
+        }
+
+        if (js_vars.manual_advance) {
+            next_btn.disabled = false;
+        }
+
+        if (result === true) {
+            input.classList.add("is-valid");
+            if (!js_vars.manual_advance) {
+                next();
+            }
+        }
+
+        if (result === false) {
+            input.classList.add("is-invalid");
+            if (js_vars.force_solve || js_vars.allow_retry)  {
+                wait_retry();
+            } else if (!js_vars.manual_advance) {
+                next();
+            }
+        }
+    }
+
+    function wait_retry() {
+        let countdown = js_vars.retry_delay;
+        submit_btn.disabled = true;
+        warn.textContent = `Wait ${countdown} seconds before retry`;
+        let timer = window.setInterval(function() {
+            countdown -= 1;
+            if (countdown > 0) {
+                warn.textContent = `Wait ${countdown} seconds before retry`;
+            } else {
+                submit_btn.disabled = false;
+                warn.textContent = "";
+                clearInterval(timer);
+            }
+        }, 1000);
+    }
+
+
+    function stats(stats) {
+        fields.iter.textContent = stats.total;
+        fields.solved.textContent = stats.correct;
+        fields.failed.textContent = stats.incorrect;
+    }
+
+    function next() {
+        window.setTimeout(function() {
+            liveSend({next: true});
+        }, js_vars.trial_delay * 1000);
+    }
+
+    function gameover() {
+        document.getElementById("form").submit();
+    }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+        liveSend({});
+    });
+</script>
+
+{{ if DEBUG }}
+<script>
+    let cheat_btn = document.getElementById('cheat-btn');
+    cheat_btn.onclick = function() {
+        liveSend({cheat: true});
+    }
+
+    function cheat(solution) {
+        input.value = solution;
+    }
+</script>
+{{ endif }}
+
+{{ endblock }}

@@ -7,12 +7,12 @@ from .images import generate_image, distort_image, encode_image
 
 
 doc = """
-Experimental captcha game
+CAPTCHA-style transcription task
 """
 
 
 class Constants(BaseConstants):
-    name_in_url = "captcha"
+    name_in_url = "transcription"
     players_per_group = None
     num_rounds = 1
 
