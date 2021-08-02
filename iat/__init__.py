@@ -199,8 +199,39 @@ def check_answer(trial: Trial, answer: str):
 
 
 def custom_export(players):
-    """Dumps all the questions generated"""
-    raise NotImplementedError
+    """Dumps all the puzzles generated"""
+    yield [
+        "session",
+        "participant_code",
+        "round",
+        "iteration",
+        "timestamp",
+        "left primary",
+        "right primary",
+        "left secondary",
+        "right secondary",
+        "stimulus",
+        "reaction_time",
+        "retries",
+    ]
+    for p in players:
+        participant = p.participant
+        session = p.session
+        for z in Trial.filter(player=p):
+            yield [
+                session.code,
+                participant.code,
+                z.round,
+                z.iteration,
+                z.timestamp,
+                z.left_1,
+                z.right_1,
+                z.left_2,
+                z.right_2,
+                z.stimulus,
+                z.reaction_time,
+                z.retries,
+            ]
 
 
 def play_game(player: Player, data: dict):
