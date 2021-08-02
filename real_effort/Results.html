@@ -1,0 +1,16 @@
+{{ block title }}
+Results
+{{ endblock }}
+
+{{ block content }}
+
+{{ if player.too_many_failed }}
+<p>You failed too many puzzles.</p>
+{{ else }}
+<p>
+    You have successfully solved {{ player.num_correct }} puzzles,
+    and failed {{ player.wrong_attempts }}.
+</p>
+{{ endif }}
+
+{{ endblock }}
