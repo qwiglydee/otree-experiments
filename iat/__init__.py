@@ -175,10 +175,14 @@ def get_progress(player: Player):
     """Returns summary progress progress for a player"""
     conf = player.session.config
     total = conf['num_iterations'][player.game_round]
+    answered = len(
+        Trial.filter(player=player, round=player.game_round, is_correct=True)
+    )
     return {
         'round': player.game_round,
         'iteration': player.game_iteration,
         'total': total,
+        'answered': answered,
     }
 
 
