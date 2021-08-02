@@ -7,23 +7,18 @@ SESSION_CONFIGS = [
         display_name="Transcription of distorted text (configurable characters and length)",
         num_demo_participants=1,
         app_sequence=["transcription"],
-        num_iterations=0,
-        allow_skip=False,
-        force_solve=False,
-        allow_retry=False,
-        trial_delay=1.0,
-        retry_delay=5.0,
+        max_iterations=0,
+        attempts_per_puzzle=2,
+        max_wrong_answers=10,
+        retry_delay=3.0,
     ),
     dict(
         name="matrices",
         display_name="matrices of 0 and 1 (configurable symbols and size)",
         num_demo_participants=1,
         app_sequence=["matrices"],
-        num_iterations=0,
-        allow_skip=False,
-        force_solve=False,
-        allow_retry=False,
-        trial_delay=1.0,
+        max_iterations=0,
+        puzzle_delay=1.0,
         retry_delay=5.0,
     ),
 ]
@@ -38,7 +33,7 @@ SESSION_CONFIG_DEFAULTS = dict(
 )
 
 PARTICIPANT_FIELDS = []
-SESSION_FIELDS = []
+SESSION_FIELDS = ['ret_params']
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans
@@ -55,9 +50,7 @@ ADMIN_PASSWORD = environ.get("OTREE_ADMIN_PASSWORD")
 DEMO_PAGE_TITLE = "Real-effort tasks"
 DEMO_PAGE_INTRO_HTML = """
 Real-effort tasks with multiple configuration options such as
-        "allow_skip", "force_solve",
-        "allow_retry",
-        "trial_delay",
+        "puzzle_delay",
         and "retry_delay" (see settings.py).
 """
 
@@ -69,7 +62,7 @@ import sys
 
 if sys.argv[1] == 'test':
     APPS = ['transcription', 'matrices']
-    TRIAL_DELAY = 0.2
+    PUZZLE_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
     MAX_ITERATIONS = 5
     SESSION_CONFIGS = []
@@ -80,23 +73,15 @@ if sys.argv[1] == 'test':
                     name=f"{app}_defaults",
                     num_demo_participants=1,
                     app_sequence=[app],
-                    trial_delay=TRIAL_DELAY,
+                    puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                 ),
                 dict(
                     name=f"{app}_limited",
                     num_demo_participants=1,
                     app_sequence=[app],
-                    num_iterations=MAX_ITERATIONS,
-                    trial_delay=TRIAL_DELAY,
-                    retry_delay=RETRY_DELAY,
-                ),
-                dict(
-                    name=f"{app}_skipping",
-                    num_demo_participants=1,
-                    app_sequence=[app],
-                    allow_skip=True,
-                    trial_delay=TRIAL_DELAY,
+                    max_iterations=MAX_ITERATIONS,
+                    puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                 ),
                 dict(
@@ -104,14 +89,14 @@ if sys.argv[1] == 'test':
                     num_demo_participants=1,
                     app_sequence=[app],
                     force_solve=True,
-                    trial_delay=TRIAL_DELAY,
+                    puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                 ),
                 dict(
                     name=f"{app}_retrying",
                     num_demo_participants=1,
                     app_sequence=[app],
-                    trial_delay=TRIAL_DELAY,
+                    puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                     allow_retry=True,
                 ),

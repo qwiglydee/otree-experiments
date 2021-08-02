@@ -1,5 +1,5 @@
 from otree.api import *
-from . import Game, Trial
+from . import Game, Puzzle
 from test_shared import call_live_method  # noqa
 from test_shared import TEST_CASES
 from test_shared import end_game_assertions

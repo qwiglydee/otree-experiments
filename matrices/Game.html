@@ -58,8 +58,6 @@ Captcha page
 
         if (val != "") {
             send_answer(val);
-        } else if (js_vars.allow_skip) {
-            skip();
         }
     }
 
@@ -154,7 +152,7 @@ Captcha page
     function next() {
         window.setTimeout(function() {
             liveSend({next: true});
-        }, js_vars.trial_delay * 1000);
+        }, js_vars.puzzle_delay * 1000);
     }
 
     function gameover() {

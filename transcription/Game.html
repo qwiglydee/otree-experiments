@@ -27,23 +27,28 @@ Captcha page
 
 {{ block scripts }}
 <script>
+    let isFrozen = false;
     let image = document.getElementById('captcha-img');
     let input = document.getElementById('answer-inp');
     let warn = document.getElementById('warning-txt');
     let submit_btn = document.getElementById('submit-btn');
-    let next_btn = document.getElementById('next-btn');
     let fields = {
         iter: document.getElementById('iter-txt'),
         solved: document.getElementById('solved-txt'),
         failed: document.getElementById('failed-txt'),
     }
 
-    input.oninput = function (ev) {
+    function clearInputValidity() {
+        console.log('clearing input validity');
         input.classList.remove("is-valid", "is-invalid");
     }
 
+    input.oninput = function (ev) {
+        clearInputValidity();
+    }
+
     input.onkeydown = function (ev) {
-        if (ev.key == 'Enter' && !submit_btn.disabled) {
+        if (ev.key === 'Enter' && !submit_btn.disabled) {
             submit();
         }
     }
@@ -53,23 +58,25 @@ Captcha page
     }
 
     function submit() {
+        if (isFrozen) return;
         let val = input.value;
         input.disabled = true;
         submit_btn.disabled = true;
 
-        if (val != "") {
+        if (val !== "") {
             send_answer(val);
-        } else if (js_vars.allow_skip) {
-            skip();
         }
     }
 
     function liveRecv(data) {
+        if ('freeze' in data) {
+            freeze(data.freeze);
+        }
+        if ('is_correct' in data) {
+            feedback(data.is_correct);
+        }
         if ('image' in data ) {
             new_puzzle(data.image);
-        }
-        if ('feedback' in data) {
-            feedback(data.feedback);
         }
         if ('gameover' in data) {
             gameover();
@@ -85,7 +92,7 @@ Captcha page
     function clear() {
         image.src = "";
         input.value = "";
-        input.classList.remove("is-valid", "is-invalid");
+        clearInputValidity();
     }
 
     function new_puzzle(img) {
@@ -95,50 +102,31 @@ Captcha page
         image.src = img;
     }
 
-    function skip() {
-        clear();
-        next();
-    }
-
     function send_answer(answer) {
-        input.classList.remove("is-valid", "is-invalid");
+        clearInputValidity();
         liveSend({answer: answer});
     }
 
-    function feedback(result) {
-        if (js_vars.allow_retry || js_vars.force_solve) {
-            input.disabled = false;
-            submit_btn.disabled = false;
-        } else {
-            input.disabled = true;
-            submit_btn.disabled = true;
-        }
-
-        if (result === true) {
-            input.classList.add("is-valid");
-            next();
-        }
-
-        if (result === false) {
-            input.classList.add("is-invalid");
-            if (js_vars.force_solve || js_vars.allow_retry)  {
-                wait_retry();
-            } else {
-                next();
-            }
-        }
+    function feedback(is_correct) {
+        console.log('feedback', is_correct);
+        input.classList.add(is_correct ? "is-valid" : "is-invalid");
     }
 
-    function wait_retry() {
-        let countdown = js_vars.retry_delay;
-        submit_btn.disabled = true;
-        warn.textContent = `Wait ${countdown} seconds before retry`;
+    function waitMsg(seconds) {
+        warn.textContent = `Wait ${Math.round(seconds)} seconds before trying again`;
+    }
+
+    function freeze(countdown) {
+        isFrozen = true;
+        image.hidden = true;
+        waitMsg(countdown);
         let timer = window.setInterval(function() {
             countdown -= 1;
             if (countdown > 0) {
-                warn.textContent = `Wait ${countdown} seconds before retry`;
+                waitMsg(countdown);
             } else {
-                submit_btn.disabled = false;
+                isFrozen = false;
+                image.hidden = false;
                 warn.textContent = "";
                 clearInterval(timer);
             }
@@ -155,7 +143,7 @@ Captcha page
     function next() {
         window.setTimeout(function() {
             liveSend({next: true});
-        }, js_vars.trial_delay * 1000);
+        }, js_vars.puzzle_delay * 1000);
     }
 
     function gameover() {

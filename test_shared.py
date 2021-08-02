@@ -46,56 +46,53 @@ def expect_failure(*exceptions):
     )
 
 
-def get_trial_class(player):
+def get_puzzle_class(player):
     app_module = import_module(type(player).__module__)
-    return app_module.Trial
+    return app_module.Puzzle
 
 
 def end_game_assertions(player):
-    Trial = get_trial_class(player)
+    Puzzle = get_puzzle_class(player)
 
-    expect(player.total, len(Trial.filter(player=player, round=0)))
-    expect(player.correct, len(Trial.filter(player=player, round=0, is_correct=True)))
+    expect(player.total, len(Puzzle.filter(player=player, round=0)))
+    expect(player.correct, len(Puzzle.filter(player=player, round=0, is_correct=True)))
     expect(
-        player.incorrect, len(Trial.filter(player=player, round=0, is_correct=False))
+        player.incorrect, len(Puzzle.filter(player=player, round=0, is_correct=False))
     )
 
 
 def call_live_method(method, group, case, **kwargs):
     conf = group.session.config
-    trial_delay = conf.get('trial_delay')
+    puzzle_delay = conf.get('puzzle_delay')
     retry_delay = conf.get('retry_delay')
-    allow_skip = conf.get('allow_skip', False)
     force_solve = conf.get('force_solve', False)
     allow_retry = conf.get('allow_retry', False) or force_solve
-    max_iter = conf.get('num_iterations')
+    max_iter = conf.get('max_iterations')
 
     player = group.get_players()[0]
-    Trial = get_trial_class(player)
+    Puzzle = get_puzzle_class(player)
 
-    print(
-        f"Testing case '{case}', allow_skip={allow_skip}, force_solve={force_solve}, max_iter={max_iter}"
-    )
+    print(f"Testing case '{case}', force_solve={force_solve}, max_iter={max_iter}")
 
-    def get_last_trial(player):
-        trials = Trial.filter(player=player, round=0, iteration=player.game_iteration)
-        trial = trials[-1] if len(trials) else None
-        return trial
+    def get_last_puzzle(player):
+        puzzles = Puzzle.filter(player=player, round=0, iteration=player.game_iteration)
+        puzzle = puzzles[-1] if len(puzzles) else None
+        return puzzle
 
-    def get_last_trial_clone(player):
+    def get_last_puzzle_clone(player):
         # makes a clone to check changes of the same instance
-        data = Trial.values_dicts(player=player)
+        data = Puzzle.values_dicts(player=player)
         if len(data) == 0:
             return None
         datum = data[-1]
         del datum['id']
-        return Trial(**datum)
+        return Puzzle(**datum)
 
     def get_stats(player):
         return {
-            'total': len(Trial.filter(player=player, round=0)),
-            'correct': len(Trial.filter(player=player, round=0, is_correct=True)),
-            'incorrect': len(Trial.filter(player=player, round=0, is_correct=False)),
+            'total': len(Puzzle.filter(player=player, round=0)),
+            'correct': len(Puzzle.filter(player=player, round=0, is_correct=True)),
+            'incorrect': len(Puzzle.filter(player=player, round=0, is_correct=False)),
         }
 
     def restart(player):
@@ -105,20 +102,20 @@ def call_live_method(method, group, case, **kwargs):
         return method(player.id_in_group, {'next': True})[player.id_in_group]
 
     def expect_forwarded(player, _last):
-        _trial = get_last_trial(player)
-        expect(_trial.id, "!=", _last.id)
-        expect(_trial.timestamp, ">", _last.timestamp)
-        expect(_trial.iteration, ">", _last.iteration)
+        _puzzle = get_last_puzzle(player)
+        expect(_puzzle.id, "!=", _last.id)
+        expect(_puzzle.timestamp, ">", _last.timestamp)
+        expect(_puzzle.iteration, ">", _last.iteration)
 
     def expect_not_forwarded(player, _last):
-        _trial = get_last_trial(player)
-        expect(_trial.id, "==", _last.id)
-        expect(_trial.timestamp, "==", _last.timestamp)
-        expect(_trial.iteration, "==", _last.iteration)
+        _puzzle = get_last_puzzle(player)
+        expect(_puzzle.id, "==", _last.id)
+        expect(_puzzle.timestamp, "==", _last.timestamp)
+        expect(_puzzle.iteration, "==", _last.iteration)
 
     def solution(player):
-        _trial = get_last_trial(player)
-        return _trial.solution
+        _puzzle = get_last_puzzle(player)
+        return _puzzle.solution
 
     def give_answer(player, ans):
         _response = method(player.id_in_group, {'answer': ans})[player.id_in_group]
@@ -129,14 +126,14 @@ def call_live_method(method, group, case, **kwargs):
         expect(stats, values)
 
     def expect_answered(player, ans, correct=None):
-        _trial = get_last_trial(player)
+        _puzzle = get_last_puzzle(player)
 
         # make it work for both strings and numbers
-        expect(str(_trial.answer), str(ans))
+        expect(str(_puzzle.answer), str(ans))
 
-        expect(_trial.answer_timestamp, '>', _trial.timestamp)
+        expect(_puzzle.response_timestamp, '>', _puzzle.timestamp)
         if correct is not None:
-            expect(_trial.is_correct, correct)
+            expect(_puzzle.is_correct, correct)
 
     def expect_answered_correctly(player, ans):
         expect_answered(player, ans, True)
@@ -145,21 +142,21 @@ def call_live_method(method, group, case, **kwargs):
         expect_answered(player, ans, False)
 
     def expect_reanswered(player, last):
-        # NB: `last` should be a clone of Trial
-        _trial = get_last_trial(player)
-        expect(_trial.answer_timestamp, '>', last.answer_timestamp)
-        expect(_trial.retries, '>', last.retries)
+        # NB: `last` should be a clone of Puzzle
+        _puzzle = get_last_puzzle(player)
+        expect(_puzzle.response_timestamp, '>', last.response_timestamp)
+        expect(_puzzle.retries, '>', last.retries)
 
     def expect_not_reanswered(player, last):
-        # NB: `last` should be a clone of Trial
-        _trial = get_last_trial(player)
-        expect(_trial.answer_timestamp, '==', last.answer_timestamp)
-        expect(_trial.retries, '==', last.retries)
+        # NB: `last` should be a clone of Puzzle
+        _puzzle = get_last_puzzle(player)
+        expect(_puzzle.response_timestamp, '==', last.response_timestamp)
+        expect(_puzzle.retries, '==', last.retries)
 
     def expect_not_answered(player):
-        _trial = get_last_trial(player)
-        expect(_trial.answer, None)
-        expect(_trial.is_correct, None)
+        _puzzle = get_last_puzzle(player)
+        expect(_puzzle.answer, None)
+        expect(_puzzle.is_correct, None)
 
     def expect_response_puzzle(response):
         expect('image', 'in', response)
@@ -188,7 +185,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_response_puzzle(resp)
         expect_response_stats(resp, total=1, correct=0, incorrect=0)
 
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
         answer = solution(player)
         resp = give_answer(player, answer)
@@ -198,7 +195,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_response_correct(resp)
         expect_response_stats(resp, total=1, correct=1, incorrect=0)
 
-        time.sleep(trial_delay)
+        time.sleep(puzzle_delay)
 
         # 2nd puzzle
         resp = move_forward(player)
@@ -206,7 +203,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_response_puzzle(resp)
         expect_response_stats(resp, total=2, correct=1, incorrect=0)
 
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
         answer = solution(player)
         resp = give_answer(player, answer)
@@ -257,10 +254,10 @@ def call_live_method(method, group, case, **kwargs):
 
     if case == 'reloading':
         restart(player)
-        first = get_last_trial(player)
+        first = get_last_puzzle(player)
 
         restart(player)
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
         expect_not_forwarded(player, first)
         return
@@ -268,7 +265,7 @@ def call_live_method(method, group, case, **kwargs):
     if case == 'forward_premature':
         with expect_failure(RuntimeError):
             move_forward(player)
-        last = get_last_trial_clone(player)
+        last = get_last_puzzle_clone(player)
         expect(last, None)
         return
 
@@ -287,7 +284,7 @@ def call_live_method(method, group, case, **kwargs):
         return
 
     if case == 'replying_premature':
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
         expect(last, None)
         answer = "123"
         with expect_failure(RuntimeError):
@@ -303,7 +300,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_answered_incorrectly(player, answer1)
         expect_stats(player, total=1, correct=0, incorrect=1)
 
-        last = get_last_trial_clone(player)
+        last = get_last_puzzle_clone(player)
 
         time.sleep(retry_delay)
 
@@ -312,7 +309,7 @@ def call_live_method(method, group, case, **kwargs):
 
         if allow_retry:
             give_answer(player, answer2)
-            last2 = get_last_trial(player)
+            last2 = get_last_puzzle(player)
             expect_reanswered(player, last)
             expect_answered_correctly(player, answer2)
             expect_stats(player, total=1, correct=1, incorrect=0)
@@ -334,7 +331,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_answered_correctly(player, answer1)
         expect_stats(player, total=1, correct=1, incorrect=0)
 
-        last = get_last_trial_clone(player)
+        last = get_last_puzzle_clone(player)
 
         time.sleep(retry_delay)
 
@@ -364,7 +361,7 @@ def call_live_method(method, group, case, **kwargs):
         expect_answered_incorrectly(player, answer1)
         expect_stats(player, total=1, correct=0, incorrect=1)
 
-        last = get_last_trial_clone(player)
+        last = get_last_puzzle_clone(player)
 
         # 2nd correct answer
         answer2 = solution(player)
@@ -381,7 +378,7 @@ def call_live_method(method, group, case, **kwargs):
 
     if case == 'forward_nodelay':
         restart(player)
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
         answer = solution(player)
         give_answer(player, answer)
@@ -395,32 +392,27 @@ def call_live_method(method, group, case, **kwargs):
     if case == 'skipping_unanswered':
         restart(player)
         expect_stats(player, total=1, correct=0, incorrect=0)
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
-        time.sleep(trial_delay)
+        time.sleep(puzzle_delay)
 
-        if allow_skip:
+        with expect_failure(RuntimeError):
             move_forward(player)
-            expect_forwarded(player, last)
-            expect_stats(player, total=2, correct=0, incorrect=0)
-        else:
-            with expect_failure(RuntimeError):
-                move_forward(player)
-            expect_not_forwarded(player, last)
-            expect_stats(player, total=1, correct=0, incorrect=0)
+        expect_not_forwarded(player, last)
+        expect_stats(player, total=1, correct=0, incorrect=0)
         return
 
     if case == 'skipping_incorrect':
         restart(player)
         expect_stats(player, total=1, correct=0, incorrect=0)
-        last = get_last_trial(player)
+        last = get_last_puzzle(player)
 
         answer = "0"  # should work as invalid both for string and numeric
         give_answer(player, answer)
         expect_answered_incorrectly(player, answer)
         expect_stats(player, total=1, correct=0, incorrect=1)
 
-        time.sleep(trial_delay)
+        time.sleep(puzzle_delay)
 
         if force_solve:
             with expect_failure(RuntimeError):
@@ -444,20 +436,20 @@ def call_live_method(method, group, case, **kwargs):
             if _ == 0:
                 resp = restart(player)
                 expect_response_puzzle(resp)
-                last = get_last_trial(player)
+                last = get_last_puzzle(player)
             else:
-                time.sleep(trial_delay)
+                time.sleep(puzzle_delay)
                 resp = move_forward(player)
                 expect_forwarded(player, last)
                 expect_response_puzzle(resp)
-                last = get_last_trial(player)
+                last = get_last_puzzle(player)
 
             answer = solution(player)
             resp = give_answer(player, answer)
             expect_answered_correctly(player, answer)
             expect_response_correct(resp)
 
-        time.sleep(trial_delay)
+        time.sleep(puzzle_delay)
         resp = move_forward(player)
         expect_not_forwarded(player, last)
         expect('gameover', 'in', resp)

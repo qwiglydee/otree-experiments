@@ -4,8 +4,9 @@
 
 {{ block content }}
 
-    <p>You have tried {{ player.total }} puzzles, successfully solved {{ player.correct }} of them, and failed {{ player.incorrect }}.</p>
-
-    <p>Your payoff for this round is {{ player.payoff }}</p>
+    <p>
+        You have successfully solved {{ player.num_correct }} puzzles,
+        and failed {{ player.num_incorrect }}.
+    </p>
 
 {{ endblock }}

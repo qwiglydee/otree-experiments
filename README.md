@@ -16,19 +16,17 @@ Common features:
 - generating randomized puzzle on the fly
 - creating images for each puzzle on the fly
 - showing the images on the live page
-- recording outcome of each trial in database
+- recording outcome of each puzzle in database
 - custom export of all recorded data
 - some server-side anti-cheating and anti-script-kiddies protection
 
 Configurable features, via session config:
-- `allow_skip`: allow user to skip a puzzle without giving an answer
-- `allow_retry`: allow user to retry the same puzzle without moving to next  
-- `force_solve`: do not advance to next puzzle until current one isn't solved (implies `allow_retry`)
-- `num_iterations`: complete round after given number of iterations 
+- `retries_per_puzzle`: allow user to retry the same puzzle without moving to next  
+- `max_iterations`: complete round after given number of iterations 
   if timeout is also specified for a page, round is terminated by whichever comes first
 
 Anti-cheating parameters:
-- `trial_delay`: minimal delay between iterations
+- `puzzle_delay`: minimal delay between iterations
 - `retry_delay`: minimal delay before next retry after wrong answer 
 
 

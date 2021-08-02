@@ -31,9 +31,6 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    matrix_w = models.IntegerField(initial=Constants.matrix_w)
-    matrix_h = models.IntegerField(initial=Constants.matrix_h)
-
     # current state of the game
     # for multi-round games: increment the round and reset iteration
     game_round = models.IntegerField(initial=0)
@@ -48,7 +45,7 @@ class Player(BasePlayer):
 # puzzle-specific stuff
 
 
-class Trial(ExtraModel):
+class Puzzle(ExtraModel):
     """A model to keep record of all generated puzzles"""
 
     player = models.Link(Player)
@@ -56,62 +53,58 @@ class Trial(ExtraModel):
     iteration = models.IntegerField(initial=0)
     timestamp = models.FloatField(initial=0)
 
-    matrix_w = models.IntegerField()
-    matrix_h = models.IntegerField()
     content = models.StringField()
     solution = models.IntegerField()
 
-    # the following fields remain null for unanswered trials
-    answer_timestamp = models.FloatField()
+    # the following fields remain null for unanswered puzzles
+    response_timestamp = models.FloatField()
     answer = models.IntegerField()
     is_correct = models.BooleanField()
     retries = models.IntegerField(initial=0)
 
 
-def generate_puzzle(player: Player) -> Trial:
+def generate_puzzle(player: Player) -> Puzzle:
     """Create new puzzle for a player"""
-    w = player.matrix_w
-    h = player.matrix_h
+    w = Constants.matrix_w
+    h = Constants.matrix_h
     length = w * h
     content = "".join((random.choice(Constants.characters) for i in range(length)))
     count = content.count(Constants.counted_char)
-    return Trial.create(
-        player=player, matrix_w=w, matrix_h=h, content=content, solution=count,
-    )
+    return Puzzle.create(player=player, content=content, solution=count,)
 
 
-def encode_puzzle(trial: Trial):
+def encode_puzzle(puzzle: Puzzle):
     """Create an image for a puzzle"""
-    image = generate_image((trial.matrix_w, trial.matrix_h), trial.content)
+    image = generate_image((Constants.matrix_w, Constants.matrix_h), puzzle.content)
     data = encode_image(image)
     return data
 
 
-def get_last_trial(player):
+def get_last_puzzle(player):
     """Get last (current) puzzle for a player"""
-    trials = Trial.filter(
+    puzzles = Puzzle.filter(
         player=player, round=player.game_round, iteration=player.game_iteration
     )
-    if trials:
-        return trials[-1]
+    if puzzles:
+        return puzzles[-1]
 
 
-def check_answer(trial: Trial, answer: str):
+def check_answer(puzzle: Puzzle, answer: str):
     """Check given answer for a puzzle and update its status"""
     if answer == "" or answer is None:
         raise ValueError("Unexpected empty answer from client")
-    trial.answer = answer
-    trial.is_correct = int(answer) == trial.solution
+    puzzle.answer = answer
+    puzzle.is_correct = int(answer) == puzzle.solution
 
 
-def summarize_trials(player: Player):
+def summarize_puzzles(player: Player):
     """Returns summary stats for a player
 
     Used to provide info for client, and to update player after a game round
     """
-    total = len(Trial.filter(player=player))
-    correct = len(Trial.filter(player=player, is_correct=True))
-    incorrect = len(Trial.filter(player=player, is_correct=False))
+    total = len(Puzzle.filter(player=player))
+    correct = len(Puzzle.filter(player=player, is_correct=True))
+    incorrect = len(Puzzle.filter(player=player, is_correct=False))
     return {
         'total': total,
         'correct': correct,
@@ -137,56 +130,55 @@ def play_game(player: Player, data: dict):
     - server > client {'solution': str} -- solution
     """
     conf = player.session.config
-    trial_delay = conf.get('trial_delay', 1.0)
+    puzzle_delay = conf.get('puzzle_delay', 1.0)
     retry_delay = conf.get('retry_delay', 1.0)
     force_solve = conf.get('force_solve', False)
-    allow_skip = conf.get('allow_skip', False)
     allow_retry = conf.get('allow_retry', False) or force_solve
-    max_iter = conf.get('num_iterations', 0)
+    max_iter = conf.get('max_iterations', 0)
 
     now = time.time()
 
-    # get last trial, if any
-    last = get_last_trial(player)
+    # get last puzzle, if any
+    last = get_last_puzzle(player)
 
     if data == {}:
         if last:  # reloaded in middle of round, return current puzzle
-            stats = summarize_trials(player)
+            stats = summarize_puzzles(player)
             data = encode_puzzle(last)
             return {player.id_in_group: {"image": data, "stats": stats}}
         else:  # initial load, generate first puzzle
-            trial = generate_puzzle(player)
-            trial.timestamp = now
-            trial.iteration = 1
+            puzzle = generate_puzzle(player)
+            puzzle.timestamp = now
+            puzzle.iteration = 1
             player.game_iteration = 1
-            stats = summarize_trials(player)
-            data = encode_puzzle(trial)
+            stats = summarize_puzzles(player)
+            data = encode_puzzle(puzzle)
             return {player.id_in_group: {"image": data, "stats": stats}}
 
     # generate next puzzle and return image
     if "next" in data:
         if not last:
             raise RuntimeError("Missing current puzzle!")
-        if now - last.timestamp < trial_delay:
+        if now - last.timestamp < puzzle_delay:
             raise RuntimeError("Client advancing too fast!")
         if force_solve and last.is_correct is not True:
             raise RuntimeError("Attempted to skip unsolved puzzle!")
-        if not allow_skip and last.answer is None:
+        if last.answer is None:
             raise RuntimeError("Attempted to skip unanswered puzzle!")
         if max_iter and last.iteration >= max_iter:
             return {player.id_in_group: {"gameover": True}}
 
-        # new trial
-        trial = generate_puzzle(player)
-        trial.timestamp = now
-        trial.iteration = last.iteration + 1 if last else 1
-        player.game_iteration = trial.iteration
+        # new puzzle
+        puzzle = generate_puzzle(player)
+        puzzle.timestamp = now
+        puzzle.iteration = last.iteration + 1 if last else 1
+        player.game_iteration = puzzle.iteration
 
         # get total counters
-        stats = summarize_trials(player)
+        stats = summarize_puzzles(player)
 
         # return image
-        data = encode_puzzle(trial)
+        data = encode_puzzle(puzzle)
         return {player.id_in_group: {"image": data, "stats": stats}}
 
     # check given answer and return feedback
@@ -196,15 +188,15 @@ def play_game(player: Player, data: dict):
         if last.answer is not None:  # retrying
             if not allow_retry:
                 raise RuntimeError("Client retries the same puzzle!")
-            if now - last.answer_timestamp < retry_delay:
+            if now - last.response_timestamp < retry_delay:
                 raise RuntimeError("Client retrying too fast!")
 
         check_answer(last, data["answer"])
-        last.answer_timestamp = now
+        last.response_timestamp = now
         last.retries += 1
 
         # get total counters
-        stats = summarize_trials(player)
+        stats = summarize_puzzles(player)
 
         # return feedback
         return {player.id_in_group: {'feedback': last.is_correct, 'stats': stats}}
@@ -218,46 +210,6 @@ def play_game(player: Player, data: dict):
     raise ValueError("Invalid message from client!")
 
 
-def custom_export(players):
-    """Dumps all the puzzles generated"""
-    yield [
-        "session",
-        "participant_code",
-        "game_round",
-        "game_iteration",
-        "timestamp",
-        "width",
-        "height",
-        "content",
-        "solution",
-        "answer_timestamp",
-        "answer",
-        "is_correct",
-        "retries",
-    ]
-    for p in players:
-        participant = p.participant
-        session = p.session
-        for z in Trial.filter(player=p):
-            yield [
-                session.code,
-                participant.code,
-                z.round,
-                z.iteration,
-                z.timestamp,
-                z.matrix_w,
-                z.matrix_h,
-                z.content,
-                z.solution,
-                z.answer_timestamp,
-                z.answer,
-                z.is_correct,
-                z.retries,
-            ]
-
-
-# PAGES
-
 
 class Game(Page):
     timeout_seconds = 60
@@ -267,23 +219,20 @@ class Game(Page):
     def vars_for_template(player: Player):
         session = player.session
 
-        return dict(
-            DEBUG=settings.DEBUG,
-        )
+        return dict(DEBUG=settings.DEBUG,)
 
     @staticmethod
     def js_vars(player: Player):
         conf = player.session.config
         return dict(
-            trial_delay=conf.get('trial_delay', 1.0),
+            puzzle_delay=conf.get('puzzle_delay', 1.0),
             retry_delay=conf.get('retry_delay', 1.0),
             force_solve=conf.get('force_solve', False),
-            allow_skip=conf.get('allow_skip', False),
         )
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        stats = summarize_trials(player)
+        stats = summarize_puzzles(player)
         player.total = stats['total']
         player.correct = stats['correct']
         player.incorrect = stats['incorrect']
