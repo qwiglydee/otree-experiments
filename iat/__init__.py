@@ -175,10 +175,11 @@ def get_progress(player: Player):
     """Returns summary progress progress for a player"""
     conf = player.session.config
     total = conf['num_iterations'][player.game_round]
-    shown = len(Trial.filter(player=player))
-    # expect 1 unanswered for current question
-    unanswered = len(Trial.filter(player=player, answer=None))
-    return {'total': total, 'answered': shown - unanswered}
+    return {
+        'round': player.game_round,
+        'iteration': player.game_iteration,
+        'total': total,
+    }
 
 
 def encode_question(trial: Trial):
@@ -312,6 +313,7 @@ class Round1(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 1
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -327,6 +329,7 @@ class Round2(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 2
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -342,6 +345,7 @@ class Round3(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 3
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -357,6 +361,7 @@ class Round4(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 4
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -372,6 +377,7 @@ class Round5(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 5
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -387,6 +393,7 @@ class Round6(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 6
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game
@@ -402,6 +409,7 @@ class Round7(Page):
     @staticmethod
     def vars_for_template(player: Player):
         player.game_round = 7
+        player.game_iteration = 0
         return vars_for_template(player)
 
     live_method = play_game

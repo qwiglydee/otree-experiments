@@ -69,7 +69,7 @@ class View {
 
     renderProgress() {
         if (this.model.progress.total !== null) {
-            this.$progress.value = this.model.progress.answered / this.model.progress.total;
+            this.$progress.value = (this.model.progress.iteration - 1)/ this.model.progress.total;
         } else {
             this.$progress.value = 0;
         }
