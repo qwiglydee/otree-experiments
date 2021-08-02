@@ -157,7 +157,7 @@ class Controller {
     giveAnswer(answer) {
         this.ts_answer = performance.now();
         this.model.answer = answer;
-        liveSend({answer: answer, reaction: this.ts_answer - this.ts_question});
+        liveSend({answer: answer, reaction: (this.ts_answer - this.ts_question)/1000});
         this.view.renderAnswer();
     }
 
