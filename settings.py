@@ -1,10 +1,17 @@
 from os import environ
 
 SESSION_CONFIGS = [
-    # all features with their default values, to make them available in session config UI
+    dict(
+        name="decoding",
+        display_name="Decoding numbers to words",
+        num_demo_participants=1,
+        app_sequence=["real_effort"],
+        task='decoding',
+        attempts_per_puzzle=1,
+    ),
     dict(
         name="transcription",
-        display_name="Transcription of distorted text (configurable characters and length)",
+        display_name="Transcription of text from an image",
         num_demo_participants=1,
         app_sequence=["real_effort"],
         task='transcription',
@@ -13,7 +20,7 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="matrices",
-        display_name="matrices of 0 and 1 (configurable symbols and size)",
+        display_name="Counting symbols in a matrix",
         num_demo_participants=1,
         app_sequence=["real_effort"],
         task='matrix',
@@ -47,9 +54,7 @@ ADMIN_PASSWORD = environ.get("OTREE_ADMIN_PASSWORD")
 
 DEMO_PAGE_TITLE = "Real-effort tasks"
 DEMO_PAGE_INTRO_HTML = """
-Real-effort tasks with multiple configuration options such as
-        "puzzle_delay",
-        and "retry_delay" (see settings.py).
+Real-effort tasks with multiple configuration options.
 """
 
 SECRET_KEY = "2015765205890"

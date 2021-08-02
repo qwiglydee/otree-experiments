@@ -16,7 +16,7 @@ def get_task_module(player):
     This function is only needed for demo mode, to demonstrate all the different versions.
     You can simplify it if you want.
     """
-    from . import task_matrix, task_transcription
+    from . import task_matrix, task_transcription, task_decoding
 
     session = player.session
     task = session.config.get('task')
@@ -24,6 +24,8 @@ def get_task_module(player):
         return task_matrix
     if task == 'transcription':
         return task_transcription
+    if task == 'decoding':
+        return task_decoding
     # default
     return task_matrix
 
@@ -118,6 +120,7 @@ def play_game(player: Player, data: dict):
     session = player.session
     my_id = player.id_in_group
     ret_params = session.ret_params
+    task_module = get_task_module(player)
 
     now = time.time()
 
@@ -139,7 +142,7 @@ def play_game(player: Player, data: dict):
 
     answer = data['answer']
     z.response = answer
-    z.is_correct = answer.lower() == z.solution.lower()
+    z.is_correct = task_module.is_correct(answer, z)
     z.response_timestamp = now
     z.attempts += 1
     player.num_correct += z.is_correct
