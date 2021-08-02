@@ -45,7 +45,7 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     session = subsession.session
-    defaults = dict(retry_delay=1.0, attempts_per_puzzle=1,)
+    defaults = dict(retry_delay=1.0, attempts_per_puzzle=1)
     session.ret_params = {}
     for param in defaults:
         session.ret_params[param] = session.config.get(param, defaults[param])
@@ -71,6 +71,7 @@ class Puzzle(ExtraModel):
     iteration = models.IntegerField(initial=0)
     attempts = models.IntegerField(initial=0)
     timestamp = models.FloatField(initial=0)
+    # can be either simple text, or a json-encoded definition of the puzzle, etc.
     text = models.LongStringField()
     # solution may be the same as text, if it's simply a transcription task
     solution = models.LongStringField()
@@ -163,7 +164,7 @@ def play_game(player: Player, data: dict):
 
 
 class Game(Page):
-    timeout_seconds = 5 * 60
+    timeout_seconds = 60
 
     live_method = play_game
 
