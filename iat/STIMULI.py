@@ -1,0 +1,37 @@
+WORDS = {
+    'family': [
+        "garden",
+        "kitchen",
+        "marriage",
+        "laundry",
+        "home",
+        "children",
+        "relatives",
+    ],
+    'career': [
+        "office",
+        "manager",
+        "salary",
+        "job",
+        "briefcase",
+        "profession",
+        "employees",
+    ],
+    "male": [
+        "man",
+        "he",
+        "men",
+        "boy",
+        "his",
+        "gent",
+    ],
+    "female": [
+        "woman",
+        "she",
+        "women",
+        "her",
+        "girl",
+        "hers",
+        "lady",
+    ],
+}

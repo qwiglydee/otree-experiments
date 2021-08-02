@@ -1,0 +1,59 @@
+.primary {
+    color: #8a2be2;
+    text-transform: uppercase;
+}
+
+.secondary {
+    color: #a52a2a;
+}
+
+.category {
+    font-size: x-large;
+}
+
+.stimulus {
+    font-size: x-large;
+    min-height: 1.25em;
+}
+
+.hidden {
+    display: none;
+}
+
+
+.key {
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
+#progress-bar {
+    width: 100%;
+}
+
+.corners-container {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+}
+
+.stimulus-container {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+
+.instructions {
+    text-align: center;
+}
+
+
+.input-group {
+    width: 5em;
+}
+
+.input-group .form-control {
+    background-color: transparent;
+    border: none;
+    font-weight: bold;
+    font-size: x-large;
+}

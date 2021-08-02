@@ -1,0 +1,60 @@
+{{ block title }}
+    {{ title }}
+{{ endblock }}
+
+{% block styles  %}
+    <link href="{% static 'iat.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{{ block content }}
+    <progress id="progress-bar" max="1" value="0"></progress>
+
+    <div class="corners-container">
+        <div class="left corner">
+            {{ if 'primary' in categories.left }}
+            <div class="primary category">{{ categories.left.primary }}</div>
+            {{ endif }}
+            {{ if 'secondary' in categories.left }}
+            <div class="secondary category">{{ categories.left.secondary }}</div>
+            {{ endif }}
+        </div>
+
+        <div class="right corner">
+            {{ if 'primary' in categories.right }}
+            <div class="primary category">{{ categories.right.primary }}</div>
+            {{ endif }}
+            {{ if 'secondary' in categories.right }}
+            <div class="secondary category">{{ categories.right.secondary }}</div>
+            {{ endif }}
+        </div>
+    </div>
+
+    <div class="stimulus-container">
+        <div class="stimulus" id="stimulus"></div>
+        <div class="input-group m-1">
+            <input type="text" id="answer-inp" class="form-control" readonly>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <hr/>
+        <p>Press <span class="key">{{ keys.left }}</span> for
+            {{left_categories.0}} {{if left_categories|length > 1}} or {{left_categories.1}} {{ endif }}
+        </p>
+        <p>Press <span class="key">{{ keys.right }}</span> for
+            {{right_categories.0}} {{if right_categories|length > 1}} or {{right_categories.1}} {{ endif }}
+        </p>
+
+        <div id="start-help">
+            <p>To begin press SPACE.</p>
+        </div>
+    </div>
+
+    {{ next_button }}
+
+{{ endblock }}
+
+{{ block scripts }}
+<script src="{{ static 'iat.js' }}"></script>
+
+{{ endblock }}
