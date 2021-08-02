@@ -38,8 +38,14 @@ Captcha page
         failed: document.getElementById('failed-txt'),
     }
 
+    function setFrozen(val) {
+        input.disabled = val;
+        submit_btn.disabled = val;
+        isFrozen = val;
+        input.focus();
+    }
+
     function clearInputValidity() {
-        console.log('clearing input validity');
         input.classList.remove("is-valid", "is-invalid");
     }
 
@@ -58,19 +64,15 @@ Captcha page
     }
 
     function submit() {
-        if (isFrozen) return;
-        let val = input.value;
-        input.disabled = true;
-        submit_btn.disabled = true;
-
-        if (val !== "") {
-            send_answer(val);
-        }
+        if (isFrozen || input.value === '') return;
+        send_answer(input.value);
     }
 
     function liveRecv(data) {
+        let {image, ...dataExceptImage} = data;
+        console.log(dataExceptImage);
         if ('freeze' in data) {
-            freeze(data.freeze);
+            tempFreeze(data.freeze);
         }
         if ('is_correct' in data) {
             feedback(data.is_correct);
@@ -92,23 +94,21 @@ Captcha page
     function clear() {
         image.src = "";
         input.value = "";
-        clearInputValidity();
     }
 
     function new_puzzle(img) {
+        setFrozen(false);
         clear();
-        input.disabled = false;
-        submit_btn.disabled = false;
         image.src = img;
     }
 
     function send_answer(answer) {
         clearInputValidity();
+        setFrozen(true);
         liveSend({answer: answer});
     }
 
     function feedback(is_correct) {
-        console.log('feedback', is_correct);
         input.classList.add(is_correct ? "is-valid" : "is-invalid");
     }
 
@@ -116,34 +116,26 @@ Captcha page
         warn.textContent = `Wait ${Math.round(seconds)} seconds before trying again`;
     }
 
-    function freeze(countdown) {
-        isFrozen = true;
-        image.hidden = true;
+    function tempFreeze(countdown) {
+        setFrozen(true);
         waitMsg(countdown);
         let timer = window.setInterval(function() {
             countdown -= 1;
             if (countdown > 0) {
                 waitMsg(countdown);
             } else {
-                isFrozen = false;
-                image.hidden = false;
+                setFrozen(false);
                 warn.textContent = "";
+                clearInputValidity();
                 clearInterval(timer);
             }
         }, 1000);
     }
 
-
     function stats(stats) {
         fields.iter.textContent = stats.total;
         fields.solved.textContent = stats.correct;
         fields.failed.textContent = stats.incorrect;
-    }
-
-    function next() {
-        window.setTimeout(function() {
-            liveSend({next: true});
-        }, js_vars.puzzle_delay * 1000);
     }
 
     function gameover() {

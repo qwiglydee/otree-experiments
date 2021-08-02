@@ -93,6 +93,18 @@ def encode_puzzle(puzzle: Puzzle):
     return data
 
 
+def get_stats(player: Player):
+    return dict(
+        correct=player.num_correct,
+        incorrect=player.num_incorrect,
+        iteration=player.iteration,
+    )
+
+
+def get_state(player: Player, z: Puzzle):
+    return dict(stats=get_stats(player), image=encode_puzzle(z))
+
+
 def play_game(player: Player, data: dict):
     """Handles iterations of the game on a live page
 
@@ -106,53 +118,49 @@ def play_game(player: Player, data: dict):
     - server < client {'cheat': true} -- request solution
     - server > client {'solution': str} -- solution
     """
+
     session = player.session
     my_id = player.id_in_group
     ret_params = session.ret_params
 
     now = time.time()
 
-    # get last puzzle, if any
-    z = get_last_puzzle(player)
     if "cheat" in data and settings.DEBUG:
+        z = get_last_puzzle(player)
         return {my_id: {'solution': z.solution}}
 
-    payload = {}
+    if data == {}:
+        z = get_last_puzzle(player) or generate_puzzle(player)
+        return {my_id: get_state(player, z)}
 
-    # check given answer and return
-    answer = data.get('answer')
-    if answer:
-        if (
-            z.attempts > 0
-            and time.time() < z.response_timestamp + ret_params['retry_delay']
-        ):
-            raise RuntimeError("Client advancing too fast!")
-        if 0 < ret_params['max_iterations'] < z.iteration:
-            return {my_id: {"gameover": True}}
+    z = get_last_puzzle(player)
 
-        z.response = answer
-        z.is_correct = answer.lower() == z.solution.lower()
-        z.response_timestamp = now
-        z.attempts += 1
+    if (
+        z.attempts > 0
+        and time.time() < z.response_timestamp + ret_params['retry_delay']
+    ):
+        print("Client advancing too fast!")
+        return {my_id: {'msg': 'Client advancing too fast'}}
 
-        payload['is_correct'] = z.is_correct
-        player.num_correct += z.is_correct
-        player.num_incorrect += not z.is_correct
+    answer = data['answer']
+    z.response = answer
+    z.is_correct = answer.lower() == z.solution.lower()
+    z.response_timestamp = now
+    z.attempts += 1
+    player.num_correct += z.is_correct
+    player.num_incorrect += not z.is_correct
 
-    if (not z) or z.is_correct or (z.attempts >= ret_params['attempts_per_puzzle']):
+    payload = dict(is_correct=z.is_correct)
+
+    if z.is_correct:
         z = generate_puzzle(player)
-
-    payload['stats'] = dict(
-        correct=player.num_correct,
-        incorrect=player.num_incorrect,
-        iteration=player.iteration,
-    )
-
-    if z.attempts > 0:
-        payload['freeze'] = ret_params['retry_delay']
-    payload['image'] = encode_puzzle(z)
-    payload['is_retry'] = z.attempts > 0
-
+        payload.update(get_state(player, z))
+    else:
+        if z.attempts < ret_params['attempts_per_puzzle']:
+            payload.update(freeze=ret_params['retry_delay'], is_retry=True)
+        else:
+            z = generate_puzzle(player)
+            payload.update(get_state(player, z))
     return {my_id: payload}
 
 
