@@ -19,12 +19,12 @@ def get_task_module(player):
     from . import task_matrix, task_transcription, task_decoding
 
     session = player.session
-    task = session.config.get('task')
-    if task == 'matrix':
+    task = session.config.get("task")
+    if task == "matrix":
         return task_matrix
-    if task == 'transcription':
+    if task == "transcription":
         return task_transcription
-    if task == 'decoding':
+    if task == "decoding":
         return task_decoding
     # default
     return task_matrix
@@ -45,7 +45,7 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     session = subsession.session
-    defaults = dict(retry_delay=1.0, attempts_per_puzzle=1)
+    defaults = dict(retry_delay=1.0, trial_delay=1.0, attempts_per_puzzle=1)
     session.ret_params = {}
     for param in defaults:
         session.ret_params[param] = session.config.get(param, defaults[param])
@@ -57,8 +57,9 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
     iteration = models.IntegerField(initial=0)
+    num_trials = models.IntegerField(initial=0)
     num_correct = models.IntegerField(initial=0)
-    num_failed_puzzles = models.IntegerField(initial=0)
+    num_failed = models.IntegerField(initial=0)
 
 
 # puzzle-specific stuff
@@ -98,75 +99,133 @@ def get_current_puzzle(player):
 
 
 def encode_puzzle(puzzle: Puzzle):
-    """Create an image for a puzzle"""
-    task_module = get_task_module(puzzle.player)
+    """Create data describing puzzle to send to client"""
+    task_module = get_task_module(puzzle.player)  # noqa
+    # generate image for the puzzle
     image = task_module.render_image(puzzle)
     data = encode_image(image)
-    return data
+    return dict(image=data)
 
 
-def get_stats(player: Player):
+def get_progress(player: Player):
+    """Return current player progress"""
     return dict(
+        num_trials=player.num_trials,
         num_correct=player.num_correct,
-        num_incorrect=player.num_failed_puzzles,
+        num_incorrect=player.num_failed,
         iteration=player.iteration,
     )
 
 
-def get_full_state(player: Player, z: Puzzle):
-    return dict(stats=get_stats(player), image=encode_puzzle(z))
-
-
 def play_game(player: Player, data: dict):
+    """Main game workflow
+    Implemented as reactive scheme: receive message from vrowser, react, respond.
+
+    Generic game workflow, from server point of view:
+    - receive: {} -- empty message means page loaded
+    - check if it's game start or page refresh midgame
+    - respond: {'puzzle': null, 'progress': ...} -- inidcates no current puzzle and a progress
+    - respond: {'puzzle': data, 'progress': ...} -- in case of midgame page reload
+
+    - receive: {'next': true} -- request for a next/first puzzle
+    - generate new puzzle
+    - respond: {'puzzle': data 'progress': ...}
+
+    - receive: {'answer': ...} -- user answered the puzzle
+    - check if the answer is correct
+    - respond: {'feedback': true|false, 'progress': ...} -- feedback to the answer
+
+    If allowed by config `attempts_pre_puzzle`, client can send more 'answer' messages
+    When done solving, client should explicitely request next puzzle by sending 'next' message
+    """
     session = player.session
     my_id = player.id_in_group
     ret_params = session.ret_params
     task_module = get_task_module(player)
 
     now = time.time()
+    # the current puzzle or none
+    current = get_current_puzzle(player)
 
     if "cheat" in data and settings.DEBUG:
-        z = get_current_puzzle(player)
-        return {my_id: {'solution': z.solution}}
+        return {my_id: dict(solution=current.solution)}
 
+    # page loaded
     if data == {}:
-        z = get_current_puzzle(player) or generate_puzzle(player)
-        return {my_id: get_full_state(player, z)}
-
-    z = get_current_puzzle(player)
-
-    if (
-        z.attempts > 0
-        and time.time() < z.response_timestamp + ret_params['retry_delay']
-    ):
-        raise {my_id: dict(msg='Client advancing too fast')}
-
-    answer = data['answer']
-    z.response = answer
-    z.is_correct = task_module.is_correct(answer, z)
-    z.response_timestamp = now
-    z.attempts += 1
-    player.num_correct += z.is_correct
-
-    payload = dict(is_correct=z.is_correct)
-
-    if z.is_correct:
-        z = generate_puzzle(player)
-        payload.update(get_full_state(player, z))
-    else:
-        if z.attempts < ret_params['attempts_per_puzzle']:
-            payload.update(freeze=ret_params['retry_delay'], is_retry=True)
+        p = get_progress(player)
+        if current:
+            return {my_id: dict(puzzle=encode_puzzle(current), progress=p)}
         else:
-            player.num_failed_puzzles += 1
-            z = generate_puzzle(player)
-            payload.update(get_full_state(player, z))
-    return {my_id: payload}
+            return {my_id: dict(puzzle=None, progress=p)}
+
+    # client requested new puzzle
+    if "next" in data:
+        if current is not None:
+            if current.response is None:
+                raise RuntimeError("trying to skip over unsolved puzzle")
+            if now < current.timestamp + ret_params["trial_delay"]:
+                raise RuntimeError("retrying too fast")
+
+        # generate new puzzle
+        z = generate_puzzle(player)
+        p = get_progress(player)
+        return {my_id: dict(puzzle=encode_puzzle(z), progress=p)}
+
+    # client gives an answer to current puzzle
+    if "answer" in data:
+        if current is None:
+            raise RuntimeError("trying to answer no puzzle")
+
+        if current.response is not None:  # it's a retry
+            if current.attempts >= ret_params["attempts_per_puzzle"]:
+                raise RuntimeError("no more attempts allowed")
+            if now < current.response_timestamp + ret_params["retry_delay"]:
+                raise RuntimeError("retrying too fast")
+
+            # undo last updation of player progress
+            player.num_trials -= 1
+            if current.is_correct:
+                player.num_correct -= 1
+            else:
+                player.num_failed -= 1
+
+        # check answer
+        answer = data["answer"]
+
+        if answer == "" or answer is None:
+            raise ValueError("bogus answer")
+
+        current.response = answer
+        current.is_correct = task_module.is_correct(answer, current)
+        current.response_timestamp = now
+        current.attempts += 1
+
+        # update player progress
+        if current.is_correct:
+            player.num_correct += 1
+        else:
+            player.num_failed += 1
+        player.num_trials += 1
+
+        retries_left = ret_params["attempts_per_puzzle"] - current.attempts
+        p = get_progress(player)
+        return {
+            my_id: dict(
+                feedback=current.is_correct, retries_left=retries_left, progress=p
+            )
+        }
+
+    raise RuntimeError("unrecognized message from client")
 
 
 class Game(Page):
     timeout_seconds = 60
 
     live_method = play_game
+
+    @staticmethod
+    def js_vars(player: Player):
+        return player.session.ret_params
 
     @staticmethod
     def vars_for_template(player: Player):
