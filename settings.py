@@ -64,44 +64,28 @@ SECRET_KEY = "2015765205890"
 import sys
 
 if sys.argv[1] == 'test':
-    APPS = ['transcription', 'matrices']
+    TASKS = ['decoding', 'matrix', 'transcription']
     PUZZLE_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
     MAX_ITERATIONS = 5
     SESSION_CONFIGS = []
-    for app in APPS:
+    for task in TASKS:
         SESSION_CONFIGS.extend(
             [
                 dict(
-                    name=f"{app}_defaults",
+                    name=f"{task}_defaults",
                     num_demo_participants=1,
-                    app_sequence=[app],
+                    app_sequence=['real_effort'],
                     puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                 ),
                 dict(
-                    name=f"{app}_limited",
+                    name=f"{task}_retrying",
                     num_demo_participants=1,
-                    app_sequence=[app],
-                    max_iterations=MAX_ITERATIONS,
+                    app_sequence=['real_effort'],
                     puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
-                ),
-                dict(
-                    name=f"{app}_forcing",
-                    num_demo_participants=1,
-                    app_sequence=[app],
-                    force_solve=True,
-                    puzzle_delay=PUZZLE_DELAY,
-                    retry_delay=RETRY_DELAY,
-                ),
-                dict(
-                    name=f"{app}_retrying",
-                    num_demo_participants=1,
-                    app_sequence=[app],
-                    puzzle_delay=PUZZLE_DELAY,
-                    retry_delay=RETRY_DELAY,
-                    allow_retry=True,
+                    attempts_per_puzzle=5,
                 ),
             ]
         )
