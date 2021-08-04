@@ -166,7 +166,7 @@ def play_game(player: Player, message: dict):
             return {my_id: dict(type='status', progress=p)}
 
     if message_type == "cheat" and settings.DEBUG:
-        return {my_id: dict(solution=current.solution)}
+        return {my_id: dict(type='solution', solution=current.solution)}
 
     # client requested new puzzle
     if message_type == "next":
