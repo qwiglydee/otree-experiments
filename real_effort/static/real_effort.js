@@ -1,8 +1,9 @@
 /*
 Generic game workflow, from client's point of view:
 
-- send: {type: 'load'} -- when page loaded
-- receive: {type: 'status, puzzle: null, progress: ...} -- means game just started
+- send: {type: 'load'} -- when page loaded or reloaded
+- receive: {type: 'status', progress: ...} -- if the game just started
+- receive: {type: 'status', progress: ..., puzzle: data} -- in case of reload midgame
 
 - send: {type: 'next'} -- request puzzle
 - receive: {type: 'puzzle', puzzle: data, progress: ...}
@@ -18,6 +19,8 @@ Generic game workflow, from client's point of view:
 
 - wait for `puzzle_delay` seconds
 - request next puzzle
+
+- receive {type: 'status', progress: ..., iterations_left: 0} -- when max_iterations exhausted
 */
 
 let isFrozen = false;  // retry delay active, submitting is blocked
@@ -39,9 +42,11 @@ function liveRecv(message) {
     switch(message.type) {
 
         case 'status':
-            if (message.puzzle === null) {  // start of the game
+            if (message.progress.iteration === 0) {   // start of the game
                 liveSend({type: 'next'});
-            } else {
+            } else if (message.iterations_left === 0) {  // exhausted max iterations
+                document.getElementById("form").submit();
+            } else if (message.puzzle) {
                 newPuzzle(message.puzzle);
             }
             break;

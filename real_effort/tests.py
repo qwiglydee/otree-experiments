@@ -26,12 +26,17 @@ class PlayerBot(Bot):
         "retrying_nodelay",  # retrying w/out delay
         "retrying_many",  # retrying many times
         "retrying_limit",  # retrying too many times
+        "iter_limit",  # exchausting number of iterations
         "cheat_debug",
         "cheat_nodebug",
     ]
 
     def play_round(self):
-        yield Submission(Game, check_html=False, timeout_happened=True)
+
+        if self.session.ret_params['max_iterations']:
+            yield Submission(Game, check_html=False, timeout_happened=False)
+        else:
+            yield Submission(Game, check_html=False, timeout_happened=True)
 
         player = self.player
         num_correct = len(Puzzle.filter(player=player, is_correct=True))
@@ -73,7 +78,6 @@ def get_last_puzzle_clone(p):
     if len(data) == 0:
         return None
     datum = data[-1]
-    del datum["id"]
     return Puzzle(**datum)  # noqa
 
 
@@ -161,10 +165,9 @@ def expect_not_answered(p):
     expect(_puzzle.is_correct, None)
 
 
-def expect_response_status(response, has_puzzle):
+def expect_response_status(response):
     expect(response['type'], 'status')
-    expect("puzzle", "in", response)
-    expect(response['puzzle'], '!=' if has_puzzle else '==', None)
+    expect("progress", "in", response)
 
 
 def expect_response_puzzle(response):
@@ -213,9 +216,8 @@ def live_test_normal(method, player, conf):
 
     # part of normal flow, checking everything
     resp = reload(method, player)
-    expect_response_status(resp, False)
+    expect_response_status(resp)
     expect_progress(player, total=0, correct=0, incorrect=0)
-    expect(resp["puzzle"], None)
     expect_response_progress(
         resp, iteration=0, num_trials=0, num_correct=0, num_incorrect=0
     )
@@ -308,7 +310,7 @@ def live_test_reloading_start(method, player, conf):
     # initial load
     resp = reload(method, player)
     expect_progress(player, total=0, correct=0, incorrect=0)
-    expect_response_status(resp, False)
+    expect_response_status(resp)
     expect_response_progress(
         resp, iteration=0, num_trials=0, num_correct=0, num_incorrect=0
     )
@@ -318,7 +320,7 @@ def live_test_reloading_start(method, player, conf):
 def live_test_reloading_midgame(method, player, conf):
     resp = reload(method, player)
     expect_progress(player, total=0, correct=0, incorrect=0)
-    expect_response_status(resp, False)
+    expect_response_status(resp)
 
     # first trial
     move_forward(method, player)
@@ -329,7 +331,7 @@ def live_test_reloading_midgame(method, player, conf):
     resp = reload(method, player)
     expect_progress(player, total=1, correct=0, incorrect=0)
     expect(get_last_puzzle(player), last)
-    expect_response_status(resp, True)
+    expect_response_status(resp)
     expect_response_progress(
         resp, iteration=1, num_trials=0, num_correct=0, num_incorrect=0
     )
@@ -556,30 +558,26 @@ def live_test_skipping_incorrect(method, player, conf):
 
 def live_test_iter_limit(method, player, conf):
     puzzle_delay = conf['puzzle_delay']
-    max_iter = conf['num_iterations']
+    max_iter = conf['max_iterations']
 
-    # exhaust all iterations
     if max_iter is None:
         return
 
-    last = None
+    # exhaust all iterations
 
     for _ in range(max_iter):
-        resp = move_forward(method, player)
-        expect_forwarded(player, last)
-        expect_response_puzzle(resp)
-        last = get_last_puzzle(player)
-
+        move_forward(method, player)
         answer = solution(player)
-        resp = give_answer(method, player, answer)
-        expect_answered_correctly(player, answer)
-        expect_response_correct(resp)
-
+        give_answer(method, player, answer)
         time.sleep(puzzle_delay)
+
+    expect_progress(player, total=max_iter, correct=max_iter, incorrect=0)
+    last = get_last_puzzle_clone(player)
 
     resp = move_forward(method, player)
     expect_not_forwarded(player, last)
-    expect('gameover', 'in', resp)
+    expect_response_status(resp)
+    expect(resp['iterations_left'], 0)
 
 
 def live_test_cheat_debug(method, player, conf):

@@ -67,7 +67,7 @@ if sys.argv[1] == 'test':
     TASKS = ['decoding', 'matrix', 'transcription']
     PUZZLE_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
-    MAX_ITERATIONS = 5
+    MAX_ITERATIONS = 3
     SESSION_CONFIGS = []
     for task in TASKS:
         SESSION_CONFIGS.extend(
@@ -86,6 +86,14 @@ if sys.argv[1] == 'test':
                     puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                     attempts_per_puzzle=5,
+                ),
+                dict(
+                    name=f"{task}_limited",
+                    num_demo_participants=1,
+                    app_sequence=['real_effort'],
+                    puzzle_delay=PUZZLE_DELAY,
+                    retry_delay=RETRY_DELAY,
+                    max_iterations=MAX_ITERATIONS,
                 ),
             ]
         )

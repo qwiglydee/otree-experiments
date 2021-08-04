@@ -45,7 +45,9 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     session = subsession.session
-    defaults = dict(retry_delay=1.0, puzzle_delay=1.0, attempts_per_puzzle=1)
+    defaults = dict(
+        retry_delay=1.0, puzzle_delay=1.0, attempts_per_puzzle=1, max_iterations=None
+    )
     session.ret_params = {}
     for param in defaults:
         session.ret_params[param] = session.config.get(param, defaults[param])
@@ -124,8 +126,8 @@ def play_game(player: Player, message: dict):
     Generic game workflow, from server point of view:
     - receive: {'type': 'load'} -- empty message means page loaded
     - check if it's game start or page refresh midgame
-    - respond: {'type': 'status', 'puzzle': null} -- inidcates no current puzzle and a progress
-    - respond: {'type': 'status', 'puzzle': data} -- in case of midgame page reload
+    - respond: {'type': 'status', 'progress': ...}
+    - respond: {'type': 'status', 'progress': ..., 'puzzle': data} -- in case of midgame page reload
 
     - receive: {'type': 'next'} -- request for a next/first puzzle
     - generate new puzzle
@@ -137,7 +139,10 @@ def play_game(player: Player, message: dict):
 
     If allowed by config `attempts_pre_puzzle`, client can send more 'answer' messages
     When done solving, client should explicitely request next puzzle by sending 'next' message
+
     Field 'progress' is added to all server responses to indicate it on page.
+
+    To indicate max_iteration exhausted in response to 'next' server returns 'status' message with iterations_left=0
     """
     session = player.session
     my_id = player.id_in_group
@@ -155,10 +160,10 @@ def play_game(player: Player, message: dict):
         p = get_progress(player)
         if current:
             return {
-                my_id: dict(type='status', puzzle=encode_puzzle(current), progress=p)
+                my_id: dict(type='status', progress=p, puzzle=encode_puzzle(current))
             }
         else:
-            return {my_id: dict(type='status', puzzle=None, progress=p)}
+            return {my_id: dict(type='status', progress=p)}
 
     if message_type == "cheat" and settings.DEBUG:
         return {my_id: dict(solution=current.solution)}
@@ -170,7 +175,12 @@ def play_game(player: Player, message: dict):
                 raise RuntimeError("trying to skip over unsolved puzzle")
             if now < current.timestamp + ret_params["puzzle_delay"]:
                 raise RuntimeError("retrying too fast")
-
+            if current.iteration == ret_params['max_iterations']:
+                return {
+                    my_id: dict(
+                        type='status', progress=get_progress(player), iterations_left=0
+                    )
+                }
         # generate new puzzle
         z = generate_puzzle(player)
         p = get_progress(player)
