@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 import json
 
-TEXT_FONT = Path(__file__).parent.joinpath("assets/FreeSerifBold.otf")
+TEXT_FONT = Path(__file__).parent / "assets" / "FreeSerifBold.otf"
 
 CHARSET = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 DIGITS = tuple('0123456789')

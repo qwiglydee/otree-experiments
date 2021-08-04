@@ -2,7 +2,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import random
 
-TEXT_FONT = Path(__file__).parent.joinpath("assets/FreeSerifBold.otf")
+TEXT_FONT = Path(__file__).parent / "assets" / "FreeSerifBold.otf"
 
 WIDTH = 5
 HEIGHT = 4
