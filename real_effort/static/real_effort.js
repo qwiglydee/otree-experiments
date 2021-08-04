@@ -93,14 +93,15 @@ function newPuzzle(data) {
 
 
 function resetPuzzle() {
+    // a trick to avoid image collapsing/blinking
+    image.width = image.width;
+    image.height = image.height;
+
     image.src = "";
 }
 
 function showPuzzle(data) {
     image.src = data.image;
-    // a trick to avoid image blinking during trials
-    image.width = image.width;
-    image.height = image.height;
 }
 
 function resetInput() {
