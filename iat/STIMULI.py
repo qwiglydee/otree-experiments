@@ -1,4 +1,4 @@
-WORDS = {
+DICT = {
     'family': [
         "garden",
         "kitchen",

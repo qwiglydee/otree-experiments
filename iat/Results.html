@@ -1,0 +1,24 @@
+{{ block title }}
+    Implicit Association Test
+{{ endblock }}
+
+{% block styles  %}
+    <link href="{% static 'iat.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{{ block content }}
+    <p>Results, for testing purposes only</p>
+
+    <h6>Average reaction time</h6>
+    <dl>
+        <dt>Round 3</dt>
+        <dd>{{ data.mean3 }}</dd>
+        <dt>Round 4</dt>
+        <dd>{{ data.mean4 }}</dd>
+        <dt>Round 6</dt>
+        <dd>{{ data.mean6 }}</dd>
+        <dt>Round 7</dt>
+        <dd>{{ data.mean7 }}</dd>
+    </dl>
+
+{{ endblock }}

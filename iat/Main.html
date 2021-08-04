@@ -1,5 +1,5 @@
 {{ block title }}
-    {{ title }}
+    {{ block.title }}
 {{ endblock }}
 
 {% block styles  %}
@@ -11,20 +11,19 @@
 
     <div class="corners-container">
         <div class="left corner">
-            {{ if 'primary' in categories.left }}
-            <div class="primary category">{{ categories.left.primary }}</div>
+            {{ if subsession.has_primary }}
+            <div class="primary category">{{ subsession.primary_left }}</div>
             {{ endif }}
-            {{ if 'secondary' in categories.left }}
-            <div class="secondary category">{{ categories.left.secondary }}</div>
+            {{ if subsession.has_secondary }}
+            <div class="secondary category">{{ subsession.secondary_left }}</div>
             {{ endif }}
         </div>
-
         <div class="right corner">
-            {{ if 'primary' in categories.right }}
-            <div class="primary category">{{ categories.right.primary }}</div>
+            {{ if subsession.has_primary }}
+            <div class="primary category">{{ subsession.primary_right }}</div>
             {{ endif }}
-            {{ if 'secondary' in categories.right }}
-            <div class="secondary category">{{ categories.right.secondary }}</div>
+            {{ if subsession.has_secondary }}
+            <div class="secondary category">{{ subsession.secondary_right }}</div>
             {{ endif }}
         </div>
     </div>
@@ -39,10 +38,14 @@
     <div class="instructions">
         <hr/>
         <p>Press <span class="key">{{ keys.left }}</span> for
-            {{left_categories.0}} {{if left_categories|length > 1}} or {{left_categories.1}} {{ endif }}
+            {{ if subsession.has_primary }} <span class="primary">{{ subsession.primary_left }}</span> {{ endif }}
+            {{ if subsession.has_primary and subsession.has_secondary }} or {{ endif }}
+            {{ if subsession.has_secondary }} <span class="secondary">{{ subsession.secondary_left }}</span> {{ endif }}
         </p>
         <p>Press <span class="key">{{ keys.right }}</span> for
-            {{right_categories.0}} {{if right_categories|length > 1}} or {{right_categories.1}} {{ endif }}
+            {{ if subsession.has_primary }} <span class="primary">{{ subsession.primary_right }}</span> {{ endif }}
+            {{ if subsession.has_primary and subsession.has_secondary }} or {{ endif }}
+            {{ if subsession.has_secondary }} <span class="secondary">{{ subsession.secondary_right }}</span> {{ endif }}
         </p>
 
         <div id="start-help">

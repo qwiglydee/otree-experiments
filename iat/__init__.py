@@ -1,7 +1,8 @@
 import time
 import random
 from otree.api import *
-from .STIMULI import WORDS
+from .STIMULI import DICT
+from .blocks import BLOCKS
 
 doc = """
 Implicit Association Test, draft
@@ -11,7 +12,7 @@ Implicit Association Test, draft
 class Constants(BaseConstants):
     name_in_url = 'iat'
     players_per_group = None
-    num_rounds = 1
+    num_rounds = 7
 
     # the keys F and J have tactile marks
     keys = {'left': "f", 'right': "j"}
@@ -19,7 +20,46 @@ class Constants(BaseConstants):
 
 
 class Subsession(BaseSubsession):
-    pass
+    practice = models.BooleanField()
+
+    has_primary = models.BooleanField()
+    primary_left = models.StringField()
+    primary_right = models.StringField()
+
+    has_secondary = models.BooleanField()
+    secondary_left = models.StringField()
+    secondary_right = models.StringField()
+
+
+def creating_session(subsession: Subsession):
+    # block have structure like
+    # {'left': {'primary': 1, 'secondary': 2}, 'right': {'primary': 1, 'secondary': 2}}
+    block = BLOCKS[subsession.round_number]
+    # conf have structure like
+    # {'primary': [category1, category2], 'secondary': [category1, category2]
+    conf = subsession.session.config
+
+    def get_cat(cls, side):
+        block_side = block[side]
+        if cls not in block_side:
+            return ""
+        idx = block_side[cls] - 1
+        cat = conf[cls][idx]
+        assert cat in DICT
+        return cat
+
+    subsession.practice = block['practice']
+    subsession.primary_left = get_cat('primary', 'left')
+    subsession.primary_right = get_cat('primary', 'right')
+    subsession.secondary_left = get_cat('secondary', 'left')
+    subsession.secondary_right = get_cat('secondary', 'right')
+
+    subsession.has_primary = (
+        subsession.primary_left != "" and subsession.primary_right != ""
+    )
+    subsession.has_secondary = (
+        subsession.secondary_left != "" and subsession.secondary_right != ""
+    )
 
 
 class Group(BaseGroup):
@@ -27,12 +67,10 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    # current state of the game
-    game_round = models.IntegerField(initial=1)
-    game_iteration = models.IntegerField(initial=1)
-
-
-# experiment data and utilities
+    iteration = models.IntegerField(initial=1)
+    num_trials = models.IntegerField(initial=0)
+    num_correct = models.IntegerField(initial=0)
+    num_failed = models.IntegerField(initial=0)
 
 
 class Trial(ExtraModel):
@@ -43,199 +81,114 @@ class Trial(ExtraModel):
 
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
-    practice = models.BooleanField()
     iteration = models.IntegerField(initial=0)
     timestamp = models.FloatField(initial=0)
 
-    # primary category
-    left_1 = models.StringField()
-    right_1 = models.StringField()
-    # secondary category
-    left_2 = models.StringField()
-    right_2 = models.StringField()
-
-    stimulus_class = models.StringField(choices=('primary', 'secondary'))
+    stimulus_cls = models.StringField(choices=('primary', 'secondary'))
+    stimulus_cat = models.StringField()
     stimulus = models.StringField()
     correct = models.StringField(choices=('left', 'right'))
 
-    answer = models.StringField(choices=('left', 'right'))
+    response = models.StringField(choices=('left', 'right'))
+    response_timestamp = models.FloatField()
     reaction_time = models.FloatField()
     is_correct = models.BooleanField()
     retries = models.IntegerField(initial=0)
 
 
-# classic setup of rounds
-# 'primary' and 'secondary' are configured in session as pairs of dictionary categories
-# numbers refer to positions in the pairs
-BLOCKS = {
-    1: {
-        'title': "Round 1 (practice)",
-        'practice': True,
-        'left': {'primary': 1},
-        'right': {'primary': 2},
-    },
-    2: {
-        'title': "Round 2 (practice)",
-        'practice': True,
-        'left': {'secondary': 1},
-        'right': {'secondary': 2},
-    },
-    3: {
-        'title': "Round 3",
-        'practice': False,
-        'left': {'primary': 1, 'secondary': 1},
-        'right': {'primary': 2, 'secondary': 2},
-    },
-    4: {
-        'title': "Round 4",
-        'practice': False,
-        'left': {'primary': 1, 'secondary': 1},
-        'right': {'primary': 2, 'secondary': 2},
-    },
-    5: {
-        'title': "Round 5 (practice)",
-        'practice': True,
-        'left': {'secondary': 2},
-        'right': {'secondary': 1},
-    },
-    6: {
-        'title': "Round 6",
-        'practice': False,
-        'left': {'primary': 2, 'secondary': 1},
-        'right': {'primary': 1, 'secondary': 2},
-    },
-    7: {
-        'title': "Round 7",
-        'practice': False,
-        'left': {'primary': 2, 'secondary': 1},
-        'right': {'primary': 1, 'secondary': 2},
-    },
-}
-
-
-def setup_round(player: Player):
-    """Return current round setup (the corner categories)"""
-
-    block = BLOCKS[player.game_round]
-    # conf[*] contains pairs of keys from words dictionary, like ['male', 'female']
-    conf = player.session.config
-    # mapping of categories from block setup to categories from dictionary
-    categories = {
-        'left': {'primary': None, 'secondary': None},
-        'right': {'primary': None, 'secondary': None},
-    }
-    for side in ('left', 'right'):
-        for cls in ('primary', 'secondary'):
-            if cls in block[side]:
-                pick = block[side][cls] - 1
-                categories[side][cls] = conf[cls][pick]
-            else:  # skipped, remove the key
-                del categories[side][cls]
-
-    return categories
-
-
 def generate_question(player: Player) -> Trial:
     """Create new question for a player"""
-    block = BLOCKS[player.game_round]
-    categories = setup_round(player)
-    # expected answer
+    subsession = player.subsession
     chosen_side = random.choice(['left', 'right'])
-    # 'primary'|'secondary' whichever present
-    chosen_cls = random.choice(list(categories[chosen_side].keys()))
-    # real dictionary category
-    chosen_cat = categories[chosen_side][chosen_cls]
+    if subsession.has_primary and subsession.has_secondary:
+        chosen_cls = random.choice(['primary', 'secondary'])
+    elif subsession.has_primary:
+        chosen_cls = 'primary'
+    elif subsession.has_secondary:
+        chosen_cls = 'secondary'
+    else:
+        raise RuntimeError("improperly configured session")
 
-    words = WORDS[chosen_cat]
-    word = random.choice(words)
+    chosen_cat = getattr(subsession, f"{chosen_cls}_{chosen_side}")
+    stimuli = DICT[chosen_cat]
+    stimulus = random.choice(stimuli)
 
     return Trial.create(
         player=player,
-        practice=block['practice'],
-        left_1=categories['left'].get('primary'),
-        left_2=categories['left'].get('secondary'),
-        right_1=categories['right'].get('primary'),
-        right_2=categories['right'].get('secondary'),
-        stimulus_class=chosen_cls,
-        stimulus=word,
+        stimulus_cls=chosen_cls,
+        stimulus_cat=chosen_cat,
+        stimulus=stimulus,
         correct=chosen_side,
     )
 
 
-def get_last_trial(player):
+def get_last_trial(player: Player):
     """Get last (current) question for a player"""
-    trials = Trial.filter(
-        player=player, round=player.game_round, iteration=player.game_iteration
-    )
+    trials = Trial.filter(player=player, iteration=player.iteration)
     trial = trials[-1] if len(trials) else None
     return trial
 
 
 def get_progress(player: Player):
-    """Returns summary progress progress for a player"""
-    conf = player.session.config
-    total = conf['num_iterations'][player.game_round]
-    answered = len(
-        Trial.filter(player=player, round=player.game_round, is_correct=True)
+    """Return current player progress"""
+    return dict(
+        num_trials=player.num_trials,
+        num_correct=player.num_correct,
+        num_incorrect=player.num_failed,
+        iteration=player.iteration,
     )
-    return {
-        'round': player.game_round,
-        'iteration': player.game_iteration,
-        'total': total,
-        'answered': answered,
-    }
 
 
-def encode_question(trial: Trial):
-    # not encoding anything superfluous
+def encode_trial(trial: Trial):
     return {
-        'cls': trial.stimulus_class,
+        'cls': trial.stimulus_cls,
+        'cat': trial.stimulus_cat,
         'word': trial.stimulus,
     }
 
 
-def check_answer(trial: Trial, answer: str):
+def check_response(trial: Trial, response: str):
     """Check given answer for a question and update its status"""
-    if answer == "" or answer is None:
+    if response == "" or response is None:
         raise ValueError("Unexpected empty answer from client")
-    trial.answer = answer
-    trial.is_correct = answer == trial.correct
+    trial.response = response
+    trial.is_correct = response == trial.correct
 
 
-def custom_export(players):
-    """Dumps all the puzzles generated"""
-    yield [
-        "session",
-        "participant_code",
-        "round",
-        "iteration",
-        "timestamp",
-        "left primary",
-        "right primary",
-        "left secondary",
-        "right secondary",
-        "stimulus",
-        "reaction_time",
-        "retries",
-    ]
-    for p in players:
-        participant = p.participant
-        session = p.session
-        for z in Trial.filter(player=p):
-            yield [
-                session.code,
-                participant.code,
-                z.round,
-                z.iteration,
-                z.timestamp,
-                z.left_1,
-                z.right_1,
-                z.left_2,
-                z.right_2,
-                z.stimulus,
-                z.reaction_time,
-                z.retries,
-            ]
+# def custom_export(players):
+#     """Dumps all the puzzles generated"""
+#     yield [
+#         "session",
+#         "participant_code",
+#         "round",
+#         "iteration",
+#         "timestamp",
+#         "left primary",
+#         "right primary",
+#         "left secondary",
+#         "right secondary",
+#         "stimulus",
+#         "reaction_time",
+#         "retries",
+#     ]
+#     for p in players:
+#         participant = p.participant
+#         session = p.session
+#         for z in Trial.filter(player=p):
+#             yield [
+#                 session.code,
+#                 participant.code,
+#                 z.round,
+#                 z.iteration,
+#                 z.timestamp,
+#                 z.left_1,
+#                 z.right_1,
+#                 z.left_2,
+#                 z.right_2,
+#                 z.stimulus,
+#                 z.reaction_time,
+#                 z.retries,
+#             ]
 
 
 def play_game(player: Player, data: dict):
@@ -251,7 +204,7 @@ def play_game(player: Player, data: dict):
     """
     conf = player.session.config
     trial_delay = conf.get('trial_delay', Constants.trial_delay)
-    max_iter = conf['num_iterations'][player.game_round]
+    max_iter = conf['num_iterations'][player.round_number]
 
     now = time.time()
 
@@ -261,17 +214,16 @@ def play_game(player: Player, data: dict):
     if data == {}:
         if last:  # reloaded in middle of round, return current question
             progress = get_progress(player)
-            data = encode_question(last)
+            data = encode_trial(last)
             return {player.id_in_group: {"question": data, "progress": progress}}
         else:  # initial load, generate first question
             trial = generate_question(player)
-            trial.round = player.game_round
             trial.iteration = 1
             trial.timestamp = now
-            player.game_iteration = 1
+            player.iteration = 1
             #
             progress = get_progress(player)
-            data = encode_question(trial)
+            data = encode_trial(trial)
             return {player.id_in_group: {"question": data, "progress": progress}}
 
     # generate next question and return image
@@ -284,15 +236,15 @@ def play_game(player: Player, data: dict):
             return {player.id_in_group: {"gameover": True}}
 
         # new trial
-        player.game_iteration = last.iteration + 1
+        player.iteration = last.iteration + 1
         trial = generate_question(player)
-        trial.round = player.game_round
-        trial.iteration = player.game_iteration
+        trial.round = player.round_number
+        trial.iteration = player.iteration
         trial.timestamp = now
         trial.retries = 0
 
         progress = get_progress(player)
-        data = encode_question(trial)
+        data = encode_trial(trial)
         return {player.id_in_group: {"question": data, "progress": progress}}
 
     # check given answer and return feedback
@@ -300,8 +252,8 @@ def play_game(player: Player, data: dict):
         if not last:
             raise RuntimeError("Missing current question")
 
-        check_answer(last, data["answer"])
-        last.answer_timestamp = now
+        check_response(last, data["answer"])
+        last.response_timestamp = now
         last.reaction_time = data['reaction']
         last.retries += 1
 
@@ -315,139 +267,65 @@ def play_game(player: Player, data: dict):
 # PAGES
 
 
-def vars_for_template(player: Player):
-    conf = player.session.config
-    block = BLOCKS[player.game_round]
-    categories = setup_round(player)
-    return dict(
-        round=player.game_round,
-        length=conf['num_iterations'][player.game_round],
-        title=block['title'],
-        practice=block['practice'],
-        categories=categories,
-        left_categories=list(categories['left'].values()),
-        right_categories=list(categories['right'].values()),
-        keys=Constants.keys,
-    )
+class Intro(Page):
+    @staticmethod
+    def is_displayed(player):
+        return player.round_number == 1
 
 
-def js_vars(player: Player):
-    conf = player.session.config
-    return dict(
-        keys=Constants.keys, trial_delay=conf.get('trial_delay', Constants.trial_delay)
-    )
-
-
-class Round1(Page):
+class RoundN(Page):
     template_name = "iat/Main.html"
 
     @staticmethod
     def js_vars(player: Player):
-        return js_vars(player)
+        conf = player.session.config
+        return dict(
+            keys=Constants.keys,
+            trial_delay=conf.get('trial_delay', Constants.trial_delay),
+        )
 
     @staticmethod
     def vars_for_template(player: Player):
-        player.game_round = 1
-        player.game_iteration = 0
-        return vars_for_template(player)
+        rnd = player.round_number
+        conf = player.session.config
+        block = BLOCKS[rnd]
+        return dict(
+            block=block,
+            round_length=conf['num_iterations'][rnd],
+            keys=Constants.keys,
+        )
 
     live_method = play_game
 
 
-class Round2(Page):
-    template_name = "iat/Main.html"
-
+class Results(Page):
     @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
+    def is_displayed(player):
+        return player.round_number == 7
 
     @staticmethod
     def vars_for_template(player: Player):
-        player.game_round = 2
-        player.game_iteration = 0
-        return vars_for_template(player)
+        trials3 = Trial.filter(player=player.in_round(3))
+        trials4 = Trial.filter(player=player.in_round(4))
+        trials6 = Trial.filter(player=player.in_round(6))
+        trials7 = Trial.filter(player=player.in_round(7))
 
-    live_method = play_game
+        def aggregate(trials):
+            values = [t.reaction_time for t in trials]
+            s = sum(values)
+            l = len(values)
+            if l == 0:
+                return None
+            return s / l
 
-
-class Round3(Page):
-    template_name = "iat/Main.html"
-
-    @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        player.game_round = 3
-        player.game_iteration = 0
-        return vars_for_template(player)
-
-    live_method = play_game
-
-
-class Round4(Page):
-    template_name = "iat/Main.html"
-
-    @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        player.game_round = 4
-        player.game_iteration = 0
-        return vars_for_template(player)
-
-    live_method = play_game
+        return dict(
+            data=dict(
+                mean3=aggregate(trials3),
+                mean4=aggregate(trials4),
+                mean6=aggregate(trials6),
+                mean7=aggregate(trials7),
+            )
+        )
 
 
-class Round5(Page):
-    template_name = "iat/Main.html"
-
-    @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        player.game_round = 5
-        player.game_iteration = 0
-        return vars_for_template(player)
-
-    live_method = play_game
-
-
-class Round6(Page):
-    template_name = "iat/Main.html"
-
-    @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        player.game_round = 6
-        player.game_iteration = 0
-        return vars_for_template(player)
-
-    live_method = play_game
-
-
-class Round7(Page):
-    template_name = "iat/Main.html"
-
-    @staticmethod
-    def js_vars(player: Player):
-        return js_vars(player)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        player.game_round = 7
-        player.game_iteration = 0
-        return vars_for_template(player)
-
-    live_method = play_game
-
-
-page_sequence = [Round1, Round2, Round3, Round4, Round5, Round6, Round7]
+page_sequence = [Intro, RoundN, Results]
