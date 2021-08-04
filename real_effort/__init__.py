@@ -45,7 +45,7 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     session = subsession.session
-    defaults = dict(retry_delay=1.0, trial_delay=1.0, attempts_per_puzzle=1)
+    defaults = dict(retry_delay=1.0, puzzle_delay=1.0, attempts_per_puzzle=1)
     session.ret_params = {}
     for param in defaults:
         session.ret_params[param] = session.config.get(param, defaults[param])
@@ -163,7 +163,7 @@ def play_game(player: Player, data: dict):
         if current is not None:
             if current.response is None:
                 raise RuntimeError("trying to skip over unsolved puzzle")
-            if now < current.timestamp + ret_params["trial_delay"]:
+            if now < current.timestamp + ret_params["puzzle_delay"]:
                 raise RuntimeError("retrying too fast")
 
         # generate new puzzle

@@ -200,7 +200,7 @@ def call_live_method(method, group, case, **kwargs):  # noqa
 
 
 def live_test_normal(method, player, conf):
-    trial_delay = conf['trial_delay']
+    puzzle_delay = conf['puzzle_delay']
 
     # part of normal flow, checking everything
     resp = restart(method, player)
@@ -230,7 +230,7 @@ def live_test_normal(method, player, conf):
         resp, iteration=1, num_trials=1, num_correct=1, num_incorrect=0
     )
 
-    time.sleep(trial_delay)
+    time.sleep(puzzle_delay)
 
     # 2nd puzzle
     resp = move_forward(method, player)
@@ -503,13 +503,13 @@ def live_test_forward_nodelay(method, player, conf):
 
 
 def live_test_skipping_unanswered(method, player, conf):
-    trial_delay = conf['trial_delay']
+    puzzle_delay = conf['puzzle_delay']
 
     move_forward(method, player)
     expect_progress(player, total=1, correct=0, incorrect=0)
     last = get_last_puzzle(player)
 
-    time.sleep(trial_delay)
+    time.sleep(puzzle_delay)
 
     with expect_failure(RuntimeError):
         move_forward(method, player)
@@ -518,7 +518,7 @@ def live_test_skipping_unanswered(method, player, conf):
 
 
 def live_test_skipping_incorrect(method, player, conf):
-    trial_delay = conf['trial_delay']
+    puzzle_delay = conf['puzzle_delay']
     force_solve = False
 
     move_forward(method, player)
@@ -530,7 +530,7 @@ def live_test_skipping_incorrect(method, player, conf):
     expect_answered_incorrectly(player, answer)
     expect_progress(player, total=1, correct=0, incorrect=1)
 
-    time.sleep(trial_delay)
+    time.sleep(puzzle_delay)
 
     if force_solve:
         with expect_failure(RuntimeError):
@@ -544,7 +544,7 @@ def live_test_skipping_incorrect(method, player, conf):
 
 
 def live_test_iter_limit(method, player, conf):
-    trial_delay = conf['trial_delay']
+    puzzle_delay = conf['puzzle_delay']
     max_iter = conf['num_iterations']
 
     # exhaust all iterations
@@ -559,7 +559,7 @@ def live_test_iter_limit(method, player, conf):
             expect_response_puzzle(resp)
             last = get_last_puzzle(player)
         else:
-            time.sleep(trial_delay)
+            time.sleep(puzzle_delay)
             resp = move_forward(method, player)
             expect_forwarded(player, last)
             expect_response_puzzle(resp)
@@ -570,7 +570,7 @@ def live_test_iter_limit(method, player, conf):
         expect_answered_correctly(player, answer)
         expect_response_correct(resp)
 
-    time.sleep(trial_delay)
+    time.sleep(puzzle_delay)
     resp = move_forward(method, player)
     expect_not_forwarded(player, last)
     expect('gameover', 'in', resp)
