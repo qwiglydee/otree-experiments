@@ -85,12 +85,12 @@ def get_progress(p):
     }
 
 
-def restart(m, p):
-    return m(p.id_in_group, {})[p.id_in_group]
+def reload(m, p):
+    return m(p.id_in_group, dict(type='load'))[p.id_in_group]
 
 
 def move_forward(m, p):
-    return m(p.id_in_group, {"next": True})[p.id_in_group]
+    return m(p.id_in_group, dict(type='next'))[p.id_in_group]
 
 
 def expect_forwarded(p, _last):
@@ -113,7 +113,7 @@ def solution(p):
 
 
 def give_answer(m, p, ans):
-    _response = m(p.id_in_group, {"answer": ans})[p.id_in_group]
+    _response = m(p.id_in_group, dict(type="answer", answer=ans))[p.id_in_group]
     return _response
 
 
@@ -161,7 +161,14 @@ def expect_not_answered(p):
     expect(_puzzle.is_correct, None)
 
 
+def expect_response_status(response, has_puzzle):
+    expect(response['type'], 'status')
+    expect("puzzle", "in", response)
+    expect(response['puzzle'], '!=' if has_puzzle else '==', None)
+
+
 def expect_response_puzzle(response):
+    expect(response['type'], 'puzzle')
     expect("puzzle", "in", response)
     expect("image", "in", response["puzzle"])
     expect(response["puzzle"]["image"].startswith("data:text/plain;base64"), True)
@@ -173,13 +180,15 @@ def expect_response_progress(response, **values):
 
 
 def expect_response_correct(response):
-    expect("feedback", "in", response)
-    expect(response["feedback"], True)
+    expect(response['type'], 'feedback')
+    expect("is_correct", "in", response)
+    expect(response["is_correct"], True)
 
 
 def expect_response_incorrect(response):
-    expect("feedback", "in", response)
-    expect(response["feedback"], False)
+    expect(response['type'], 'feedback')
+    expect("is_correct", "in", response)
+    expect(response["is_correct"], False)
 
 
 # test case dispatching
@@ -203,7 +212,8 @@ def live_test_normal(method, player, conf):
     puzzle_delay = conf['puzzle_delay']
 
     # part of normal flow, checking everything
-    resp = restart(method, player)
+    resp = reload(method, player)
+    expect_response_status(resp, False)
     expect_progress(player, total=0, correct=0, incorrect=0)
     expect(resp["puzzle"], None)
     expect_response_progress(
@@ -290,15 +300,15 @@ def live_test_replying_incorrect(method, player, conf):
 
 
 def live_test_messaging_bogus(method, player, conf):
-    with expect_failure(RuntimeError):
+    with expect_failure(TypeError):
         method(player.id_in_group, "BOGUS")
 
 
 def live_test_reloading_start(method, player, conf):
     # initial load
-    resp = restart(method, player)
+    resp = reload(method, player)
     expect_progress(player, total=0, correct=0, incorrect=0)
-    expect(resp["puzzle"], None)
+    expect_response_status(resp, False)
     expect_response_progress(
         resp, iteration=0, num_trials=0, num_correct=0, num_incorrect=0
     )
@@ -306,8 +316,9 @@ def live_test_reloading_start(method, player, conf):
 
 
 def live_test_reloading_midgame(method, player, conf):
-    restart(method, player)
+    resp = reload(method, player)
     expect_progress(player, total=0, correct=0, incorrect=0)
+    expect_response_status(resp, False)
 
     # first trial
     move_forward(method, player)
@@ -315,10 +326,10 @@ def live_test_reloading_midgame(method, player, conf):
     last = get_last_puzzle(player)
 
     # midgame reload
-    resp = restart(method, player)
+    resp = reload(method, player)
     expect_progress(player, total=1, correct=0, incorrect=0)
     expect(get_last_puzzle(player), last)
-    expect_response_puzzle(resp)
+    expect_response_status(resp, True)
     expect_response_progress(
         resp, iteration=1, num_trials=0, num_correct=0, num_incorrect=0
     )
@@ -554,23 +565,18 @@ def live_test_iter_limit(method, player, conf):
     last = None
 
     for _ in range(max_iter):
-        if _ == 0:
-            resp = restart(method, player)
-            expect_response_puzzle(resp)
-            last = get_last_puzzle(player)
-        else:
-            time.sleep(puzzle_delay)
-            resp = move_forward(method, player)
-            expect_forwarded(player, last)
-            expect_response_puzzle(resp)
-            last = get_last_puzzle(player)
+        resp = move_forward(method, player)
+        expect_forwarded(player, last)
+        expect_response_puzzle(resp)
+        last = get_last_puzzle(player)
 
         answer = solution(player)
         resp = give_answer(method, player, answer)
         expect_answered_correctly(player, answer)
         expect_response_correct(resp)
 
-    time.sleep(puzzle_delay)
+        time.sleep(puzzle_delay)
+
     resp = move_forward(method, player)
     expect_not_forwarded(player, last)
     expect('gameover', 'in', resp)
@@ -580,7 +586,7 @@ def live_test_cheat_debug(method, player, conf):
     settings.DEBUG = True
     move_forward(method, player)
 
-    resp = method(player.id_in_group, {"cheat": True})[player.id_in_group]
+    resp = method(player.id_in_group, dict(type='cheat'))[player.id_in_group]
     expect("solution", "in", resp)
 
     answer = resp["solution"]
@@ -593,4 +599,4 @@ def live_test_cheat_nodebug(method, player, conf):
     settings.DEBUG = False
     move_forward(method, player)
     with expect_failure(RuntimeError):
-        method(player.id_in_group, {"cheat": True})
+        method(player.id_in_group, dict(type='cheat'))

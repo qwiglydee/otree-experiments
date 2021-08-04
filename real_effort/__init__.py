@@ -117,26 +117,27 @@ def get_progress(player: Player):
     )
 
 
-def play_game(player: Player, data: dict):
+def play_game(player: Player, message: dict):
     """Main game workflow
     Implemented as reactive scheme: receive message from vrowser, react, respond.
 
     Generic game workflow, from server point of view:
-    - receive: {} -- empty message means page loaded
+    - receive: {'type': 'load'} -- empty message means page loaded
     - check if it's game start or page refresh midgame
-    - respond: {'puzzle': null, 'progress': ...} -- inidcates no current puzzle and a progress
-    - respond: {'puzzle': data, 'progress': ...} -- in case of midgame page reload
+    - respond: {'type': 'status', 'puzzle': null} -- inidcates no current puzzle and a progress
+    - respond: {'type': 'status', 'puzzle': data} -- in case of midgame page reload
 
-    - receive: {'next': true} -- request for a next/first puzzle
+    - receive: {'type': 'next'} -- request for a next/first puzzle
     - generate new puzzle
-    - respond: {'puzzle': data 'progress': ...}
+    - respond: {'type': 'puzzle', 'puzzle': data}
 
-    - receive: {'answer': ...} -- user answered the puzzle
+    - receive: {'type': 'answer', 'answer': ...} -- user answered the puzzle
     - check if the answer is correct
-    - respond: {'feedback': true|false, 'progress': ...} -- feedback to the answer
+    - respond: {'type': 'feedback', 'is_correct': true|false, 'retries_left': ...} -- feedback to the answer
 
     If allowed by config `attempts_pre_puzzle`, client can send more 'answer' messages
     When done solving, client should explicitely request next puzzle by sending 'next' message
+    Field 'progress' is added to all server responses to indicate it on page.
     """
     session = player.session
     my_id = player.id_in_group
@@ -147,19 +148,23 @@ def play_game(player: Player, data: dict):
     # the current puzzle or none
     current = get_current_puzzle(player)
 
-    if "cheat" in data and settings.DEBUG:
-        return {my_id: dict(solution=current.solution)}
+    message_type = message['type']
 
     # page loaded
-    if data == {}:
+    if message_type == 'load':
         p = get_progress(player)
         if current:
-            return {my_id: dict(puzzle=encode_puzzle(current), progress=p)}
+            return {
+                my_id: dict(type='status', puzzle=encode_puzzle(current), progress=p)
+            }
         else:
-            return {my_id: dict(puzzle=None, progress=p)}
+            return {my_id: dict(type='status', puzzle=None, progress=p)}
+
+    if message_type == "cheat" and settings.DEBUG:
+        return {my_id: dict(solution=current.solution)}
 
     # client requested new puzzle
-    if "next" in data:
+    if message_type == "next":
         if current is not None:
             if current.response is None:
                 raise RuntimeError("trying to skip over unsolved puzzle")
@@ -169,10 +174,10 @@ def play_game(player: Player, data: dict):
         # generate new puzzle
         z = generate_puzzle(player)
         p = get_progress(player)
-        return {my_id: dict(puzzle=encode_puzzle(z), progress=p)}
+        return {my_id: dict(type='puzzle', puzzle=encode_puzzle(z), progress=p)}
 
     # client gives an answer to current puzzle
-    if "answer" in data:
+    if message_type == "answer":
         if current is None:
             raise RuntimeError("trying to answer no puzzle")
 
@@ -190,7 +195,7 @@ def play_game(player: Player, data: dict):
                 player.num_failed -= 1
 
         # check answer
-        answer = data["answer"]
+        answer = message["answer"]
 
         if answer == "" or answer is None:
             raise ValueError("bogus answer")
@@ -211,7 +216,10 @@ def play_game(player: Player, data: dict):
         p = get_progress(player)
         return {
             my_id: dict(
-                feedback=current.is_correct, retries_left=retries_left, progress=p
+                type='feedback',
+                is_correct=current.is_correct,
+                retries_left=retries_left,
+                progress=p,
             )
         }
 

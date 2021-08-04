@@ -1,16 +1,16 @@
 /*
 Generic game workflow, from client's point of view:
 
-- send: {} -- when page loaded
-- receive: {puzzle: null} -- means game just started
+- send: {type: 'load'} -- when page loaded
+- receive: {type: 'status, puzzle: null, progress: ...} -- means game just started
 
-- send: {next: true} -- request puzzle
-- receive: {puzzle: data, progress: ...}
+- send: {type: 'next'} -- request puzzle
+- receive: {type: 'puzzle', puzzle: data, progress: ...}
 - display the puzzle and progress
 - wait for user to answer
 
-- send: {answer: ...}
-- receive: {feedback: is_correct, progress: ..., retries_left: ...}
+- send: {type: 'answer', 'answer': ...}
+- receive: {type: 'feedback', is_correct: ..., progress: ..., retries_left: ...}
 - display feedback and progress
 - if the anwser is wrong and retries allowed:
   - wait for new answer from user
@@ -32,34 +32,41 @@ let fields = {
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
-    liveSend({});
+    liveSend({type: 'load'});
 });
 
 function liveRecv(message) {
-    if ('puzzle' in message ) {
-        if (message.puzzle === null) {  // start of the game
-            liveSend({next:true});
-        } else {
+    switch(message.type) {
+
+        case 'status':
+            if (message.puzzle === null) {  // start of the game
+                liveSend({type: 'next'});
+            } else {
+                newPuzzle(message.puzzle);
+            }
+            break;
+
+        case 'puzzle':
             newPuzzle(message.puzzle);
-        }
+            break;
+
+        case 'feedback':
+            showFeedback(message);
+            if (message.is_correct === false && message.retries_left > 0) { // allow retry
+                tempFreeze(js_vars.retry_delay);
+                enableInput();
+            } else {
+                moveForward(js_vars.trial_delay);
+            }
+            break;
+
+        case 'solution':
+            cheat(message.solution);
+            break;
     }
 
-    if ('feedback' in message ) {
-        showFeedback(message.feedback);
-        if (message.feedback === false && message.retries_left > 0) { // allow retry
-            tempFreeze(js_vars.retry_delay);
-            enableInput();
-        } else {
-            moveForward(js_vars.trial_delay);
-        }
-    }
-
-    if ('progress' in message) {
+    if ('progress' in message) { // can be added to message of any type
         showProgress(message.progress);
-    }
-
-    if ('solution' in message) {
-        cheat(message.solution);
     }
 }
 
@@ -114,15 +121,15 @@ function submitAnswer() {
     if (isFrozen || input.value === "") return;
     lockInput();
     resetFeedback();
-    liveSend({answer: input.value});
+    liveSend({type: 'answer', answer: input.value});
 }
 
 function resetFeedback() {
     input.classList.remove("is-valid", "is-invalid");
 }
 
-function showFeedback(is_correct) {
-    input.classList.add(is_correct ? "is-valid" : "is-invalid");
+function showFeedback(data) {
+    input.classList.add(data.is_correct ? "is-valid" : "is-invalid");
 }
 
 
@@ -134,7 +141,7 @@ function gotoNext() {
     resetPuzzle();
     resetInput();
     resetFeedback();
-    liveSend({next: true});
+    liveSend({type: 'next'});
 }
 
 function showProgress(data) {
