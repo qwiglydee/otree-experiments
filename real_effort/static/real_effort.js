@@ -16,7 +16,7 @@ Generic game workflow, from client's point of view:
   - wait for new answer from user
   - lock submitting for `retry_delay`
 
-- wait for `trial_delay` seconds
+- wait for `puzzle_delay` seconds
 - request next puzzle
 */
 
@@ -56,7 +56,7 @@ function liveRecv(message) {
                 tempFreeze(js_vars.retry_delay);
                 enableInput();
             } else {
-                moveForward(js_vars.trial_delay);
+                moveForward(js_vars.puzzle_delay);
             }
             break;
 
