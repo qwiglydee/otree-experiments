@@ -32,11 +32,12 @@ class PlayerBot(Bot):
     ]
 
     def play_round(self):
+        if self.case == 'iter_limit' and not self.session.ret_params['max_iterations']:
+            print(f"Skipping case {self.case} under no max_iterations")
+            return
 
-        if self.session.ret_params['max_iterations']:
-            yield Submission(Game, check_html=False, timeout_happened=False)
-        else:
-            yield Submission(Game, check_html=False, timeout_happened=True)
+        make_timeout = self.case != 'iter_limit'
+        yield Submission(Game, check_html=False, timeout_happened=make_timeout)
 
         player = self.player
         num_correct = len(Puzzle.filter(player=player, is_correct=True))
@@ -560,9 +561,6 @@ def live_test_iter_limit(method, player, conf):
     puzzle_delay = conf['puzzle_delay']
     max_iter = conf['max_iterations']
 
-    if max_iter is None:
-        return
-
     # exhaust all iterations
 
     for _ in range(max_iter):
@@ -598,3 +596,7 @@ def live_test_cheat_nodebug(method, player, conf):
     move_forward(method, player)
     with expect_failure(RuntimeError):
         method(player.id_in_group, dict(type='cheat'))
+
+
+def live_test_fake_submit(method, player, conf):
+    pass

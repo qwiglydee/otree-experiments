@@ -250,11 +250,9 @@ class Game(Page):
         return dict(DEBUG=settings.DEBUG)
 
     @staticmethod
-    def error_message(player: Player, values):
-        # this prevents users from moving forward before a timeout occurs.
-        # if your game allows players to advance before a timeout,
-        # you should remove this.
-        return "Game is not complete"
+    def before_next_page(player: Player, timeout_happened):
+        if not timeout_happened and not player.session.ret_params['max_iterations']:
+            raise RuntimeError("malicious page submission")
 
 
 class Results(Page):
