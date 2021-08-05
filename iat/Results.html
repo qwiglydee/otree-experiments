@@ -11,14 +11,22 @@
 
     <h6>Average reaction time</h6>
     <dl>
+        {{ if data.round3 }}
         <dt>Round 3</dt>
-        <dd>{{ data.mean3 }}</dd>
+        <dd>{{ data.round3.mean }}±{{ data.round3.std }}</dd>
+        {{ endif }}
+        {{ if data.round4 }}
         <dt>Round 4</dt>
-        <dd>{{ data.mean4 }}</dd>
+        <dd>{{ data.round4.mean }}±{{ data.round4.std }}</dd>
+        {{ endif }}
+        {{ if data.round6 }}
         <dt>Round 6</dt>
-        <dd>{{ data.mean6 }}</dd>
+        <dd>{{ data.round6.mean }}±{{ data.round6.std }}</dd>
+        {{ endif }}
+        {{ if data.round7 }}
         <dt>Round 7</dt>
-        <dd>{{ data.mean7 }}</dd>
+        <dd>{{ data.round7.mean }}±{{ data.round7.std }}</dd>
+        {{ endif }}
     </dl>
 
 {{ endblock }}

@@ -1,8 +1,10 @@
 import time
 import random
 from otree.api import *
+from otree import settings
 from .STIMULI import DICT
 from .blocks import BLOCKS
+from .stats import stats
 
 doc = """
 Implicit Association Test, draft
@@ -260,6 +262,19 @@ def play_game(player: Player, data: dict):
         progress = get_progress(player)
         return {player.id_in_group: {'feedback': last.is_correct, 'progress': progress}}
 
+    if data.get('type') == "cheat" and settings.DEBUG:
+        # generate remaining data for the round
+        m = random.random() + 1.0
+        for i in range(player.iteration, max_iter):
+            t = generate_question(player)
+            t.iteration = i
+            t.timestamp = now + i
+            t.response = t.correct
+            t.is_correct = True
+            t.response_timestamp = now + i
+            t.reaction_time = random.gauss(m, 0.250)
+        return {player.id_in_group: {"gameover": True}}
+
     # otherwise
     raise ValueError("Invalid message from client!")
 
@@ -293,6 +308,7 @@ class RoundN(Page):
             block=block,
             round_length=conf['num_iterations'][rnd],
             keys=Constants.keys,
+            DEBUG=settings.DEBUG,
         )
 
     live_method = play_game
@@ -312,18 +328,17 @@ class Results(Page):
 
         def aggregate(trials):
             values = [t.reaction_time for t in trials]
-            s = sum(values)
-            l = len(values)
-            if l == 0:
+            if len(values) == 0:
                 return None
-            return s / l
+            m, s = stats(values)
+            return dict(mean=m, std=s)
 
         return dict(
             data=dict(
-                mean3=aggregate(trials3),
-                mean4=aggregate(trials4),
-                mean6=aggregate(trials6),
-                mean7=aggregate(trials7),
+                round3=aggregate(trials3),
+                round4=aggregate(trials4),
+                round6=aggregate(trials6),
+                round7=aggregate(trials7),
             )
         )
 

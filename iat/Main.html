@@ -53,11 +53,13 @@
         </div>
     </div>
 
-    {{ next_button }}
+    {{ if DEBUG }}
+    <button type="button" id="cheat-btn" class="btn btn-dark">Cheat</button>
+    {{ endif }}
 
 {{ endblock }}
 
 {{ block scripts }}
 <script src="{{ static 'iat.js' }}"></script>
-
+{{ if DEBUG }}<script src="{{ static 'iat_cheating.js' }}"></script>{{ endif }}
 {{ endblock }}
