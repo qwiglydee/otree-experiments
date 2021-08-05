@@ -34,19 +34,30 @@ class Subsession(BaseSubsession):
 
 
 def creating_session(subsession: Subsession):
+    session = subsession.session
+    defaults = dict(
+        retry_delay=0.5,
+        trial_delay=0.5,
+        num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
+    )
+    session.iat_params = {}
+    for param in defaults:
+        session.iat_params[param] = session.config.get(param, defaults[param])
+
     # block have structure like
     # {'left': {'primary': 1, 'secondary': 2}, 'right': {'primary': 1, 'secondary': 2}}
     block = BLOCKS[subsession.round_number]
-    # conf have structure like
-    # {'primary': [category1, category2], 'secondary': [category1, category2]
-    conf = subsession.session.config
+    categories = {
+        'primary': session.config['primary'],
+        'secondary': session.config['secondary'],
+    }
 
     def get_cat(cls, side):
         block_side = block[side]
         if cls not in block_side:
             return ""
         idx = block_side[cls] - 1
-        cat = conf[cls][idx]
+        cat = categories[cls][idx]
         assert cat in DICT
         return cat
 
@@ -69,7 +80,7 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    iteration = models.IntegerField(initial=1)
+    iteration = models.IntegerField(initial=0)
     num_trials = models.IntegerField(initial=0)
     num_correct = models.IntegerField(initial=0)
     num_failed = models.IntegerField(initial=0)
@@ -98,7 +109,7 @@ class Trial(ExtraModel):
     retries = models.IntegerField(initial=0)
 
 
-def generate_question(player: Player) -> Trial:
+def generate_trial(player: Player) -> Trial:
     """Create new question for a player"""
     subsession = player.subsession
     chosen_side = random.choice(['left', 'right'])
@@ -115,8 +126,12 @@ def generate_question(player: Player) -> Trial:
     stimuli = DICT[chosen_cat]
     stimulus = random.choice(stimuli)
 
+    player.iteration += 1
     return Trial.create(
         player=player,
+        iteration=player.iteration,
+        timestamp=time.time(),
+        #
         stimulus_cls=chosen_cls,
         stimulus_cat=chosen_cat,
         stimulus=stimulus,
@@ -124,11 +139,20 @@ def generate_question(player: Player) -> Trial:
     )
 
 
-def get_last_trial(player: Player):
+def get_current_trial(player: Player):
     """Get last (current) question for a player"""
     trials = Trial.filter(player=player, iteration=player.iteration)
-    trial = trials[-1] if len(trials) else None
-    return trial
+    if trials:
+        [trial] = trials
+        return trial
+
+
+def encode_trial(trial: Trial):
+    return dict(
+        cls=trial.stimulus_cls,
+        cat=trial.stimulus_cat,
+        word=trial.stimulus,
+    )
 
 
 def get_progress(player: Player):
@@ -138,27 +162,12 @@ def get_progress(player: Player):
         num_correct=player.num_correct,
         num_incorrect=player.num_failed,
         iteration=player.iteration,
+        total=player.session.iat_params['num_iterations'][player.round_number],
     )
 
 
-def encode_trial(trial: Trial):
-    return {
-        'cls': trial.stimulus_cls,
-        'cat': trial.stimulus_cat,
-        'word': trial.stimulus,
-    }
-
-
-def check_response(trial: Trial, response: str):
-    """Check given answer for a question and update its status"""
-    if response == "" or response is None:
-        raise ValueError("Unexpected empty answer from client")
-    trial.response = response
-    trial.is_correct = response == trial.correct
-
-
 # def custom_export(players):
-#     """Dumps all the puzzles generated"""
+#     """Dumps all the trials generated"""
 #     yield [
 #         "session",
 #         "participant_code",
@@ -193,90 +202,130 @@ def check_response(trial: Trial, response: str):
 #             ]
 
 
-def play_game(player: Player, data: dict):
-    """Handles iterations of the game on a live page
+def play_game(player: Player, message: dict):
+    """Main game workflow
+    Implemented as reactive scheme: receive message from vrowser, react, respond.
 
-    Messages:
-    - client > server {} -- empty message means page reload
-    - server < client {'next': true} -- request for next (or first) question
-    - server > client {'question': data, 'class': str, 'progress': data} -- stimulus and it's class 'primary' or 'secondary'
-    - server < client {'answer': str, 'rt': float} -- answer to a question and reaction time
-    - server > client {'feedback': true|false, 'progress': data} -- feedback on the answer
-    - server > client {'gameover': true} -- all iterations played
+    Generic game workflow, from server point of view:
+    - receive: {'type': 'load'} -- empty message means page loaded
+    - check if it's game start or page refresh midgame
+    - respond: {'type': 'status', 'progress': ...}
+    - respond: {'type': 'status', 'progress': ..., 'trial': data} -- in case of midgame page reload
+
+    - receive: {'type': 'next'} -- request for a next/first trial
+    - generate new trial
+    - respond: {'type': 'trial', 'trial': data}
+
+    - receive: {'type': 'answer', 'answer': ...} -- user answered the trial
+    - check if the answer is correct
+    - respond: {'type': 'feedback', 'is_correct': true|false} -- feedback to the answer
+
+    When done solving, client should explicitely request next trial by sending 'next' message
+
+    Field 'progress' is added to all server responses to indicate it on page.
+
+    To indicate max_iteration exhausted in response to 'next' server returns 'status' message with iterations_left=0
     """
-    conf = player.session.config
-    trial_delay = conf.get('trial_delay', Constants.trial_delay)
-    max_iter = conf['num_iterations'][player.round_number]
+    session = player.session
+    my_id = player.id_in_group
+    ret_params = session.iat_params
+    max_iters = ret_params['num_iterations'][player.round_number]
 
     now = time.time()
+    # the current trial or none
+    current = get_current_trial(player)
 
-    # get last trial, if any
-    last = get_last_trial(player)
+    message_type = message['type']
 
-    if data == {}:
-        if last:  # reloaded in middle of round, return current question
-            progress = get_progress(player)
-            data = encode_trial(last)
-            return {player.id_in_group: {"question": data, "progress": progress}}
-        else:  # initial load, generate first question
-            trial = generate_question(player)
-            trial.iteration = 1
-            trial.timestamp = now
-            player.iteration = 1
-            #
-            progress = get_progress(player)
-            data = encode_trial(trial)
-            return {player.id_in_group: {"question": data, "progress": progress}}
+    # print("iteration:", player.iteration)
+    # print("current:", current)
+    # print("received:", message)
 
-    # generate next question and return image
-    if "next" in data:
-        if not last:
-            raise RuntimeError("Missing current question!")
-        if now - last.timestamp < trial_delay:
-            raise RuntimeError("Client advancing too fast!")
-        if max_iter and last.iteration >= max_iter:
-            return {player.id_in_group: {"gameover": True}}
+    # page loaded
+    if message_type == 'load':
+        p = get_progress(player)
+        if current:
+            return {my_id: dict(type='status', progress=p, trial=encode_trial(current))}
+        else:
+            return {my_id: dict(type='status', progress=p)}
 
-        # new trial
-        player.iteration = last.iteration + 1
-        trial = generate_question(player)
-        trial.round = player.round_number
-        trial.iteration = player.iteration
-        trial.timestamp = now
-        trial.retries = 0
+    # client requested new trial
+    if message_type == "next":
+        if current is not None:
+            if current.response is None:
+                raise RuntimeError("trying to skip over unsolved trial")
+            if now < current.timestamp + ret_params["trial_delay"]:
+                raise RuntimeError("retrying too fast")
+            if current.iteration == max_iters:
+                return {
+                    my_id: dict(
+                        type='status', progress=get_progress(player), iterations_left=0
+                    )
+                }
+        # generate new trial
+        z = generate_trial(player)
+        p = get_progress(player)
+        return {my_id: dict(type='trial', trial=encode_trial(z), progress=p)}
 
-        progress = get_progress(player)
-        data = encode_trial(trial)
-        return {player.id_in_group: {"question": data, "progress": progress}}
+    # client gives an answer to current trial
+    if message_type == "answer":
+        if current is None:
+            raise RuntimeError("trying to answer no trial")
 
-    # check given answer and return feedback
-    if "answer" in data:
-        if not last:
-            raise RuntimeError("Missing current question")
+        if current.response is not None:  # it's a retry
+            if now < current.response_timestamp + ret_params["retry_delay"]:
+                raise RuntimeError("retrying too fast")
 
-        check_response(last, data["answer"])
-        last.response_timestamp = now
-        last.reaction_time = data['reaction']
-        last.retries += 1
+            # undo last updation of player progress
+            player.num_trials -= 1
+            if current.is_correct:
+                player.num_correct -= 1
+            else:
+                player.num_failed -= 1
 
-        progress = get_progress(player)
-        return {player.id_in_group: {'feedback': last.is_correct, 'progress': progress}}
+        # check answer
+        answer = message["answer"]
 
-    if data.get('type') == "cheat" and settings.DEBUG:
+        if answer == "" or answer is None:
+            raise ValueError("bogus answer")
+
+        current.response = answer
+        current.reaction_time = message["reaction_time"]
+        current.is_correct = current.correct == answer
+        current.response_timestamp = now
+
+        # update player progress
+        if current.is_correct:
+            player.num_correct += 1
+        else:
+            player.num_failed += 1
+        player.num_trials += 1
+
+        p = get_progress(player)
+        return {
+            my_id: dict(
+                type='feedback',
+                is_correct=current.is_correct,
+                progress=p,
+            )
+        }
+
+    if message_type == "cheat" and settings.DEBUG:
         # generate remaining data for the round
         m = random.random() + 1.0
-        for i in range(player.iteration, max_iter):
-            t = generate_question(player)
+        for i in range(player.iteration, max_iters):
+            t = generate_trial(player)
             t.iteration = i
             t.timestamp = now + i
             t.response = t.correct
             t.is_correct = True
             t.response_timestamp = now + i
             t.reaction_time = random.gauss(m, 0.250)
-        return {player.id_in_group: {"gameover": True}}
+        return {
+            my_id: dict(type='status', progress=get_progress(player), iterations_left=0)
+        }
 
-    # otherwise
-    raise ValueError("Invalid message from client!")
+    raise RuntimeError("unrecognized message from client")
 
 
 # PAGES
@@ -293,11 +342,7 @@ class RoundN(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        conf = player.session.config
-        return dict(
-            keys=Constants.keys,
-            trial_delay=conf.get('trial_delay', Constants.trial_delay),
-        )
+        return dict(params=player.session.iat_params, keys=Constants.keys)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -305,10 +350,11 @@ class RoundN(Page):
         conf = player.session.config
         block = BLOCKS[rnd]
         return dict(
+            params=player.session.iat_params,
             block=block,
-            round_length=conf['num_iterations'][rnd],
-            keys=Constants.keys,
+            num_iterations=conf['num_iterations'][rnd],
             DEBUG=settings.DEBUG,
+            keys=Constants.keys,
         )
 
     live_method = play_game
@@ -328,7 +374,7 @@ class Results(Page):
 
         def aggregate(trials):
             values = [t.reaction_time for t in trials]
-            if len(values) == 0:
+            if len(values) <= 3:
                 return None
             m, s = stats(values)
             return dict(mean=m, std=s)

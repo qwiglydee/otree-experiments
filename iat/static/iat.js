@@ -69,7 +69,7 @@ class View {
 
     renderProgress() {
         if (this.model.progress.total !== null) {
-            this.$progress.value = this.model.progress.answered / this.model.progress.total;
+            this.$progress.value = this.model.progress.num_trials / this.model.progress.total;
         } else {
             this.$progress.value = 0;
         }
@@ -94,39 +94,8 @@ class Controller {
         this.ts_question = 0;
         this.ts_answer = 0;
 
-        window.liveRecv = (data) => {
-            if ('question' in data ) {
-                this.recvQuestion(data.question);
-            }
-            if ('feedback' in data) {
-                this.recvFeedback(data.feedback);
-            }
-            if ('gameover' in data) {
-                this.recvGameover();
-            }
-            if ('progress' in data) {
-                this.recvProgress(data.progress);
-            }
-        }
-
-        document.querySelector('body').onkeydown = (ev) => {
-            if (ev.code == 'Space' && this.starting) {
-                ev.preventDefault();
-                this.view.hideStartInstruction();
-                liveSend({});
-                this.starting = false;
-            }
-
-            if (this.model.stimulus !== null) {
-                if (ev.key == js_vars.keys.left) {
-                    this.giveAnswer('left');
-                }
-
-                if (ev.key == js_vars.keys.right) {
-                    this.giveAnswer('right');
-                }
-            }
-        }
+        window.liveRecv = (message) => this.recvMessage(message);
+        document.querySelector('body').onkeydown = (ev) => this.onKeypress(event);
     }
 
     start() {
@@ -134,15 +103,34 @@ class Controller {
         this.view.showStartInstruction();
     }
 
-    reqNext() {
-        this.model.stimulus = null;
-        this.model.answer = null;
-        this.view.renderStimulus();
-        this.view.renderAnswer();
-        liveSend({next: true});
+    recvMessage(message) {
+        console.debug("received:", message);
+        switch(message.type) {
+            case 'status':
+                if (message.trial) {
+                    this.recvTrial(message.trial);
+                } else if (message.progress.iteration === 0) {   // start of the game
+                    liveSend({type: 'next'});
+                } else if (message.iterations_left === 0) {  // exhausted max iterations
+                    document.getElementById("form").submit();
+                }
+                break;
+
+            case 'trial':
+                this.recvTrial(message.trial);
+                break;
+
+            case 'feedback':
+                this.recvFeedback(message);
+                break;
+        }
+
+        if ('progress' in message) { // can be added to message of any type
+            this.recvProgress(message.progress);
+        }
     }
 
-    recvQuestion(question) {
+    recvTrial(question) {
         this.model.stimulus = question.word;
         this.model.stimulus_cls = question.cls;
         this.model.answer = null;
@@ -154,19 +142,12 @@ class Controller {
         this.ts_answer = 0;
     }
 
-    giveAnswer(answer) {
-        this.ts_answer = performance.now();
-        this.model.answer = answer;
-        liveSend({answer: answer, reaction: (this.ts_answer - this.ts_question)/1000});
-        this.view.renderAnswer();
-    }
-
-    recvFeedback(feedback) {
-        this.model.feedback = feedback;
+    recvFeedback(message) {
+        this.model.feedback = message.is_correct;
         this.view.renderAnswer();
 
-        if (feedback === true) {
-            window.setTimeout(() => this.reqNext(), js_vars.trial_delay * 1000);
+        if (message.is_correct) {
+            window.setTimeout(() => this.reqNext(), js_vars.params.trial_delay * 1000);
         }
     }
 
@@ -175,9 +156,38 @@ class Controller {
         this.view.renderProgress();
     }
 
-    recvGameover() {
-        document.getElementById("form").submit();
+    onKeypress(event) {
+        if (event.code == 'Space' && this.starting) {
+            event.preventDefault();
+            this.view.hideStartInstruction();
+            liveSend({type: 'load'});
+            this.starting = false;
+        }
+
+        if (this.model.stimulus !== null) {
+            if (event.key == js_vars.keys.left) {
+                this.submitAnswer('left');
+            }
+            if (event.key == js_vars.keys.right) {
+                this.submitAnswer('right');
+            }
+        }
     }
+
+    submitAnswer(answer) {
+        this.ts_answer = performance.now();
+        this.model.answer = answer;
+        liveSend({type: 'answer', answer: answer, reaction_time: (this.ts_answer - this.ts_question)/1000});
+        this.view.renderAnswer();
+    }
+
+    reqNext() {
+        this.model.stimulus = null;
+        this.model.answer = null;
+        this.view.renderStimulus();
+        this.view.renderAnswer();
+        liveSend({type: 'next'});
+   }
 }
 
 window.onload = (event) => {
