@@ -2,7 +2,7 @@ import time
 import random
 from otree.api import *
 from otree import settings
-from .STIMULI import DICT
+from .stimuli import DICT
 from .blocks import BLOCKS
 from .stats import stats
 
