@@ -1,30 +1,27 @@
 class Model {
     /** hold all current game state */
     constructor() {
+        this.progress = {};
         this.stimulus = null;
         this.stimulus_cls = null;
-        this.progress = {};
-
-        this._answer = null;
-        this._feedback = null;
+        this.stimulus_cat = null;
+        this.answer = null;
+        this.is_correct = null;
     }
 
-
-    set answer(val) {
-        this._answer = val;
-        this._feedback = null;
+    resetStimulus() {
+        this.stimulus = null;
+        this.stimulus_cls = null;
+        this.stimulus_cat = null;
     }
 
-    get answer() {
-        return this._answer;
+    resetAnswer() {
+        this.answer = null;
+        this.is_correct = null;
     }
 
-    set feedback(val) {
-        this._feedback = val;
-    }
-
-    get feedback() {
-        return this._feedback;
+    resetFeedback() {
+        this.is_correct = null;
     }
 }
 
@@ -50,6 +47,7 @@ class View {
     }
 
     answer_symbols = {'left': "⇦", 'right': "⇨"}
+
     renderAnswer() {
         if (this.model.answer !== null) {
             this.$answer.value = this.answer_symbols[this.model.answer];
@@ -58,8 +56,8 @@ class View {
         }
 
         this.$answer.classList.remove("is-valid", "is-invalid");
-        if (this.model.feedback !== null) {
-            if (this.model.feedback) {
+        if (this.model.is_correct !== null) {
+            if (this.model.is_correct) {
                 this.$answer.classList.add("is-valid");
             } else {
                 this.$answer.classList.add("is-invalid");
@@ -100,17 +98,19 @@ class Controller {
 
     start() {
         this.starting = true;
-        this.view.showStartInstruction();
+        liveSend({type: 'load'});
     }
 
     recvMessage(message) {
-        console.debug("received:", message);
+        // console.debug("received:", message);
         switch(message.type) {
             case 'status':
-                if (message.trial) {
+                if (message.trial) {  // restoring existing state
                     this.recvTrial(message.trial);
+                    this.view.hideStartInstruction();
                 } else if (message.progress.iteration === 0) {   // start of the game
-                    liveSend({type: 'next'});
+                    this.starting = true;
+                    this.view.showStartInstruction();
                 } else if (message.iterations_left === 0) {  // exhausted max iterations
                     document.getElementById("form").submit();
                 }
@@ -130,22 +130,25 @@ class Controller {
         }
     }
 
-    recvTrial(question) {
-        this.model.stimulus = question.word;
-        this.model.stimulus_cls = question.cls;
-        this.model.answer = null;
+    recvTrial(data) {
+        this.ts_question = performance.now();
+        this.ts_answer = 0;
+
+        this.model.stimulus = data.word;
+        this.model.stimulus_cls = data.cls;
+        this.model.stimulus_cat = data.cat;
+        this.model.resetAnswer();
 
         this.view.renderStimulus();
         this.view.renderAnswer();
 
-        this.ts_question = performance.now();
-        this.ts_answer = 0;
     }
 
     recvFeedback(message) {
-        this.model.feedback = message.is_correct;
+        this.model.is_correct = message.is_correct;
         this.view.renderAnswer();
 
+        // auto advance to next after correct answer
         if (message.is_correct) {
             window.setTimeout(() => this.reqNext(), js_vars.params.trial_delay * 1000);
         }
@@ -159,9 +162,9 @@ class Controller {
     onKeypress(event) {
         if (event.code == 'Space' && this.starting) {
             event.preventDefault();
-            this.view.hideStartInstruction();
-            liveSend({type: 'load'});
             this.starting = false;
+            this.view.hideStartInstruction();
+            this.reqNext();
         }
 
         if (this.model.stimulus !== null) {
@@ -177,15 +180,18 @@ class Controller {
     submitAnswer(answer) {
         this.ts_answer = performance.now();
         this.model.answer = answer;
-        liveSend({type: 'answer', answer: answer, reaction_time: (this.ts_answer - this.ts_question)/1000});
+        this.model.resetFeedback();
         this.view.renderAnswer();
+
+        liveSend({type: 'answer', answer: answer, reaction_time: (this.ts_answer - this.ts_question)/1000});
     }
 
     reqNext() {
-        this.model.stimulus = null;
-        this.model.answer = null;
+        this.model.resetStimulus();
+        this.model.resetAnswer();
         this.view.renderStimulus();
         this.view.renderAnswer();
+
         liveSend({type: 'next'});
    }
 }
