@@ -307,7 +307,7 @@ def play_game(player: Player, message: dict):
 
     if message_type == "cheat" and settings.DEBUG:
         # generate remaining data for the round
-        m = random.random() + 1.0
+        m = float(message['reaction'])
         if current:
             current.delete()
         for i in range(player.iteration, max_iters):
@@ -317,7 +317,7 @@ def play_game(player: Player, message: dict):
             t.response = t.correct
             t.is_correct = True
             t.response_timestamp = now + i
-            t.reaction_time = random.gauss(m, 0.250)
+            t.reaction_time = random.gauss(m, 0.3)
         return {
             my_id: dict(type='status', progress=get_progress(player), iterations_left=0)
         }
@@ -361,7 +361,47 @@ class Results(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        return dict()
+        def extract(rnd):
+            trials = [
+                t
+                for t in Trial.filter(player=player.in_round(rnd))
+                if t.reaction_time is not None
+            ]
+            values = [t.reaction_time for t in trials]
+            return values
+
+        data3 = extract(3)
+        data4 = extract(4)
+        data6 = extract(6)
+        data7 = extract(7)
+
+        dscore = stats.dscore(data3, data4, data6, data7)
+
+        round3 = player.subsession.in_round(3)
+        round6 = player.subsession.in_round(6)
+
+        pos_pairs = [
+            {
+                'primary': round3.primary_left,
+                'secondary': round3.secondary_left,
+            },
+            {
+                'primary': round3.primary_right,
+                'secondary': round3.secondary_right,
+            },
+        ]
+        neg_pairs = [
+            {
+                'primary': round6.primary_left,
+                'secondary': round6.secondary_left,
+            },
+            {
+                'primary': round6.primary_right,
+                'secondary': round6.secondary_right,
+            },
+        ]
+
+        return dict(dscore=dscore, pos_pairs=pos_pairs, neg_pairs=neg_pairs)
 
 
 page_sequence = [Intro, RoundN, Results]

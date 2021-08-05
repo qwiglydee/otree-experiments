@@ -7,5 +7,30 @@
 {% endblock %}
 
 {{ block content }}
-    <p>Results, for testing purposes only</p>
+
+    <p>Your d-score is {{dscore}}
+    </p>
+
+    <div class="d-flex flex-row">
+        <div class="flex-shrink-1 m-2">
+            {{neg_pairs.0.primary}} + {{neg_pairs.0.secondary}}
+            <br>
+            {{neg_pairs.1.primary}} + {{neg_pairs.1.secondary}}
+        </div>
+        <div class="flex-fill d-flex flex-column align-items-stretch justify-content-center">
+            <input readonly type="range" min="-2" max="2" value="{{dscore}}">
+            <div class="d-flex flex-row justify-content-between">
+                <span>-2</span>
+                <span>0</span>
+                <span>+2</span>
+            </div>
+        </div>
+
+        <div class="flex-shrink-1 m-2">
+            {{pos_pairs.0.primary}} + {{pos_pairs.0.secondary}}
+            <br>
+            {{pos_pairs.1.primary}} + {{pos_pairs.1.secondary}}
+        </div>
+    </div>
+
 {{ endblock }}
