@@ -166,40 +166,51 @@ def get_progress(player: Player):
     )
 
 
-# def custom_export(players):
-#     """Dumps all the trials generated"""
-#     yield [
-#         "session",
-#         "participant_code",
-#         "round",
-#         "iteration",
-#         "timestamp",
-#         "left primary",
-#         "right primary",
-#         "left secondary",
-#         "right secondary",
-#         "stimulus",
-#         "reaction_time",
-#         "retries",
-#     ]
-#     for p in players:
-#         participant = p.participant
-#         session = p.session
-#         for z in Trial.filter(player=p):
-#             yield [
-#                 session.code,
-#                 participant.code,
-#                 z.round,
-#                 z.iteration,
-#                 z.timestamp,
-#                 z.left_1,
-#                 z.right_1,
-#                 z.left_2,
-#                 z.right_2,
-#                 z.stimulus,
-#                 z.reaction_time,
-#                 z.retries,
-#             ]
+def custom_export(players):
+    """Dumps all the trials generated"""
+    yield [
+        "session",
+        "participant_code",
+        "round",
+        "primary_left",
+        "primary_right",
+        "secondary_left",
+        "secondary_right",
+        "iteration",
+        "timestamp",
+        "stimulus_class",
+        "stimulus_category",
+        "stimulus",
+        "expected",
+        "response",
+        "is_correct",
+        "reaction_time",
+    ]
+    for p in players:
+        if p.round_number not in (3, 4, 6, 7):
+            continue
+        participant = p.participant
+        session = p.session
+        subsession = p.subsession
+        for z in Trial.filter(player=p):
+            yield [
+                session.code,
+                participant.code,
+                subsession.round_number,
+                subsession.primary_left,
+                subsession.primary_right,
+                subsession.secondary_left,
+                subsession.secondary_right,
+                z.iteration,
+                z.timestamp,
+                z.stimulus_cls,
+                z.stimulus_cat,
+                z.stimulus,
+                z.correct,
+                z.response,
+                z.is_correct,
+                z.reaction_time,
+            ]
 
 
 def play_game(player: Player, message: dict):
@@ -313,6 +324,8 @@ def play_game(player: Player, message: dict):
     if message_type == "cheat" and settings.DEBUG:
         # generate remaining data for the round
         m = random.random() + 1.0
+        if current:
+            current.delete()
         for i in range(player.iteration, max_iters):
             t = generate_trial(player)
             t.iteration = i
@@ -373,7 +386,7 @@ class Results(Page):
         trials7 = Trial.filter(player=player.in_round(7))
 
         def aggregate(trials):
-            values = [t.reaction_time for t in trials]
+            values = [t.reaction_time for t in trials if t.reaction_time is not None]
             if len(values) <= 3:
                 return None
             m, s = stats(values)
