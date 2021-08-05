@@ -2,9 +2,9 @@ import time
 import random
 from otree.api import *
 from otree import settings
-from .stimuli import DICT
-from .blocks import BLOCKS
-from .stats import stats
+from . import stimuli
+from . import blocks
+from . import stats
 
 doc = """
 Implicit Association Test, draft
@@ -24,13 +24,28 @@ class Constants(BaseConstants):
 class Subsession(BaseSubsession):
     practice = models.BooleanField()
 
-    has_primary = models.BooleanField()
     primary_left = models.StringField()
     primary_right = models.StringField()
-
-    has_secondary = models.BooleanField()
     secondary_left = models.StringField()
     secondary_right = models.StringField()
+
+
+def get_block_for_round(rnd):
+    """Get a round setup from BLOCKS with actual categories' names substituted from session config
+    The `rnd`: Player or Subsession
+    """
+    block = blocks.BLOCKS[rnd.round_number]
+    result = blocks.configure(block, rnd.session.config)
+    return result
+
+
+def get_num_iterations_for_round(rnd):
+    """Get configured number of iterations
+    The `rnd`: Player or Subsession
+    """
+    idx = rnd.round_number
+    num = rnd.session.iat_params['num_iterations'][idx]
+    return num
 
 
 def creating_session(subsession: Subsession):
@@ -44,35 +59,13 @@ def creating_session(subsession: Subsession):
     for param in defaults:
         session.iat_params[param] = session.config.get(param, defaults[param])
 
-    # block have structure like
-    # {'left': {'primary': 1, 'secondary': 2}, 'right': {'primary': 1, 'secondary': 2}}
-    block = BLOCKS[subsession.round_number]
-    categories = {
-        'primary': session.config['primary'],
-        'secondary': session.config['secondary'],
-    }
-
-    def get_cat(cls, side):
-        block_side = block[side]
-        if cls not in block_side:
-            return ""
-        idx = block_side[cls] - 1
-        cat = categories[cls][idx]
-        assert cat in DICT
-        return cat
+    block = get_block_for_round(subsession)
 
     subsession.practice = block['practice']
-    subsession.primary_left = get_cat('primary', 'left')
-    subsession.primary_right = get_cat('primary', 'right')
-    subsession.secondary_left = get_cat('secondary', 'left')
-    subsession.secondary_right = get_cat('secondary', 'right')
-
-    subsession.has_primary = (
-        subsession.primary_left != "" and subsession.primary_right != ""
-    )
-    subsession.has_secondary = (
-        subsession.secondary_left != "" and subsession.secondary_right != ""
-    )
+    subsession.primary_left = block['left'].get('primary', "")
+    subsession.primary_right = block['right'].get('primary', "")
+    subsession.secondary_left = block['left'].get('secondary', "")
+    subsession.secondary_right = block['right'].get('secondary', "")
 
 
 class Group(BaseGroup):
@@ -111,20 +104,11 @@ class Trial(ExtraModel):
 
 def generate_trial(player: Player) -> Trial:
     """Create new question for a player"""
-    subsession = player.subsession
+    block = get_block_for_round(player.subsession)
     chosen_side = random.choice(['left', 'right'])
-    if subsession.has_primary and subsession.has_secondary:
-        chosen_cls = random.choice(['primary', 'secondary'])
-    elif subsession.has_primary:
-        chosen_cls = 'primary'
-    elif subsession.has_secondary:
-        chosen_cls = 'secondary'
-    else:
-        raise RuntimeError("improperly configured session")
-
-    chosen_cat = getattr(subsession, f"{chosen_cls}_{chosen_side}")
-    stimuli = DICT[chosen_cat]
-    stimulus = random.choice(stimuli)
+    chosen_cls = random.choice(list(block[chosen_side].keys()))
+    chosen_cat = block[chosen_side][chosen_cls]
+    stimulus = random.choice(stimuli.DICT[chosen_cat])
 
     player.iteration += 1
     return Trial.create(
@@ -162,7 +146,7 @@ def get_progress(player: Player):
         num_correct=player.num_correct,
         num_incorrect=player.num_failed,
         iteration=player.iteration,
-        total=player.session.iat_params['num_iterations'][player.round_number],
+        total=get_num_iterations_for_round(player),
     )
 
 
@@ -240,7 +224,7 @@ def play_game(player: Player, message: dict):
     session = player.session
     my_id = player.id_in_group
     ret_params = session.iat_params
-    max_iters = ret_params['num_iterations'][player.round_number]
+    max_iters = get_num_iterations_for_round(player)
 
     now = time.time()
     # the current trial or none
@@ -359,13 +343,10 @@ class RoundN(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        rnd = player.round_number
-        conf = player.session.config
-        block = BLOCKS[rnd]
         return dict(
             params=player.session.iat_params,
-            block=block,
-            num_iterations=conf['num_iterations'][rnd],
+            block=get_block_for_round(player),
+            num_iterations=get_num_iterations_for_round(player),
             DEBUG=settings.DEBUG,
             keys=Constants.keys,
         )
@@ -380,26 +361,7 @@ class Results(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        trials3 = Trial.filter(player=player.in_round(3))
-        trials4 = Trial.filter(player=player.in_round(4))
-        trials6 = Trial.filter(player=player.in_round(6))
-        trials7 = Trial.filter(player=player.in_round(7))
-
-        def aggregate(trials):
-            values = [t.reaction_time for t in trials if t.reaction_time is not None]
-            if len(values) <= 3:
-                return None
-            m, s = stats(values)
-            return dict(mean=m, std=s)
-
-        return dict(
-            data=dict(
-                round3=aggregate(trials3),
-                round4=aggregate(trials4),
-                round6=aggregate(trials6),
-                round7=aggregate(trials7),
-            )
-        )
+        return dict()
 
 
 page_sequence = [Intro, RoundN, Results]

@@ -7,23 +7,23 @@
 {% endblock %}
 
 {{ block content }}
-    <progress id="progress-bar" max="1" value="0"></progress>
+    <progress id="progress-bar" max="{{ num_iterations }}" value="0"></progress>
 
     <div class="corners-container">
         <div class="left corner">
-            {{ if subsession.has_primary }}
-            <div class="primary category">{{ subsession.primary_left }}</div>
+            {{ if 'primary' in block.left }}
+            <div class="primary category">{{ block.left.primary }}</div>
             {{ endif }}
-            {{ if subsession.has_secondary }}
-            <div class="secondary category">{{ subsession.secondary_left }}</div>
+            {{ if 'secondary' in block.left }}
+            <div class="secondary category">{{ block.left.secondary }}</div>
             {{ endif }}
         </div>
         <div class="right corner">
-            {{ if subsession.has_primary }}
-            <div class="primary category">{{ subsession.primary_right }}</div>
+            {{ if 'primary' in block.right }}
+            <div class="primary category">{{ block.right.primary }}</div>
             {{ endif }}
-            {{ if subsession.has_secondary }}
-            <div class="secondary category">{{ subsession.secondary_right }}</div>
+            {{ if 'secondary' in block.right }}
+            <div class="secondary category">{{ block.right.secondary }}</div>
             {{ endif }}
         </div>
     </div>
@@ -38,14 +38,14 @@
     <div class="instructions">
         <hr/>
         <p>Press <span class="key">{{ keys.left }}</span> for
-            {{ if subsession.has_primary }} <span class="primary">{{ subsession.primary_left }}</span> {{ endif }}
-            {{ if subsession.has_primary and subsession.has_secondary }} or {{ endif }}
-            {{ if subsession.has_secondary }} <span class="secondary">{{ subsession.secondary_left }}</span> {{ endif }}
+            {{ if 'primary' in block.left  }} <span class="primary">{{ block.left.primary }}</span> {{ endif }}
+            {{ if 'primary' in block.left and 'secondary' in block.left }} or {{ endif }}
+            {{ if 'secondary' in block.left }} <span class="secondary">{{ block.left.secondary }}</span> {{ endif }}
         </p>
         <p>Press <span class="key">{{ keys.right }}</span> for
-            {{ if subsession.has_primary }} <span class="primary">{{ subsession.primary_right }}</span> {{ endif }}
-            {{ if subsession.has_primary and subsession.has_secondary }} or {{ endif }}
-            {{ if subsession.has_secondary }} <span class="secondary">{{ subsession.secondary_right }}</span> {{ endif }}
+            {{ if 'primary' in block.right }} <span class="primary">{{ block.right.primary }}</span> {{ endif }}
+            {{ if 'primary' in block.right and 'secondary' in block.right }} or {{ endif }}
+            {{ if 'secondary' in block.right }} <span class="secondary">{{ block.right.secondary }}</span> {{ endif }}
         </p>
 
         <div id="start-help">

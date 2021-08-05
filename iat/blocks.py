@@ -1,8 +1,9 @@
-# setup of rounds
-# categories are configured in session config like:
-# primary = ['male', 'female'], secondary = ['work', 'family']
-# numbers in block config corresponds to 1st and 2nd element of corresponding pair
-#
+"""Setup of rounds
+Categories are configured in session config like:
+```primary = ['male', 'female'], secondary = ['work', 'family']```
+Numbers in block config corresponds to 1st and 2nd element of corresponding pair
+"""
+import copy
 
 
 # classic setup
@@ -110,3 +111,19 @@ BLOCKS2 = {
 }
 
 BLOCKS = BLOCKS1
+
+
+def configure(block, config):
+    """Insert categories' names from config into block setup
+    block: {'left': {'primary': 1, 'secondary': 1}, 'right': {'primary': 2, 'secondary': 2}}
+    config: {'primary': ['male', 'female'], 'secondary': ['work', 'family']}
+    result: {'left': {'primary': 'male', 'secondary': 'work'}, 'right': {'primary': 'female', 'secondary': 'family'}}
+    """
+
+    result = copy.deepcopy(block)
+
+    for side in ['left', 'right']:
+        for cls, idx in block[side].items():
+            result[side][cls] = config[cls][idx - 1]
+
+    return result
