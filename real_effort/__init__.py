@@ -243,7 +243,7 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return player.session.ret_params
+        return dict(params=player.session.ret_params)
 
     @staticmethod
     def vars_for_template(player: Player):

@@ -58,10 +58,10 @@ function liveRecv(message) {
         case 'feedback':
             showFeedback(message);
             if (message.is_correct === false && message.retries_left > 0) { // allow retry
-                tempFreeze(js_vars.retry_delay);
+                tempFreeze(js_vars.params.retry_delay);
                 enableInput();
             } else {
-                moveForward(js_vars.puzzle_delay);
+                moveForward(js_vars.params.puzzle_delay);
             }
             break;
 
