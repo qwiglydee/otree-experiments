@@ -7,13 +7,39 @@
     color: #a52a2a;
 }
 
-.category {
+.corners-container {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+}
+
+
+div.category {
     font-size: x-large;
 }
 
-.stimulus {
+img.category {
+    display: block;
+    width: 120px;
+    height: auto;
+}
+
+.stimulus-container {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    height: 300px;
+}
+
+p.stimulus {
     font-size: x-large;
     min-height: 1.25em;
+}
+
+img.stimulus {
+    display: block;
+    height: 240px;
+    width: auto;
 }
 
 .hidden {
@@ -28,18 +54,6 @@
 
 #progress-bar {
     width: 100%;
-}
-
-.corners-container {
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: space-between;
-}
-
-.stimulus-container {
-    display: flex;
-    flex-flow: column nowrap;
-    align-items: center;
 }
 
 .instructions {

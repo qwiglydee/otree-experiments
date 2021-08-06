@@ -30,19 +30,33 @@ class View {
     constructor(model) {
         this.model = model;
         this.$progress = document.getElementById("progress-bar");
-        this.$stimulus = document.getElementById("stimulus");
+        this.$stimulus_txt = document.getElementById("stimulus");
+        this.$stimulus_img = document.getElementById("stimulus-img");
         this.$answer = document.getElementById("answer-inp");
         this.$starthelp = document.getElementById("start-help");
     }
 
     renderStimulus() {
+        this.$stimulus_txt.classList.remove("primary", "secondary");
+        this.$stimulus_img.classList.remove("primary", "secondary");
+
         if (this.model.stimulus !== null) {
-            this.$stimulus.textContent = this.model.stimulus;
-            this.$stimulus.classList.remove("primary", "secondary");
-            this.$stimulus.classList.add(this.model.stimulus_cls);
+            let is_image = js_vars.params[`${this.model.stimulus_cls}_images`];
+            let is_prim = this.model.stimulus_cls == 'primary',
+                is_sec = this.model.stimulus_cls == 'secondary';
+
+            this.$stimulus_txt.classList.toggle("hidden", is_image);
+            this.$stimulus_img.classList.toggle("hidden", !is_image);
+            if (is_image) {
+                this.$stimulus_img.src = images_url + this.model.stimulus;
+                this.$stimulus_img.classList.add(this.model.stimulus_cls);
+            } else {
+                this.$stimulus_txt.textContent = this.model.stimulus;
+                this.$stimulus_txt.classList.add(this.model.stimulus_cls);
+            }
         } else {
-            this.$stimulus.textContent = "";
-            this.$stimulus.classList.remove("primary", "secondary");
+            this.$stimulus_txt.textContent = "";
+            this.$stimulus_img.src = "";
         }
     }
 
@@ -134,7 +148,7 @@ class Controller {
         this.ts_question = performance.now();
         this.ts_answer = 0;
 
-        this.model.stimulus = data.word;
+        this.model.stimulus = data.stimulus;
         this.model.stimulus_cls = data.cls;
         this.model.stimulus_cat = data.cat;
         this.model.resetAnswer();

@@ -53,6 +53,8 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         retry_delay=0.5,
         trial_delay=0.5,
+        primary_images=False,
+        secondary_images=False,
         num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
     )
     session.iat_params = {}
@@ -135,7 +137,7 @@ def encode_trial(trial: Trial):
     return dict(
         cls=trial.stimulus_cls,
         cat=trial.stimulus_cat,
-        word=trial.stimulus,
+        stimulus=trial.stimulus,
     )
 
 
@@ -343,9 +345,22 @@ class RoundN(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
+        block = get_block_for_round(player)
+        params = player.session.iat_params
+
+        thumbnails = {}
+        for side in ['left', 'right']:
+            thumbnails[side] = {}
+            for cls in ['primary', 'secondary']:
+                if cls in block[side] and params[f"{cls}_images"]:
+                    # use first image in categopry as a corner thumbnail
+                    images = stimuli.DICT[block[side][cls]]
+                    thumbnails[side][cls] = "images/" + images[0]
+
         return dict(
-            params=player.session.iat_params,
-            block=get_block_for_round(player),
+            params=params,
+            block=block,
+            thumbnails=thumbnails,
             num_iterations=get_num_iterations_for_round(player),
             DEBUG=settings.DEBUG,
             keys=Constants.keys,

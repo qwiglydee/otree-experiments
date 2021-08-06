@@ -11,25 +11,52 @@
 
     <div class="corners-container">
         <div class="left corner">
-            {{ if 'primary' in block.left }}
-            <div class="primary category">{{ block.left.primary }}</div>
+            {{ if params.primary_images }}
+                {{ if 'primary' in thumbnails.left }}
+                    <img class="primary category" src="{{ static thumbnails.left.primary }}">
+                {{ endif }}
+            {{ else }}
+                {{ if 'primary' in block.left }}
+                    <div class="primary category">{{ block.left.primary }}</div>
+                {{ endif }}
             {{ endif }}
-            {{ if 'secondary' in block.left }}
-            <div class="secondary category">{{ block.left.secondary }}</div>
+
+            {{ if params.secondary_images }}
+                {{ if 'secondary' in thumbnails.left }}
+                    <img class="secondary category" src="{{ static thumbnails.left.secondary }}">
+                {{ endif }}
+            {{ else }}
+                {{ if 'secondary' in block.left }}
+                    <div class="secondary category">{{ block.left.secondary }}</div>
+                {{ endif }}
             {{ endif }}
         </div>
         <div class="right corner">
-            {{ if 'primary' in block.right }}
-            <div class="primary category">{{ block.right.primary }}</div>
+            {{ if params.primary_images }}
+                {{ if 'primary' in thumbnails.right }}
+                    <img class="primary category" src="{{ static thumbnails.right.primary }}">
+                {{ endif }}
+            {{ else }}
+                {{ if 'primary' in block.right }}
+                    <div class="primary category">{{ block.right.primary }}</div>
+                {{ endif }}
             {{ endif }}
-            {{ if 'secondary' in block.right }}
-            <div class="secondary category">{{ block.right.secondary }}</div>
+
+            {{ if params.secondary_images }}
+                {{ if 'secondary' in thumbnails.right }}
+                    <img class="secondary category" src="{{ static thumbnails.right.secondary }}">
+                {{ endif }}
+            {{ else }}
+                {{ if 'secondary' in block.right }}
+                    <div class="secondary category">{{ block.right.secondary }}</div>
+                {{ endif }}
             {{ endif }}
         </div>
     </div>
 
     <div class="stimulus-container">
-        <div class="stimulus" id="stimulus"></div>
+        <p class="stimulus" id="stimulus"></p>
+        <img class="stimulus" id="stimulus-img">
         <div class="input-group m-1">
             <input type="text" id="answer-inp" class="form-control" readonly>
         </div>
@@ -61,6 +88,9 @@
 {{ endblock }}
 
 {{ block scripts }}
+<script>
+    const images_url = "{{ static 'images/' }}";
+</script>
 <script src="{{ static 'iat.js' }}"></script>
 {{ if DEBUG }}<script src="{{ static 'iat_cheating.js' }}"></script>{{ endif }}
 {{ endblock }}
