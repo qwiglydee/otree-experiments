@@ -26,7 +26,8 @@ img.category {
 
 .stimulus-container {
     display: flex;
-    flex-flow: column nowrap;
+    flex-flow: row nowrap;
+    justify-content: center;
     align-items: center;
     height: 300px;
 }
@@ -40,6 +41,18 @@ img.stimulus {
     display: block;
     height: 240px;
     width: auto;
+}
+
+.feedback {
+    width: 5em;
+    margin: 0 auto;
+}
+
+.feedback .form-control {
+    background-color: transparent;
+    border: none;
+    font-weight: bold;
+    font-size: x-large;
 }
 
 .hidden {
@@ -60,14 +73,3 @@ img.stimulus {
     text-align: center;
 }
 
-
-.input-group {
-    width: 5em;
-}
-
-.input-group .form-control {
-    background-color: transparent;
-    border: none;
-    font-weight: bold;
-    font-size: x-large;
-}
