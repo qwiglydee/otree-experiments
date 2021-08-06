@@ -30,13 +30,43 @@ class Subsession(BaseSubsession):
     secondary_right = models.StringField()
 
 
-def get_block_for_round(rnd):
+def get_block_for_round(rnd, params):
     """Get a round setup from BLOCKS with actual categories' names substituted from session config
     The `rnd`: Player or Subsession
     """
-    block = blocks.BLOCKS[rnd.round_number]
-    result = blocks.configure(block, rnd.session.config)
+    block = blocks.BLOCKS[rnd]
+    result = blocks.configure(block, params)
     return result
+
+
+def thumbnails_for_block(block, params):
+    """Return image urls for each category in block.
+    Taking first image in the category as a thumbnail.
+    """
+    thumbnails = {'left': {}, 'right': {}}
+    for side in ['left', 'right']:
+        for cls in ['primary', 'secondary']:
+            if cls in block[side] and params[f"{cls}_images"]:
+                # use first image in categopry as a corner thumbnail
+                images = stimuli.DICT[block[side][cls]]
+                thumbnails[side][cls] = "images/" + images[0]
+    return thumbnails
+
+
+def labels_for_block(block):
+    """Return category labels for each category in block
+    Just stripping prefix "something:"
+    """
+    labels = {'left': {}, 'right': {}}
+    for side in ['left', 'right']:
+        for cls in ['primary', 'secondary']:
+            if cls in block[side]:
+                cat = block[side][cls]
+                if ':' in cat:
+                    labels[side][cls] = cat.split(':')[1]
+                else:
+                    labels[side][cls] = cat
+    return labels
 
 
 def get_num_iterations_for_round(rnd):
@@ -53,7 +83,9 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         retry_delay=0.5,
         trial_delay=0.5,
+        primary=[None, None],
         primary_images=False,
+        secondary=[None, None],
         secondary_images=False,
         num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
     )
@@ -61,7 +93,7 @@ def creating_session(subsession: Subsession):
     for param in defaults:
         session.iat_params[param] = session.config.get(param, defaults[param])
 
-    block = get_block_for_round(subsession)
+    block = get_block_for_round(subsession.round_number, session.iat_params)
 
     subsession.practice = block['practice']
     subsession.primary_left = block['left'].get('primary', "")
@@ -106,7 +138,7 @@ class Trial(ExtraModel):
 
 def generate_trial(player: Player) -> Trial:
     """Create new question for a player"""
-    block = get_block_for_round(player.subsession)
+    block = get_block_for_round(player.round_number, player.session.iat_params)
     chosen_side = random.choice(['left', 'right'])
     chosen_cls = random.choice(list(block[chosen_side].keys()))
     chosen_cat = block[chosen_side][chosen_cls]
@@ -335,6 +367,16 @@ class Intro(Page):
     def is_displayed(player):
         return player.round_number == 1
 
+    @staticmethod
+    def vars_for_template(player: Player):
+        # using 3rd block to take categories labels in instructions
+        params = player.session.iat_params
+        block = get_block_for_round(3, params)
+        return dict(
+            params=params,
+            labels=labels_for_block(block),
+        )
+
 
 class RoundN(Page):
     template_name = "iat/Main.html"
@@ -345,22 +387,13 @@ class RoundN(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        block = get_block_for_round(player)
         params = player.session.iat_params
-
-        thumbnails = {}
-        for side in ['left', 'right']:
-            thumbnails[side] = {}
-            for cls in ['primary', 'secondary']:
-                if cls in block[side] and params[f"{cls}_images"]:
-                    # use first image in categopry as a corner thumbnail
-                    images = stimuli.DICT[block[side][cls]]
-                    thumbnails[side][cls] = "images/" + images[0]
-
+        block = get_block_for_round(player.round_number, params)
         return dict(
             params=params,
             block=block,
-            thumbnails=thumbnails,
+            thumbnails=thumbnails_for_block(block, params),
+            labels=labels_for_block(block),
             num_iterations=get_num_iterations_for_round(player),
             DEBUG=settings.DEBUG,
             keys=Constants.keys,
@@ -392,31 +425,12 @@ class Results(Page):
 
         dscore = stats.dscore(data3, data4, data6, data7)
 
-        round3 = player.subsession.in_round(3)
-        round6 = player.subsession.in_round(6)
+        # combinations for positive score
+        labels3 = labels_for_block(get_block_for_round(3, player.session.iat_params))
+        # combinations for negative score
+        labels6 = labels_for_block(get_block_for_round(6, player.session.iat_params))
 
-        pos_pairs = [
-            {
-                'primary': round3.primary_left,
-                'secondary': round3.secondary_left,
-            },
-            {
-                'primary': round3.primary_right,
-                'secondary': round3.secondary_right,
-            },
-        ]
-        neg_pairs = [
-            {
-                'primary': round6.primary_left,
-                'secondary': round6.secondary_left,
-            },
-            {
-                'primary': round6.primary_right,
-                'secondary': round6.secondary_right,
-            },
-        ]
-
-        return dict(dscore=dscore, pos_pairs=pos_pairs, neg_pairs=neg_pairs)
+        return dict(dscore=dscore, pos_pairs=labels3, neg_pairs=labels6)
 
 
 page_sequence = [Intro, RoundN, Results]

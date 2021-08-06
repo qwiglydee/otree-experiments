@@ -65,14 +65,14 @@
     <div class="instructions">
         <hr/>
         <p>Press <span class="key">{{ keys.left }}</span> for
-            {{ if 'primary' in block.left  }} <span class="primary">{{ block.left.primary }}</span> {{ endif }}
-            {{ if 'primary' in block.left and 'secondary' in block.left }} or {{ endif }}
-            {{ if 'secondary' in block.left }} <span class="secondary">{{ block.left.secondary }}</span> {{ endif }}
+            {{ if 'primary' in labels.left  }} <span class="primary">{{ labels.left.primary }}</span> {{ endif }}
+            {{ if 'primary' in labels.left and 'secondary' in labels.left }} or {{ endif }}
+            {{ if 'secondary' in labels.left }} <span class="secondary">{{ labels.left.secondary }}</span> {{ endif }}
         </p>
         <p>Press <span class="key">{{ keys.right }}</span> for
-            {{ if 'primary' in block.right }} <span class="primary">{{ block.right.primary }}</span> {{ endif }}
-            {{ if 'primary' in block.right and 'secondary' in block.right }} or {{ endif }}
-            {{ if 'secondary' in block.right }} <span class="secondary">{{ block.right.secondary }}</span> {{ endif }}
+            {{ if 'primary' in labels.right }} <span class="primary">{{ labels.right.primary }}</span> {{ endif }}
+            {{ if 'primary' in labels.right and 'secondary' in labels.right }} or {{ endif }}
+            {{ if 'secondary' in labels.right }} <span class="secondary">{{ labels.right.secondary }}</span> {{ endif }}
         </p>
 
         <div id="start-help">

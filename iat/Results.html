@@ -13,9 +13,9 @@
 
     <div class="d-flex flex-row">
         <div class="flex-shrink-1 m-2">
-            {{neg_pairs.0.primary}} + {{neg_pairs.0.secondary}}
+            {{neg_pairs.left.primary}} + {{neg_pairs.left.secondary}}
             <br>
-            {{neg_pairs.1.primary}} + {{neg_pairs.1.secondary}}
+            {{neg_pairs.right.primary}} + {{neg_pairs.right.secondary}}
         </div>
         <div class="flex-fill d-flex flex-column align-items-stretch justify-content-center">
             <input readonly type="range" min="-2" max="2" value="{{dscore}}">
@@ -27,9 +27,9 @@
         </div>
 
         <div class="flex-shrink-1 m-2">
-            {{pos_pairs.0.primary}} + {{pos_pairs.0.secondary}}
+            {{pos_pairs.left.primary}} + {{pos_pairs.left.secondary}}
             <br>
-            {{pos_pairs.1.primary}} + {{pos_pairs.1.secondary}}
+            {{pos_pairs.right.primary}} + {{pos_pairs.right.secondary}}
         </div>
     </div>
 
