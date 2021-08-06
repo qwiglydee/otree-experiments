@@ -35,19 +35,19 @@ let fields = {
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
-    liveSend({type: 'load'});
+    liveSend({type: 'load'}); // expect 'status' response
 });
 
 function liveRecv(message) {
     switch(message.type) {
 
         case 'status':
-            if (message.progress.iteration === 0) {   // start of the game
+            if (message.puzzle) { // restoring existing state
+                newPuzzle(message.puzzle);
+            } else if (message.progress.iteration === 0) {   // start of the game
                 liveSend({type: 'next'});
             } else if (message.iterations_left === 0) {  // exhausted max iterations
                 document.getElementById("form").submit();
-            } else if (message.puzzle) {
-                newPuzzle(message.puzzle);
             }
             break;
 
