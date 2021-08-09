@@ -7,8 +7,6 @@
 {% endblock %}
 
 {{ block content }}
-    <progress id="progress-bar" max="{{ num_iterations }}" value="0"></progress>
-
     <div class="corners-container">
         <div class="left corner">
             {{ if params.primary_images }}
@@ -82,6 +80,8 @@
             <p><b>To begin</b>, press SPACE or touch middle of the screen.</p>
         </div>
     </div>
+
+    <progress id="progress-bar" max="{{ num_iterations }}" value="0"></progress>
 
     {{ if DEBUG }}
     <button type="button" id="cheat-btn" class="btn btn-dark">Cheat</button>
