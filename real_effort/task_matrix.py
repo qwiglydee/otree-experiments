@@ -10,6 +10,7 @@ TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
 IGNORED_CHARS = "↓"
 COUNTED_CHAR = "→"
+INPUT_TYPE = "number"
 
 
 def generate_puzzle_fields():

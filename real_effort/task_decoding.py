@@ -8,6 +8,7 @@ TEXT_FONT = Path(__file__).parent / "assets" / "FreeSerifBold.otf"
 CHARSET = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 DIGITS = tuple('0123456789')
 WORD_LENGTH = 5
+INPUT_TYPE = "text"
 
 
 def generate_puzzle_fields():
