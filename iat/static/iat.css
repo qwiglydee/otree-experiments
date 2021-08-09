@@ -21,6 +21,7 @@ div.category {
 img.category {
     display: block;
     width: 120px;
+    max-width: 100%;
     height: auto;
 }
 
@@ -29,7 +30,7 @@ img.category {
     flex-flow: row nowrap;
     justify-content: center;
     align-items: center;
-    height: 300px;
+    min-height: 100px;
 }
 
 p.stimulus {
@@ -39,8 +40,8 @@ p.stimulus {
 
 img.stimulus {
     display: block;
-    height: 240px;
-    width: auto;
+    width: 300px;
+    max-width: 100%;
 }
 
 .feedback {

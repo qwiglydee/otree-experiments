@@ -13,70 +13,71 @@
         <div class="left corner">
             {{ if params.primary_images }}
                 {{ if 'primary' in thumbnails.left }}
-                    <img class="primary category" src="{{ static thumbnails.left.primary }}">
+                    <img class="left primary category" src="{{ static thumbnails.left.primary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'primary' in block.left }}
-                    <div class="primary category">{{ block.left.primary }}</div>
+                    <div class="left primary category">{{ block.left.primary }}</div>
                 {{ endif }}
             {{ endif }}
 
             {{ if params.secondary_images }}
                 {{ if 'secondary' in thumbnails.left }}
-                    <img class="secondary category" src="{{ static thumbnails.left.secondary }}">
+                    <img class="left secondary category" src="{{ static thumbnails.left.secondary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'secondary' in block.left }}
-                    <div class="secondary category">{{ block.left.secondary }}</div>
+                    <div class="left secondary category">{{ block.left.secondary }}</div>
                 {{ endif }}
             {{ endif }}
         </div>
         <div class="right corner">
             {{ if params.primary_images }}
                 {{ if 'primary' in thumbnails.right }}
-                    <img class="primary category" src="{{ static thumbnails.right.primary }}">
+                    <img class="right primary category" src="{{ static thumbnails.right.primary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'primary' in block.right }}
-                    <div class="primary category">{{ block.right.primary }}</div>
+                    <div class="right primary category">{{ block.right.primary }}</div>
                 {{ endif }}
             {{ endif }}
 
             {{ if params.secondary_images }}
                 {{ if 'secondary' in thumbnails.right }}
-                    <img class="secondary category" src="{{ static thumbnails.right.secondary }}">
+                    <img class="right secondary category" src="{{ static thumbnails.right.secondary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'secondary' in block.right }}
-                    <div class="secondary category">{{ block.right.secondary }}</div>
+                    <div class="right secondary category">{{ block.right.secondary }}</div>
                 {{ endif }}
             {{ endif }}
         </div>
     </div>
 
-    <div class="stimulus-container">
+    <div class="stimulus-container m-1">
         <p class="stimulus" id="stimulus"></p>
         <img class="stimulus" id="stimulus-img">
     </div>
+
     <div class="feedback input-group">
         <input type="text" id="answer-inp" class="form-control" readonly>
     </div>
 
     <div class="instructions">
         <hr/>
-        <p>Press <span class="key">{{ keys.left }}</span> for
+        <p>Press <span class="key">{{ keys.left }}</span> or touch top-left corner for
             {{ if 'primary' in labels.left  }} <span class="primary">{{ labels.left.primary }}</span> {{ endif }}
             {{ if 'primary' in labels.left and 'secondary' in labels.left }} or {{ endif }}
             {{ if 'secondary' in labels.left }} <span class="secondary">{{ labels.left.secondary }}</span> {{ endif }}
         </p>
-        <p>Press <span class="key">{{ keys.right }}</span> for
+        <p>Press <span class="key">{{ keys.right }}</span> or touch top-right corner  for
             {{ if 'primary' in labels.right }} <span class="primary">{{ labels.right.primary }}</span> {{ endif }}
             {{ if 'primary' in labels.right and 'secondary' in labels.right }} or {{ endif }}
             {{ if 'secondary' in labels.right }} <span class="secondary">{{ labels.right.secondary }}</span> {{ endif }}
         </p>
 
         <div id="start-help">
-            <p>To begin press SPACE.</p>
+            <p>To begin press SPACE or touch middle of the screen.</p>
         </div>
     </div>
 

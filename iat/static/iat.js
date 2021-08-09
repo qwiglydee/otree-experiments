@@ -107,11 +107,10 @@ class Controller {
         this.ts_answer = 0;
 
         window.liveRecv = (message) => this.recvMessage(message);
-        document.querySelector('body').onkeydown = (ev) => this.onKeypress(event);
-    }
+        document.querySelector('body').addEventListener('keydown', (e) => this.onKeypress(e));
+        document.querySelector('.stimulus-container').addEventListener('touchstart', (e) => this.onTouchMiddle(e));
+        document.querySelector('.corners-container').addEventListener('touchstart', (e) => this.onTouchCorner(e));
 
-    start() {
-        this.starting = true;
         liveSend({type: 'load'});
     }
 
@@ -176,9 +175,7 @@ class Controller {
     onKeypress(event) {
         if (event.code == 'Space' && this.starting) {
             event.preventDefault();
-            this.starting = false;
-            this.view.hideStartInstruction();
-            this.reqNext();
+            this.startGame();
         }
 
         if (this.model.stimulus !== null) {
@@ -189,6 +186,31 @@ class Controller {
                 this.submitAnswer('right');
             }
         }
+    }
+
+    onTouchMiddle(event) {
+//        console.debug("touch", event);
+        if (this.starting) {
+            this.startGame();
+        }
+    }
+
+    onTouchCorner(event) {
+//        console.debug("touch", event);
+        if (this.model.stimulus !== null) {
+            if (event.target.classList.contains('left')) {
+                this.submitAnswer('left');
+            }
+            if (event.target.classList.contains('right')) {
+                this.submitAnswer('right');
+            }
+        }
+    }
+
+    startGame() {
+        this.starting = false;
+        this.view.hideStartInstruction();
+        this.reqNext();
     }
 
     submitAnswer(answer) {
@@ -214,5 +236,4 @@ window.onload = (event) => {
     const model = new Model();
     const view = new View(model);
     const ctrl = new Controller(model, view);
-    ctrl.start();
 };
