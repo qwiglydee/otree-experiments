@@ -7,7 +7,9 @@ LENGTH = 3
 TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
 TEXT_FONT = Path(__file__).parent / "assets" / "FreeSansBold.otf"
+
 INPUT_TYPE = "text"
+INPUT_HINT = "enter text from the image"
 
 
 def generate_puzzle_fields():

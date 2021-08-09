@@ -248,7 +248,9 @@ class Game(Page):
     @staticmethod
     def vars_for_template(player: Player):
         task_module = get_task_module(player)
-        return dict(DEBUG=settings.DEBUG, input_type=task_module.INPUT_TYPE)
+        return dict(DEBUG=settings.DEBUG,
+                    input_type=task_module.INPUT_TYPE,
+                    placeholder=task_module.INPUT_HINT)
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

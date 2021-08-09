@@ -10,7 +10,9 @@ TEXT_SIZE = 32
 TEXT_PADDING = TEXT_SIZE
 IGNORED_CHARS = "↓"
 COUNTED_CHAR = "→"
+
 INPUT_TYPE = "number"
+INPUT_HINT = f"count symbols {COUNTED_CHAR} in the matrix"
 
 
 def generate_puzzle_fields():
