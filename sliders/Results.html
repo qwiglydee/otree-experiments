@@ -1,0 +1,12 @@
+{{ block title }}
+Results
+{{ endblock }}
+
+{{ block content }}
+
+<p>
+    You have tried {{ player.num_trials }} puzzles, successfully solved {{ player.num_correct }},
+    and failed {{ player.num_failed }}.
+</p>
+
+{{ endblock }}

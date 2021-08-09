@@ -2,6 +2,13 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
+        name="sliders",
+        display_name="Slider task",
+        num_demo_participants=1,
+        app_sequence=["sliders"],
+    ),
+
+    dict(
         name="decoding",
         display_name="Decoding numbers to words",
         num_demo_participants=1,
