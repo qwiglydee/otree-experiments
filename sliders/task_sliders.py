@@ -1,3 +1,4 @@
+import math
 import json
 from PIL import Image, ImageDraw
 import random
@@ -7,7 +8,7 @@ SLIDER_WIDTH = SLIDER_SNAP * 100
 SLIDER_EXTRA = 64  # padding used to randomly shift sliders
 SLIDER_TICKS = 10  # every N
 SLIDER_HEIGHT = 48
-SLIDER_MARGIN = 20  # to fit handle and shade
+SLIDER_MARGIN = 15  # to fit handle and shade
 
 SLIDER_BBOX = (SLIDER_WIDTH + SLIDER_EXTRA, SLIDER_HEIGHT)
 
@@ -19,20 +20,30 @@ TARGET_COLOR = "#EE6300"
 CORRECT_COLOR = "#008B00"
 
 
-def generate_puzzle_fields(params):
+def generate_puzzle(params):
+    """Generate randomply placed sliders, their target and initial values
+    Sliders are positioned by center of bbox in regular grid cells
+    Target (middle) position is a pixel-wise shift from the center
+    Initial value is random shift from moddle
+    """
+
     count = params['num_sliders']
+    columns = params['num_columns']
+    rows = math.ceil(count / columns)
 
-    # 1 column × `count` rows
     grid_w, grid_h = SLIDER_BBOX
-    total_w = grid_w + SLIDER_MARGIN * 2
-    total_h = grid_h * count
-
-    size = [total_w, total_h]
+    total_w = (grid_w + SLIDER_MARGIN * 2) * columns
+    total_h = grid_h * rows
 
     # coordinates of sliders' bbox centers
-    x0 = total_w // 2
-    y0 = grid_h // 2
-    coords = [[x0, y0 + grid_h * i] for i in range(count)]
+    def center(i):
+        col = math.floor(i / rows)
+        row = i % rows
+        x = (grid_w + SLIDER_MARGIN * 2) * (col + 0.5)
+        y = grid_h * (row + 0.5)
+        return x, y
+
+    grid = [center(i) for i in range(count)]
 
     # target (middle) positions, randomly shifted from bbox center
     solution = [
@@ -43,7 +54,7 @@ def generate_puzzle_fields(params):
     initial = [
         solution[i] + random.randint(-50, 50) * SLIDER_SNAP for i in range(count)
     ]
-    return dict(size=size, coords=coords, solution=solution, initial=initial)
+    return dict(size=[total_w, total_h], sliders=grid, solution=solution, initial=initial)
 
 
 def snap_value(value, center):
@@ -53,7 +64,7 @@ def snap_value(value, center):
 def render_image(puzzle):
     puzzle_data = json.loads(puzzle.data)
     size = puzzle_data["size"]
-    coords = puzzle_data["coords"]
+    sliders = puzzle_data["sliders"]
     solution = json.loads(puzzle.solution)
 
     image = Image.new("RGB", size)
@@ -61,8 +72,8 @@ def render_image(puzzle):
 
     draw.rectangle((0, 0, size[0], size[1]), fill="#e0e0e0")
 
-    for i in range(len(coords)):
-        x0, y0 = coords[i]  # bbox center
+    for i in range(len(sliders)):
+        x0, y0 = sliders[i]  # bbox center
         xm = x0 + solution[i]  # actual target center
 
         # bbox for debug

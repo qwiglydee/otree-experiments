@@ -186,7 +186,7 @@ class Controller {
 
     recvPuzzle(data) {
         this.model.load(data.values);
-        this.view.load(data.size, data.coords, data.image);
+        this.view.load(data.size, data.sliders, data.image);
         this.view.render();
     }
 
