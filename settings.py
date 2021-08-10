@@ -2,6 +2,13 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
+        name="sliders",
+        display_name="Slider task",
+        num_demo_participants=1,
+        app_sequence=["sliders"],
+    ),
+
+    dict(
         name="decoding",
         display_name="Decoding numbers to words",
         num_demo_participants=1,
@@ -38,7 +45,7 @@ SESSION_CONFIG_DEFAULTS = dict(
 )
 
 PARTICIPANT_FIELDS = []
-SESSION_FIELDS = ['ret_params']
+SESSION_FIELDS = ['task_params']
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans
