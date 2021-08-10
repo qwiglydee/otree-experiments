@@ -32,7 +32,7 @@ class PlayerBot(Bot):
     ]
 
     def play_round(self):
-        if self.case == 'iter_limit' and not self.session.ret_params['max_iterations']:
+        if self.case == 'iter_limit' and not self.session.task_params['max_iterations']:
             print(f"Skipping case {self.case} under no max_iterations")
             return
 
@@ -206,7 +206,7 @@ def call_live_method(method, group, case, **kwargs):  # noqa
     except KeyError:
         raise NotImplementedError("Test case not implemented", case)
 
-    test(method, group.get_players()[0], group.session.ret_params)
+    test(method, group.get_players()[0], group.session.task_params)
 
 
 # test cases
