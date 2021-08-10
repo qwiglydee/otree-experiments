@@ -5,8 +5,11 @@ Results
 {{ block content }}
 
 <p>
-    You have tried {{ player.num_trials }} puzzles, successfully solved {{ player.num_solved }},
-    and failed {{ player.num_failed }}.
+    You have correctly moved {{ player.solved_sliders }} sliders in {{ player.elapsed_time|to2 }} seconds.
+</p>
+
+<p>
+    Your payoff is {{ player.payoff }}.
 </p>
 
 {{ endblock }}

@@ -27,8 +27,8 @@ def creating_session(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         trial_delay=1.0,
-        num_iterations=3,
-        num_sliders=48,
+        num_iterations=1,
+        num_sliders=3,
         num_columns=3
     )
     session.task_params = {}
@@ -41,10 +41,14 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    solved_sliders = models.IntegerField(initial=0)
+    elapsed_time = models.FloatField()
+
+    # for multi-iteration setup
     iteration = models.IntegerField(initial=0)
-    num_trials = models.IntegerField(initial=0)
-    num_solved = models.IntegerField(initial=0)
-    num_failed = models.IntegerField(initial=0)
+    # num_trials = models.IntegerField(initial=0)
+    # num_solved = models.IntegerField(initial=0)
+    # num_failed = models.IntegerField(initial=0)
 
 
 # puzzle-specific stuff
@@ -110,9 +114,9 @@ def get_progress(player: Player):
     """Return current player progress"""
     return dict(
         iteration=player.iteration,
-        num_trials=player.num_trials,
-        num_solved=player.num_solved,
-        num_failed=player.num_failed,
+        # num_trials=player.num_trials,
+        # num_solved=player.num_solved,
+        # num_failed=player.num_failed,
     )
 
 
@@ -207,7 +211,6 @@ def play_game(player: Player, message: dict):
         z = generate_puzzle(player)
 
         # update player progress
-        player.num_trials += 1  # FIXME
         p = get_progress(player)
 
         return {my_id: dict(type='puzzle', puzzle=encode_puzzle(z), progress=p)}
@@ -224,8 +227,8 @@ def play_game(player: Player, message: dict):
         feedback = handle_response(current, response)
         current.response_timestamp = now
 
-        if current.solved:
-            player.num_solved += 1
+        # if current.solved:
+        #     player.num_solved += 1
 
         p = get_progress(player)
         return {
@@ -242,7 +245,7 @@ def play_game(player: Player, message: dict):
 
 
 class Game(Page):
-    timeout_seconds = 600
+    timeout_seconds = 120
 
     live_method = play_game
 
@@ -262,8 +265,12 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        if not timeout_happened and not player.session.task_params['num_iterations']:
-            raise RuntimeError("malicious page submission")
+        # if not timeout_happened and not player.session.task_params['num_iterations']:
+        #     raise RuntimeError("malicious page submission")
+        current = get_current_puzzle(player)
+        player.elapsed_time = current.response_timestamp - current.timestamp
+        player.solved_sliders = current.correct
+        player.payoff = player.solved_sliders
 
 
 class Results(Page):
