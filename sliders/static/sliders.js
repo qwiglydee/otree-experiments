@@ -80,28 +80,28 @@ class View {
     drawHandle(x, y, state) {
         // hover area
         if (state.hover) {
+            this.canvas.fillStyle = "rgba(98, 0, 238, 0.04)";
             this.canvas.beginPath();
             this.canvas.arc(x, y, 20, 0, 2 * Math.PI);
-            this.canvas.fillStyle = "rgba(98, 0, 238, 0.04)";
             this.canvas.fill();
         } else if (state.dragged) {
+            this.canvas.fillStyle = "rgba(98, 0, 238, 0.24)";
             this.canvas.beginPath();
             this.canvas.arc(x, y, 20, 0, 2 * Math.PI);
-            this.canvas.fillStyle = "rgba(98, 0, 238, 0.24)";
             this.canvas.fill();
         }
+
         // knob
         if (state.correct) {
-            this.canvas.beginPath();
-            this.canvas.arc(x, y, 10, 0, 2 * Math.PI);
             this.canvas.fillStyle = "rgb(0, 139, 0)";
-            this.canvas.fill();
+        } else if (state.dragged) {
+            this.canvas.fillStyle = "rgba(98, 0, 238, 0.5)";
         } else {
-            this.canvas.beginPath();
-            this.canvas.arc(x, y, 10, 0, 2 * Math.PI);
             this.canvas.fillStyle = "rgb(98, 0, 238)";
-            this.canvas.fill();
         }
+        this.canvas.beginPath();
+        this.canvas.arc(x, y, 10, 0, 2 * Math.PI);
+        this.canvas.fill();
     }
 
     pickHandle(x, y) {
@@ -123,7 +123,7 @@ class View {
 
     renderProgress() {
         if (this.model.progress.total !== null) {
-            this.$progress.value = this.model.progress.num_trials;
+            this.$progress.value = this.model.progress.iteration;
         } else {
             this.$progress.value = 0;
         }
@@ -161,7 +161,7 @@ class Controller {
                 } else if (message.progress.iteration === 0) {   // start of the game
                     this.startGame();
                 } else if (message.iterations_left === 0) {  // exhausted max iterations
-                    document.getElementById("form").submit();
+                    this.endGame();
                 }
                 break;
 
@@ -185,17 +185,20 @@ class Controller {
     }
 
     recvPuzzle(data) {
-        this.model.load(data.initial);
+        this.model.load(data.values);
         this.view.load(data.size, data.coords, data.image);
         this.view.render();
     }
 
     recvFeedback(message) {
-        this.model.correct = message.is_correct;
+        Object.assign(this.model.values, message.values);
+        Object.assign(this.model.correct, message.is_correct);
+
         this.view.render();
-        // auto advance to next after correct answer
-        if (message.is_correct.every(e=>e)) {
-            window.setTimeout(() => this.reqNext(), js_vars.params.trial_delay * 1000);
+
+        if (message.is_complete) { // current puzzle solved
+            // auto advance to next
+            window.setTimeout(() => this.reqNew(), js_vars.params.trial_delay * 1000);
         }
     }
 
@@ -206,19 +209,25 @@ class Controller {
 
     startGame() {
         this.starting = false;
-        this.reqNext();
+        this.reqNew();
     }
 
-    submitValues() {
-        liveSend({type: 'values', values: this.model.values});
+    submitValues(i) {
+        let values = {};
+        if (i === undefined) { // all sliders
+            Object.assign(values, this.model.values);
+        } else { // one slider
+            values[i] = this.model.values[i];
+        }
+        liveSend({type: 'values', values: values});
     }
 
-    reqNext() {
+    reqNew() {
         this.model.reset();
         this.view.reset();
         this.view.clear();
 
-        liveSend({type: 'next'});
+        liveSend({type: 'new'});
     }
 
     pickHandle(event) {
@@ -255,7 +264,11 @@ class Controller {
         let i = this.picked_slider;
         this.view.drawSlider(i, {});
         this.picked_slider = null;
-        this.submitValues();
+        this.submitValues(i);
+    }
+
+    endGame() {
+        document.getElementById("form").submit();
     }
 }
 

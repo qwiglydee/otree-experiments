@@ -19,7 +19,9 @@ TARGET_COLOR = "#EE6300"
 CORRECT_COLOR = "#008B00"
 
 
-def generate_puzzle_fields(count):
+def generate_puzzle_fields(params):
+    count = params['num_sliders']
+
     # 1 column × `count` rows
     grid_w, grid_h = SLIDER_BBOX
     total_w = grid_w + SLIDER_MARGIN * 2
@@ -44,9 +46,8 @@ def generate_puzzle_fields(count):
     return dict(size=size, coords=coords, solution=solution, initial=initial)
 
 
-def is_correct(response, puzzle):
-    solution = json.loads(puzzle.solution)
-    return [val == sol for val, sol in zip(response, solution)]
+def snap_value(value, center):
+    return round((value - center) / SLIDER_SNAP) * SLIDER_SNAP + center
 
 
 def render_image(puzzle):

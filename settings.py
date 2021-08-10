@@ -45,7 +45,7 @@ SESSION_CONFIG_DEFAULTS = dict(
 )
 
 PARTICIPANT_FIELDS = []
-SESSION_FIELDS = ['ret_params']
+SESSION_FIELDS = ['task_params']
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans
