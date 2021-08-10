@@ -67,7 +67,7 @@ class View {
 
     drawSlider(i, state) {
         let x0 = this.sliders[i][0], y0 = this.sliders[i][1];
-        let w = this.slider_size[0], h = this.slider_size[1];
+        let w = this.slider_size[0] + 40, h = this.slider_size[1];  // +40 margin
         let sx = x0 - w/2, sy = y0 - h/2;
         // copy slider cell from vackground image
         this.canvas.drawImage(this.img, sx, sy, w, h, sx, sy, w, h);
@@ -108,16 +108,17 @@ class View {
         for(let i=0; i < this.sliders.length; i++) {
             let x0 = this.sliders[i][0] + this.model.values[i], y0 = this.sliders[i][1];
             let dx = x - x0, dy = y - y0;
-            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-                return i;
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                return i ;
             }
         }
         return null;
     }
 
     mapHandle(i, x, y) {
-        // a value corresponding to coords
-        return x - this.sliders[i][0];
+        // return a value corresponding to coords
+        let dx = x - this.sliders[i][0];
+        return Math.abs(dx) < this.slider_size[0]/2 ? dx : null;
     }
 
     renderProgress() {

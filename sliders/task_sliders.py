@@ -65,11 +65,11 @@ def render_image(puzzle):
         xm = x0 + solution[i]  # actual target center
 
         # bbox for debug
-        w, h = SLIDER_BBOX
-        draw.rectangle(
-            [x0 - w / 2, y0 - h / 2, x0 + w / 2, y0 + h / 2],
-            outline="gray",
-        )
+        # w, h = SLIDER_BBOX
+        # draw.rectangle(
+        #     [x0 - w / 2, y0 - h / 2, x0 + w / 2, y0 + h / 2],
+        #     outline="gray",
+        # )
 
         draw.rounded_rectangle(
             [xm - SLIDER_WIDTH / 2 - 4, y0 - 4, xm + SLIDER_WIDTH / 2 + 4, y0 + 4],
