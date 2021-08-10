@@ -20,18 +20,16 @@ class Model {
 
 class View {
     /** renders everything */
-    constructor(model, size, step) {
+    constructor(model, size) {
         this.model = model;
-        this.slider_step = step;
         this.slider_size = size;
-        this.handle_radius = size[1]/2 + 0.5;
         this.$progress = document.getElementById("progress-bar");
         this.$canvas = document.getElementById("canvas");
         this.size = [];
         this.sliders = [];
         this.img = new Image();
         this.canvas = this.$canvas.getContext('2d');
-        this.picked_handle = null;
+        this.picked_slider = null;
     }
 
     reset() {
@@ -61,55 +59,65 @@ class View {
         }
         this.canvas.drawImage(this.img, 0, 0);
         this.sliders.forEach((coord, i) => {
-            this.drawHandle(coord, this.model.values[i], this.model.correct[i]);
+            let x = coord[0] + this.model.values[i],
+                y = coord[1];
+            this.drawHandle(x, y, {correct: this.model.correct[i]});
         });
     }
 
-    clearHandle(slider) {
-        let x0 = slider[0], y0 = slider[1];
-        let w = this.slider_size[0] + 4, h = this.slider_size[1] + 4;
+    drawSlider(i, state) {
+        let x0 = this.sliders[i][0], y0 = this.sliders[i][1];
+        let w = this.slider_size[0], h = this.slider_size[1];
         let sx = x0 - w/2, sy = y0 - h/2;
+        // copy slider cell from vackground image
         this.canvas.drawImage(this.img, sx, sy, w, h, sx, sy, w, h);
+        // draw handle
+        let x = x0 + this.model.values[i];
+        state.correct = this.model.correct[i];
+        this.drawHandle(x, y0, state);
     }
 
-    drawHandle(slider, value, correct, picked) {
-        this.clearHandle(slider);
-        let x0 = slider[0], y0 = slider[1];
-        this.canvas.beginPath();
-        this.canvas.arc(x0 + value, y0, this.handle_radius, 0, 2 * Math.PI);
-        this.canvas.lineWidth = 2;
-        if (picked) {
-            this.canvas.strokeStyle = "rgb(64, 64, 128)";
-            this.canvas.fillStyle = "rgba(64, 64, 128, 0.5)";
-        } else if (!correct) {
-            this.canvas.strokeStyle = "rgb(64, 64, 128)";
-            this.canvas.fillStyle = "rgba(64, 64, 128, 1.0)";
-        } else {
-            this.canvas.strokeStyle = "rgb(64, 128, 64)";
-            this.canvas.fillStyle = "rgba(64, 128, 64, 1.0)";
+    drawHandle(x, y, state) {
+        // hover area
+        if (state.hover) {
+            this.canvas.beginPath();
+            this.canvas.arc(x, y, 20, 0, 2 * Math.PI);
+            this.canvas.fillStyle = "rgba(98, 0, 238, 0.04)";
+            this.canvas.fill();
+        } else if (state.dragged) {
+            this.canvas.beginPath();
+            this.canvas.arc(x, y, 20, 0, 2 * Math.PI);
+            this.canvas.fillStyle = "rgba(98, 0, 238, 0.24)";
+            this.canvas.fill();
         }
-        this.canvas.stroke();
-        this.canvas.fill();
+        // knob
+        if (state.correct) {
+            this.canvas.beginPath();
+            this.canvas.arc(x, y, 10, 0, 2 * Math.PI);
+            this.canvas.fillStyle = "rgb(0, 139, 0)";
+            this.canvas.fill();
+        } else {
+            this.canvas.beginPath();
+            this.canvas.arc(x, y, 10, 0, 2 * Math.PI);
+            this.canvas.fillStyle = "rgb(98, 0, 238)";
+            this.canvas.fill();
+        }
     }
 
     pickHandle(x, y) {
         for(let i=0; i < this.sliders.length; i++) {
-            let x0 = this.sliders[i][0], y0 = this.sliders[i][1];
+            let x0 = this.sliders[i][0] + this.model.values[i], y0 = this.sliders[i][1];
             let dx = x - x0, dy = y - y0;
-            if (Math.abs(dx) < this.slider_size[0] && Math.abs(dy) < this.slider_size[1]) {
-                let value = this.model.values[i];
-                let vdx = x - (x0 + value);
-                if (Math.abs(vdx) < this.handle_radius) return i;
-                else return i;
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                return i;
             }
         }
         return null;
     }
 
-    snapHandle(i, x, y) {
-        let x0 = this.sliders[i][0], y0 = this.sliders[i][1];
-        let val = Math.round((x - x0) / this.slider_step) * this.slider_step;
-        return val;
+    mapHandle(i, x, y) {
+        // a value corresponding to coords
+        return x - this.sliders[i][0];
     }
 
     renderProgress() {
@@ -133,11 +141,11 @@ class Controller {
 
         window.liveRecv = (message) => this.recvMessage(message);
 
-
-        this.picked_handle = null;
+        this.picked_slider = null;
+        this.hover_handle = null;
         this.view.$canvas.onmousedown = (e) => this.pickHandle(e);
-        this.view.$canvas.onmousemove = (e) => this.dragHandle(e);
-        this.view.$canvas.onmouseup = (e) => this.dropHandle(e);
+        this.view.$canvas.onmousemove = (e) => this.picked_slider !== null ? this.dragHandle(e) : this.hoverHandle(e);
+        this.view.$canvas.onmouseup = (e) => this.picked_slider !== null ? this.dropHandle(e) : null;
 
         liveSend({type: 'load'});
     }
@@ -214,33 +222,44 @@ class Controller {
 
     pickHandle(event) {
         let i = this.view.pickHandle(event.offsetX, event.offsetY);
-        this.picked_handle = i;
+        this.picked_slider = i;
         if (i !== null) {
-            this.view.drawHandle(this.view.sliders[i], this.model.values[i], false, true);
+            this.view.drawSlider(i, {dragged: true});
+        }
+    }
+
+    hoverHandle(event) {
+        let i = this.view.pickHandle(event.offsetX, event.offsetY);
+        if (this.hover_handle != i) {
+            if (this.hover_handle !== null) {
+                this.view.drawSlider(this.hover_handle, {hover: false});
+            }
+            this.hover_handle = i;
+            if (this.hover_handle !== null) {
+                this.view.drawSlider(this.hover_handle, {hover: true});
+            }
         }
     }
 
     dragHandle(event) {
-        if (this.picked_handle === null) return;
-        let i = this.picked_handle;
-        let val = this.view.snapHandle(i, event.offsetX, event.offsetY);
+        let i = this.picked_slider;
+        let val = this.view.mapHandle(i, event.offsetX, event.offsetY);
         if (val !== null) {
             this.model.values[i] = val;
-            this.view.drawHandle(this.view.sliders[i], this.model.values[i], false, true);
+            this.view.drawSlider(i, {dragged: true});
         }
     }
 
     dropHandle(event) {
-        if (this.picked_handle === null) return;
-        let i = this.picked_handle;
-        this.view.drawHandle(this.view.sliders[i], this.model.values[i], this.model.correct[i], false);
-        this.picked_handle = null;
+        let i = this.picked_slider;
+        this.view.drawSlider(i, {});
+        this.picked_slider = null;
         this.submitValues();
     }
 }
 
 window.onload = (event) => {
     const model = new Model();
-    const view = new View(model, js_vars.slider_size, js_vars.slider_step);
+    const view = new View(model, js_vars.slider_size);
     const ctrl = new Controller(model, view);
 };

@@ -208,7 +208,6 @@ class Game(Page):
     def js_vars(player: Player):
         return dict(
             params=player.session.ret_params,
-            slider_step=task_sliders.SLIDER_STEP,
             slider_size=task_sliders.SLIDER_BBOX,
         )
 
