@@ -39,7 +39,6 @@ p.stimulus {
 }
 
 img.stimulus {
-    display: block;
     width: 300px;
     max-width: 100%;
 }
@@ -57,7 +56,7 @@ img.stimulus {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 
