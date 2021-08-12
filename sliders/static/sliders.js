@@ -4,6 +4,7 @@ class Model {
 //        this.progress = {};
         this.values = [];
         this.correct = [];
+        this.attempts = [];
     }
 
     reset() {
@@ -14,6 +15,7 @@ class Model {
     load(values) {
         this.values = values;
         this.correct = values.map(v => false);
+        this.attempts = values.map(v => 0);
     }
 }
 
@@ -109,7 +111,8 @@ class View {
             let x0 = this.grid[i][0] + this.model.values[i], y0 = this.grid[i][1];
             let dx = x - x0, dy = y - y0;
             if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-                return i ;
+                if (this.model.attempts[i] < js_vars.params.attempts_per_slider) return i;
+                return null;
             }
         }
         return null;
@@ -212,6 +215,7 @@ class Controller {
     }
 
     submitSlider(i) {
+        this.model.attempts[i] ++;
         liveSend({type: 'value', slider: i, value: this.model.values[i]});
     }
 

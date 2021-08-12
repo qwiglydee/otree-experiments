@@ -111,6 +111,7 @@ if sys.argv[1] == 'test':
             app_sequence=['sliders'],
             trial_delay=PUZZLE_DELAY,
             retry_delay=RETRY_DELAY,
-            num_sliders=3
+            num_sliders=3,
+            attempts_per_slider=3
         )
     )

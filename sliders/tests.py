@@ -23,7 +23,7 @@ class PlayerBot(Bot):
         "submitting_blank",
         "submitting_premature",
         # "submitting_toofast",
-        # "submitting_toomany",
+        "submitting_toomany",
         "skipping",
         "cheat_debug",
         "cheat_nodebug",
@@ -52,8 +52,12 @@ def get_last_puzzle(p) -> Puzzle:
     return puzzle
 
 
+def get_slider(z, i):
+    return Slider.filter(puzzle=z, idx=i)[0]
+
+
 def get_value(z, i):
-    slider = Slider.filter(puzzle=z, idx=i)[0]
+    slider = get_slider(z, i)
     return slider.value
 
 
@@ -265,6 +269,27 @@ def live_test_submitting_premature(method, player, conf):
 
     with expect_failure(RuntimeError):
         send(method, player, 'value', slider=0, value=100)
+
+
+def live_test_submitting_toomany(method, player, conf):
+    send(method, player, 'load')
+    send(method, player, 'new')
+
+    puzzle = get_last_puzzle(player)
+    target = get_target(puzzle, 0)
+
+    v1 = snap_value(100, target)
+    v2 = snap_value(50, target)
+
+    for _ in range(conf['attempts_per_slider']):
+        resp = send(method, player, 'value', slider=0, value=v1)
+        expect_response(resp, 'feedback')
+        expect_slider(puzzle, 0, v1)
+
+    with expect_failure(RuntimeError):
+        send(method, player, 'value', slider=0, value=v2)
+
+    expect_slider(puzzle, 0, v1)
 
 
 def live_test_skipping(method, player, conf):

@@ -28,7 +28,8 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         trial_delay=1.0,
         num_sliders=48,
-        num_columns=3
+        num_columns=3,
+        attempts_per_slider=10
     )
     session.task_params = {}
     for param in defaults:
@@ -72,8 +73,8 @@ class Slider(ExtraModel):
     idx = models.IntegerField()
     target = models.IntegerField()
     value = models.IntegerField()
-    response_timestamp = models.FloatField()
     is_correct = models.BooleanField(initial=False)
+    attempts = models.IntegerField(initial=0)
 
 
 def generate_puzzle(player: Player) -> Puzzle:
@@ -193,14 +194,19 @@ def play_game(player: Player, message: dict):
 
     if message_type == "value":
         if puzzle is None:
-            raise RuntimeError("trying to answer no puzzle")
+            raise RuntimeError("missing puzzle")
 
         slider = get_slider(puzzle, int(message["slider"]))
-        value = int(message["value"])
 
+        if slider is None:
+            raise RuntimeError("missing slider")
+        if slider.attempts >= task_params['attempts_per_slider']:
+            raise RuntimeError("too many slider motions")
+
+        value = int(message["value"])
         handle_response(puzzle, slider, value)
         puzzle.response_timestamp = now
-        slider.response_timestamp = now
+        slider.attempts += 1
 
         p = get_progress(player)
         return {
