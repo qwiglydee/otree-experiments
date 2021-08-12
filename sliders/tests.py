@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from otree.api import *
 from otree import settings
 
-from . import Player, Puzzle, Game
+from . import Player, Puzzle, Slider,  Game
 from .task_sliders import snap_value, SLIDER_SNAP
 
 
@@ -52,8 +52,14 @@ def get_last_puzzle(p) -> Puzzle:
     return puzzle
 
 
-def get_solution(z):
-    return json.loads(z.solution)
+def get_value(z, i):
+    slider = Slider.filter(puzzle=z, idx=i)[0]
+    return slider.value
+
+
+def get_target(z, i):
+    slider = Slider.filter(puzzle=z, idx=i)[0]
+    return slider.target
 
 
 def get_progress(p):
@@ -94,9 +100,9 @@ def expect_puzzle(z, **values):
         expect(getattr(z, k), v)
 
 
-def expect_slider(z, i, value):
-    values = json.loads(z.values)
-    expect(values[i], value)
+def expect_slider(z, i, expected):
+    value = get_value(z, i)
+    expect(value, expected)
 
 
 def expect_response(r, t, **values):
@@ -135,26 +141,23 @@ def live_test_normal(method, player, conf):
     send(method, player, 'new')
 
     puzzle = get_last_puzzle(player)
-    solution = get_solution(puzzle)
 
     for i in range(num_sliders):
         last = (i == num_sliders-1)
-
+        target = get_target(puzzle, i)
         # 1st attempt - incorrect
-        value = solution[i] + SLIDER_SNAP * 2
+        value = target + SLIDER_SNAP * 2
         resp = send(method, player, 'value', slider=i, value=value)
-        expect_puzzle(puzzle, iteration=1, correct=i, solved=False)
+        expect_puzzle(puzzle, iteration=1, num_correct=i, is_solved=False)
         expect_slider(puzzle, i, value)
         expect_response(resp, 'feedback', slider=i, value=value, is_correct=False, is_completed=False)
 
         # 2nd attempt - correct
-        value = solution[i]
+        value = target
         resp = send(method, player, 'value', slider=i, value=value)
-        expect_puzzle(puzzle, iteration=1, correct=i+1, solved=last)
+        expect_puzzle(puzzle, iteration=1, num_correct=i+1, is_solved=last)
         expect_slider(puzzle, i, value)
         expect_response(resp, 'feedback', slider=i, value=value, is_correct=True, is_completed=last)
-
-    expect(puzzle.solved, True)
 
 
 def live_test_normal_timeout(method, player, conf):
@@ -173,15 +176,16 @@ def live_test_snapping(method, player, conf):
     send(method, player, 'new')
 
     puzzle = get_last_puzzle(player)
-    solution = get_solution(puzzle)
 
-    value = solution[0] + 100
-    snapped = snap_value(value, solution[0])
+    solution0 = get_target(puzzle, 0)
+    value = solution0 + 100
+    snapped = snap_value(value, solution0)
     send(method, player, 'value', slider=0, value=value)
     expect_slider(puzzle, 0, snapped)
 
-    value = solution[1] + 1
-    snapped = solution[1]
+    solution1 = get_target(puzzle, 1)
+    value = solution1 + 1
+    snapped = solution1
     send(method, player, 'value', slider=1, value=value)
     expect_slider(puzzle, 1, snapped)
 
@@ -196,15 +200,15 @@ def live_test_reloading(method, player, conf):
 
     resp = send(method, player, 'new')
     puzzle = get_last_puzzle(player)
-    expect_puzzle(puzzle, iteration=1, correct=0)
+    expect_puzzle(puzzle, iteration=1, num_correct=0)
     expect_response(resp, 'puzzle')
     expect_response_progress(resp, iteration=1)
 
     # 1 answer
-    solution = get_solution(puzzle)
-    send(method, player, 'value', slider=0, value=solution[0])
-    expect_puzzle(puzzle, iteration=1, correct=1)
-    expect_slider(puzzle, 0, solution[0])
+    target = get_target(puzzle, 0)
+    send(method, player, 'value', slider=0, value=target)
+    expect_puzzle(puzzle, iteration=1, num_correct=1)
+    expect_slider(puzzle, 0, target)
 
     # midgame reload
     resp = send(method, player, 'load')
@@ -212,8 +216,8 @@ def live_test_reloading(method, player, conf):
     expect_response_progress(resp, iteration=1)
 
     puzzle = get_last_puzzle(player)
-    expect_puzzle(puzzle, iteration=1, correct=1)
-    expect_slider(puzzle, 0, solution[0])
+    expect_puzzle(puzzle, iteration=1, num_correct=1)
+    expect_slider(puzzle, 0, target)
 
 
 def live_test_submitting_null(method, player, conf):
@@ -223,7 +227,7 @@ def live_test_submitting_null(method, player, conf):
     with expect_failure(TypeError):
         method(player.id_in_group, None)
 
-    expect_puzzle(get_last_puzzle(player), iteration=1, correct=0, solved=False)
+    expect_puzzle(get_last_puzzle(player), iteration=1, num_correct=0, is_solved=False)
 
 
 def live_test_submitting_empty(method, player, conf):
@@ -233,7 +237,7 @@ def live_test_submitting_empty(method, player, conf):
     with expect_failure(KeyError):
         method(player.id_in_group, {})
 
-    expect_puzzle(get_last_puzzle(player), iteration=1, correct=0, solved=False)
+    expect_puzzle(get_last_puzzle(player), iteration=1, num_correct=0, is_solved=False)
 
 
 def live_test_submitting_none(method, player, conf):
@@ -243,7 +247,7 @@ def live_test_submitting_none(method, player, conf):
     with expect_failure(KeyError):
         send(method, player, 'value')
 
-    expect_puzzle(get_last_puzzle(player), iteration=1, correct=0, solved=False)
+    expect_puzzle(get_last_puzzle(player), iteration=1, num_correct=0, is_solved=False)
 
 
 def live_test_submitting_blank(method, player, conf):
@@ -253,7 +257,7 @@ def live_test_submitting_blank(method, player, conf):
     with expect_failure(ValueError):
         send(method, player, 'value', slider=0, value="")
 
-    expect_puzzle(get_last_puzzle(player), iteration=1, correct=0, solved=False)
+    expect_puzzle(get_last_puzzle(player), iteration=1, num_correct=0, is_solved=False)
 
 
 def live_test_submitting_premature(method, player, conf):
@@ -270,7 +274,7 @@ def live_test_skipping(method, player, conf):
     with expect_failure(RuntimeError):
         send(method, player, 'new')
 
-    expect_puzzle(get_last_puzzle(player), iteration=1, correct=0, solved=False)
+    expect_puzzle(get_last_puzzle(player), iteration=1, num_correct=0, is_solved=False)
 
 
 def live_test_cheat_debug(method, player, conf):

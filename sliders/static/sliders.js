@@ -26,7 +26,7 @@ class View {
 //        this.$progress = document.getElementById("progress-bar");
         this.$canvas = document.getElementById("canvas");
         this.size = [];
-        this.sliders = [];
+        this.grid = [];
         this.img = new Image();
         this.canvas = this.$canvas.getContext('2d');
         this.picked_slider = null;
@@ -35,16 +35,16 @@ class View {
     reset() {
         this.img.src = "";
         this.size = [];
-        this.sliders = [];
+        this.grid = [];
     }
 
     clear() {
         this.canvas.clearRect(0, 0, this.$canvas.wodth, this.$canvas.height);
     }
 
-    load(size, sliders, image) {
+    load(size, image, grid) {
         this.size = size;
-        this.sliders = sliders;
+        this.grid = grid;
         this.img.src = image;
         this.img.width = size[0];
         this.img.height = size[1];
@@ -58,7 +58,7 @@ class View {
             return;
         }
         this.canvas.drawImage(this.img, 0, 0);
-        this.sliders.forEach((coord, i) => {
+        this.grid.forEach((coord, i) => {
             let x = coord[0] + this.model.values[i],
                 y = coord[1];
             this.drawHandle(x, y, {correct: this.model.correct[i]});
@@ -66,7 +66,7 @@ class View {
     }
 
     drawSlider(i, state) {
-        let x0 = this.sliders[i][0], y0 = this.sliders[i][1];
+        let x0 = this.grid[i][0], y0 = this.grid[i][1];
         let w = this.slider_size[0] + 40, h = this.slider_size[1];  // +40 margin
         let sx = x0 - w/2, sy = y0 - h/2;
         // copy slider cell from vackground image
@@ -105,8 +105,8 @@ class View {
     }
 
     pickHandle(x, y) {
-        for(let i=0; i < this.sliders.length; i++) {
-            let x0 = this.sliders[i][0] + this.model.values[i], y0 = this.sliders[i][1];
+        for(let i=0; i < this.grid.length; i++) {
+            let x0 = this.grid[i][0] + this.model.values[i], y0 = this.grid[i][1];
             let dx = x - x0, dy = y - y0;
             if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
                 return i ;
@@ -117,7 +117,7 @@ class View {
 
     mapHandle(i, x, y) {
         // return a value corresponding to coords
-        let dx = x - this.sliders[i][0];
+        let dx = x - this.grid[i][0];
         return Math.abs(dx) < this.slider_size[0]/2 ? dx : null;
     }
 
@@ -185,7 +185,7 @@ class Controller {
 
     recvPuzzle(data) {
         this.model.load(data.values);
-        this.view.load(data.size, data.sliders, data.image);
+        this.view.load(data.size, data.image, data.grid);
         this.view.render();
     }
 
