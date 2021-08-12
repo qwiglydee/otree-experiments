@@ -28,7 +28,7 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         trial_delay=1.0,
         num_iterations=1,
-        num_sliders=3,
+        num_sliders=48,
         num_columns=3
     )
     session.task_params = {}
@@ -120,18 +120,16 @@ def get_progress(player: Player):
     )
 
 
-def handle_response(puzzle, response):
+def handle_response(puzzle, i, value):
     solution = json.loads(puzzle.solution)
     cnt = list(range(len(solution)))
 
-    # response is expected to contain one or more slider values in form of dict
-    response = {int(k): v for k, v in response.items()}  # convert keys to ints
-    keys = list(response.keys())
-
-    # update stored values with submitted values (with snapping to ticks)
+    # snap to slider step
+    value = task_sliders.snap_value(value, solution[i])
+    # update stored values with submitted value
     values = json.loads(puzzle.values)
-    for i, v in response.items():
-        values[i] = task_sliders.snap_value(v, solution[i])
+    values[i] = value
+    is_correct = value == solution[i]
 
     # check each and every stored slider
     each_correct = [values[i] == solution[i] for i in cnt]
@@ -144,8 +142,7 @@ def handle_response(puzzle, response):
     puzzle.solved = all_correct
 
     # return feedback and snapped values
-    return dict(is_correct={i: each_correct[i] for i in keys},
-                values={i: values[i] for i in keys})
+    return dict(value=value, is_correct=is_correct)
 
 
 def play_game(player: Player, message: dict):
@@ -160,16 +157,18 @@ def play_game(player: Player, message: dict):
       in case of midgame page reload
 
     - receive: {'type': 'new'} -- request for a new puzzle
-    - generate new puzzle
+    - generate new sliders
     - respond: {'type': 'puzzle', 'puzzle': data}
 
-    - receive: {'type': 'values', 'values': {i: val}} -- submitted values of a slider #i
-      one or many values accepted
+    - receive: {'type': 'value', 'slider': ..., 'value': ...} -- submitted value of a slider
+      - slider: the index of the slider
+      - value: the value of slider in pixels
     - check if the answer is correct
-    - respond: {'type': 'feedback', 'is_completed': true|false, 'is_correct': ..., 'values': ...}
+    - respond: {'type': 'feedback', 'slider': ..., 'value': ..., 'is_correct': ..., 'is_completed': ...}
+      - slider: the index of slider submitted
+      - value: the value aligned to slider steps
+      - is_corect: if submitted value is correct
       - is_completed: if all sliders are correct
-      - is_corect: feedback for each submitted slider
-      - values: values of sliders corrected to snap to ticks
     """
     session = player.session
     my_id = player.id_in_group
@@ -215,28 +214,27 @@ def play_game(player: Player, message: dict):
 
         return {my_id: dict(type='puzzle', puzzle=encode_puzzle(z), progress=p)}
 
-    if message_type == "values":
+    if message_type == "value":
         if current is None:
             raise RuntimeError("trying to answer no puzzle")
 
-        response = message["values"]
+        slider = int(message["slider"])
+        value = int(message["value"])
 
-        if response == "" or response is None:
-            raise ValueError("bogus response")
-
-        feedback = handle_response(current, response)
+        feedback = handle_response(current, slider, value)
         current.response_timestamp = now
 
-        # if current.solved:
+        # if feedback.is_completed:
         #     player.num_solved += 1
 
         p = get_progress(player)
         return {
             my_id: dict(
                 type='feedback',
+                slider=slider,
+                value=feedback['value'],
                 is_correct=feedback['is_correct'],
-                values=feedback['values'],
-                is_complete=current.solved,
+                is_completed=current.solved,
                 progress=p,
             )
         }

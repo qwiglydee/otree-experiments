@@ -174,8 +174,7 @@ class Controller {
                 break;
 
             case 'solution':
-                this.model.values = message.solution;
-                this.submitValues();
+                this.cheat(message.solution);
                 break;
         }
 
@@ -191,12 +190,12 @@ class Controller {
     }
 
     recvFeedback(message) {
-        Object.assign(this.model.values, message.values);
-        Object.assign(this.model.correct, message.is_correct);
-
+        let i = message.slider;
+        this.model.values[i] = message.value;
+        this.model.correct[i] = message.is_correct;
         this.view.render();
 
-        if (message.is_complete) { // current puzzle solved
+        if (message.is_completed) { // current puzzle solved
             // auto advance to next
             window.setTimeout(() => this.reqNew(), js_vars.params.trial_delay * 1000);
         }
@@ -212,14 +211,8 @@ class Controller {
         this.reqNew();
     }
 
-    submitValues(i) {
-        let values = {};
-        if (i === undefined) { // all sliders
-            Object.assign(values, this.model.values);
-        } else { // one slider
-            values[i] = this.model.values[i];
-        }
-        liveSend({type: 'values', values: values});
+    submitSlider(i) {
+        liveSend({type: 'value', slider: i, value: this.model.values[i]});
     }
 
     reqNew() {
@@ -264,11 +257,22 @@ class Controller {
         let i = this.picked_slider;
         this.view.drawSlider(i, {});
         this.picked_slider = null;
-        this.submitValues(i);
+        this.submitSlider(i);
     }
 
     endGame() {
         document.getElementById("form").submit();
+    }
+
+    cheat(values) {
+        let i = 0;
+        let timer = window.setInterval(() => {
+            this.model.values[i] = values[i];
+            this.submitSlider(i);
+
+            i++;
+            if (i >= this.model.values.length) window.clearInterval(timer);
+        }, 100);
     }
 }
 
