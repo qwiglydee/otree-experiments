@@ -27,6 +27,7 @@ def creating_session(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         trial_delay=1.0,
+        retry_delay=0.1,
         num_sliders=48,
         num_columns=3,
         attempts_per_slider=10
@@ -195,6 +196,8 @@ def play_game(player: Player, message: dict):
     if message_type == "value":
         if puzzle is None:
             raise RuntimeError("missing puzzle")
+        if puzzle.response_timestamp and now < puzzle.response_timestamp + task_params["retry_delay"]:
+            raise RuntimeError("retrying too fast")
 
         slider = get_slider(puzzle, int(message["slider"]))
 

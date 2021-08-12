@@ -22,7 +22,7 @@ class PlayerBot(Bot):
         "submitting_none",
         "submitting_blank",
         "submitting_premature",
-        # "submitting_toofast",
+        "submitting_toofast",
         "submitting_toomany",
         "skipping",
         "cheat_debug",
@@ -140,6 +140,7 @@ def call_live_method(method, group, case, **kwargs):  # noqa
 
 def live_test_normal(method, player, conf):
     num_sliders = conf['num_sliders']
+    retry_delay = conf['retry_delay']
 
     send(method, player, 'load')
     send(method, player, 'new')
@@ -156,12 +157,16 @@ def live_test_normal(method, player, conf):
         expect_slider(puzzle, i, value)
         expect_response(resp, 'feedback', slider=i, value=value, is_correct=False, is_completed=False)
 
+        time.sleep(retry_delay)
+
         # 2nd attempt - correct
         value = target
         resp = send(method, player, 'value', slider=i, value=value)
         expect_puzzle(puzzle, iteration=1, num_correct=i+1, is_solved=last)
         expect_slider(puzzle, i, value)
         expect_response(resp, 'feedback', slider=i, value=value, is_correct=True, is_completed=last)
+
+        time.sleep(retry_delay)
 
 
 def live_test_normal_timeout(method, player, conf):
@@ -186,12 +191,6 @@ def live_test_snapping(method, player, conf):
     snapped = snap_value(value, solution0)
     send(method, player, 'value', slider=0, value=value)
     expect_slider(puzzle, 0, snapped)
-
-    solution1 = get_target(puzzle, 1)
-    value = solution1 + 1
-    snapped = solution1
-    send(method, player, 'value', slider=1, value=value)
-    expect_slider(puzzle, 1, snapped)
 
 
 def live_test_reloading(method, player, conf):
@@ -272,6 +271,8 @@ def live_test_submitting_premature(method, player, conf):
 
 
 def live_test_submitting_toomany(method, player, conf):
+    retry_delay = conf['retry_delay']
+
     send(method, player, 'load')
     send(method, player, 'new')
 
@@ -285,6 +286,27 @@ def live_test_submitting_toomany(method, player, conf):
         resp = send(method, player, 'value', slider=0, value=v1)
         expect_response(resp, 'feedback')
         expect_slider(puzzle, 0, v1)
+        time.sleep(retry_delay)
+
+    with expect_failure(RuntimeError):
+        send(method, player, 'value', slider=0, value=v2)
+
+    expect_slider(puzzle, 0, v1)
+
+
+def live_test_submitting_toofast(method, player, conf):
+    send(method, player, 'load')
+    send(method, player, 'new')
+
+    puzzle = get_last_puzzle(player)
+    target = get_target(puzzle, 0)
+
+    v1 = snap_value(100, target)
+    v2 = snap_value(50, target)
+
+    resp = send(method, player, 'value', slider=0, value=v1)
+    expect_response(resp, 'feedback')
+    expect_slider(puzzle, 0, v1)
 
     with expect_failure(RuntimeError):
         send(method, player, 'value', slider=0, value=v2)

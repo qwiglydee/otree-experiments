@@ -142,6 +142,7 @@ class Controller {
         this.starting = true;
         this.ts_question = 0;
         this.ts_answer = 0;
+        this.input_disabled = false;
 
         window.liveRecv = (message) => this.recvMessage(message);
 
@@ -228,6 +229,8 @@ class Controller {
     }
 
     pickHandle(event) {
+        if (this.input_disabled) return;
+
         let i = this.view.pickHandle(event.offsetX, event.offsetY);
         this.picked_slider = i;
         if (i !== null) {
@@ -262,6 +265,9 @@ class Controller {
         this.view.drawSlider(i, {});
         this.picked_slider = null;
         this.submitSlider(i);
+
+        this.input_disabled = true;
+        window.setTimeout(() => {this.input_disabled=false}, js_vars.params.retry_delay * 1000);
     }
 
     endGame() {
