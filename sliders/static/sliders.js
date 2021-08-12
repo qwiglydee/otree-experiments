@@ -195,9 +195,8 @@ class Controller {
         this.model.sliders[i].is_correct = message.is_correct;
         this.view.render();
 
-        if (message.is_completed) { // current puzzle solved
-            // auto advance to next
-            window.setTimeout(() => this.reqNew(), js_vars.params.trial_delay * 1000);
+        if (message.is_completed) {
+            window.setTimeout(() => this.endGame(), js_vars.params.trial_delay * 1000);
         }
     }
 
@@ -273,13 +272,13 @@ class Controller {
     }
 
     cheat(values) {
-        let i = 0, cnt=Object.keys(obj).length;
+        let i = 0, cnt=Object.keys(values).length;
         let timer = window.setInterval(() => {
             this.model.sliders[i].value = values[i];
             this.submitSlider(i);
             i++;
             if (i == cnt) window.clearInterval(timer);
-        }, 100);
+        }, js_vars.params.retry_delay * 1000 + 100);
     }
 }
 
