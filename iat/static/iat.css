@@ -49,6 +49,7 @@ img.stimulus {
 }
 
 .feedback .form-control {
+    display: inline;
     background-color: transparent;
     border: none;
     font-weight: bold;

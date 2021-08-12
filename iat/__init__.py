@@ -16,8 +16,7 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 7
 
-    # the keys F and J have tactile marks
-    keys = {'left': "f", 'right': "j"}
+    keys = {"f": 'left', "j": 'right'}
     trial_delay = 0.250
 
 
@@ -397,6 +396,12 @@ class RoundN(Page):
             num_iterations=get_num_iterations_for_round(player),
             DEBUG=settings.DEBUG,
             keys=Constants.keys,
+            lkeys="/".join(
+                [k for k in Constants.keys.keys() if Constants.keys[k] == 'left']
+            ),
+            rkeys="/".join(
+                [k for k in Constants.keys.keys() if Constants.keys[k] == 'right']
+            ),
         )
 
     live_method = play_game

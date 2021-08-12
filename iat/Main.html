@@ -61,16 +61,18 @@
 
     <div class="feedback input-group">
         <input type="text" id="answer-inp" class="form-control" readonly>
+        <div class="invalid-feedback" id="warning-txt"></div>
     </div>
+
 
     <div class="instructions">
         <hr/>
-        <p>Press <span class="key">{{ keys.left }}</span> or touch top-left corner for
+        <p>Press <span class="key">{{ lkeys }}</span> or touch top-left corner for
             {{ if 'primary' in labels.left  }} <span class="primary">{{ labels.left.primary }}</span> {{ endif }}
             {{ if 'primary' in labels.left and 'secondary' in labels.left }} or {{ endif }}
             {{ if 'secondary' in labels.left }} <span class="secondary">{{ labels.left.secondary }}</span> {{ endif }}
         </p>
-        <p>Press <span class="key">{{ keys.right }}</span> or touch top-right corner  for
+        <p>Press <span class="key">{{ rkeys }}</span> or touch top-right corner  for
             {{ if 'primary' in labels.right }} <span class="primary">{{ labels.right.primary }}</span> {{ endif }}
             {{ if 'primary' in labels.right and 'secondary' in labels.right }} or {{ endif }}
             {{ if 'secondary' in labels.right }} <span class="secondary">{{ labels.right.secondary }}</span> {{ endif }}

@@ -34,6 +34,7 @@ class View {
         this.$stimulus_img = document.getElementById("stimulus-img");
         this.$answer = document.getElementById("answer-inp");
         this.$starthelp = document.getElementById("start-help");
+        this.$warn = document.getElementById("warning-txt");
     }
 
     renderStimulus() {
@@ -94,6 +95,15 @@ class View {
     hideStartInstruction() {
         this.$starthelp.classList.add("hidden");
     }
+
+    showWarning(text) {
+        this.$answer.classList.add("is-invalid");
+        this.$warn.textContent = text;
+    }
+
+    resetWarning() {
+        this.$warn.textContent = "";
+    }
 }
 
 class Controller {
@@ -102,6 +112,7 @@ class Controller {
         this.model = model;
         this.view = view;
 
+        this.input_disabled = false;
         this.starting = true;
         this.ts_question = 0;
         this.ts_answer = 0;
@@ -161,8 +172,8 @@ class Controller {
         this.model.is_correct = message.is_correct;
         this.view.renderAnswer();
 
-        // auto advance to next after correct answer
         if (message.is_correct) {
+            // auto advance to next after correct answer
             window.setTimeout(() => this.reqNext(), js_vars.params.trial_delay * 1000);
         }
     }
@@ -178,14 +189,19 @@ class Controller {
             this.startGame();
         }
 
-        if (this.model.stimulus !== null) {
-            if (event.key == js_vars.keys.left) {
-                this.submitAnswer('left');
-            }
-            if (event.key == js_vars.keys.right) {
-                this.submitAnswer('right');
-            }
+        if (this.model.stimulus === null) return;
+        if (!(event.key in js_vars.keys)) return;
+
+        if (this.input_disabled) {
+            this.view.showWarning("Wait a bit...");
+            return;
         }
+        this.input_disabled = true;
+        window.setTimeout(() => this.enableInput(), js_vars.params.retry_delay * 1000);
+
+        let answer = js_vars.keys[event.key];
+        this.setAnswer(answer);
+        this.submitAnswer();
     }
 
     onTouchMiddle(event) {
@@ -199,10 +215,12 @@ class Controller {
 //        console.debug("touch", event);
         if (this.model.stimulus !== null) {
             if (event.target.classList.contains('left')) {
-                this.submitAnswer('left');
+                this.setAnswer('left');
+                this.submitAnswer();
             }
             if (event.target.classList.contains('right')) {
-                this.submitAnswer('right');
+                this.setAnswer('right');
+                this.submitAnswer();
             }
         }
     }
@@ -213,13 +231,27 @@ class Controller {
         this.reqNext();
     }
 
-    submitAnswer(answer) {
-        this.ts_answer = performance.now();
+    disableInput() {
+
+        // NB: do not show warning until actual preliminary keypress inducing "invalid" state
+    }
+
+    enableInput() {
+        this.input_disabled = false;
+        this.model.resetAnswer();
+        this.view.resetWarning();
+        this.view.renderAnswer();
+    }
+
+    setAnswer(answer) {
         this.model.answer = answer;
         this.model.resetFeedback();
         this.view.renderAnswer();
+    }
 
-        liveSend({type: 'answer', answer: answer, reaction_time: (this.ts_answer - this.ts_question)/1000});
+    submitAnswer() {
+        this.ts_answer = performance.now();
+        liveSend({type: 'answer', answer: this.model.answer, reaction_time: (this.ts_answer - this.ts_question)/1000});
     }
 
     reqNext() {
