@@ -27,9 +27,10 @@ def creating_session(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         trial_delay=1.0,
-        num_iterations=1,
-        num_sliders=3,
-        num_columns=3
+        retry_delay=0.1,
+        num_sliders=48,
+        num_columns=3,
+        attempts_per_slider=10
     )
     session.task_params = {}
     for param in defaults:
@@ -41,52 +42,61 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    solved_sliders = models.IntegerField(initial=0)
-    elapsed_time = models.FloatField()
-
-    # for multi-iteration setup
+    # only suported 1 iteration for now
     iteration = models.IntegerField(initial=0)
-    # num_trials = models.IntegerField(initial=0)
-    # num_solved = models.IntegerField(initial=0)
-    # num_failed = models.IntegerField(initial=0)
+
+    num_correct = models.IntegerField(initial=0)
+    elapsed_time = models.FloatField(initial=0)
 
 
 # puzzle-specific stuff
 
 
 class Puzzle(ExtraModel):
-    """A model to keep record of all generated puzzles"""
+    """A model to keep record of sliders setup"""
 
     player = models.Link(Player)
-    iteration = models.IntegerField(initial=0)
-    attempts = models.IntegerField(initial=0)
-    timestamp = models.FloatField(initial=0)
+    iteration = models.IntegerField()
+    timestamp = models.FloatField()
 
-    # slider puzzle parameters json encoded
-    data = models.LongStringField()
-    # solution values json encoded list
-    solution = models.LongStringField()
-    # initial or submited values, json encoded list
-    values = models.LongStringField()
+    num_sliders = models.IntegerField()
+    layout = models.LongStringField()
 
-    # timestamp of last response
     response_timestamp = models.FloatField()
-    # number of correct sliders
-    correct = models.IntegerField()
-    # if all sliders solved
-    solved = models.BooleanField()
+    num_correct = models.IntegerField(initial=0)
+    is_solved = models.BooleanField(initial=False)
+
+
+class Slider(ExtraModel):
+    """A model to keep record of each slider"""
+
+    puzzle = models.Link(Puzzle)
+    idx = models.IntegerField()
+    target = models.IntegerField()
+    value = models.IntegerField()
+    is_correct = models.BooleanField(initial=False)
+    attempts = models.IntegerField(initial=0)
 
 
 def generate_puzzle(player: Player) -> Puzzle:
     """Create new puzzle for a player"""
-    data = task_sliders.generate_puzzle(player.session.task_params)
-    solution = data.pop('solution')
-    return Puzzle.create(
+    params = player.session.task_params
+    num = params['num_sliders']
+    layout = task_sliders.generate_layout(params)
+    puzzle = Puzzle.create(
         player=player, iteration=player.iteration, timestamp=time.time(),
-        data=json.dumps(data),
-        solution=json.dumps(solution),
-        values=json.dumps(data['initial'])
+        num_sliders=num,
+        layout=json.dumps(layout)
     )
+    for i in range(num):
+        target, initial = task_sliders.generate_slider()
+        Slider.create(
+            puzzle=puzzle,
+            idx=i,
+            target=target,
+            value=initial
+        )
+    return puzzle
 
 
 def get_current_puzzle(player):
@@ -96,17 +106,24 @@ def get_current_puzzle(player):
         return puzzle
 
 
+def get_slider(puzzle, idx):
+    sliders = Slider.filter(puzzle=puzzle, idx=idx)
+    if sliders:
+        [puzzle] = sliders
+        return puzzle
+
+
 def encode_puzzle(puzzle: Puzzle):
     """Create data describing puzzle to send to client"""
-    puzzle_data = json.loads(puzzle.data)
-    values = json.loads(puzzle.values)
+    layout = json.loads(puzzle.layout)
+    sliders = Slider.filter(puzzle=puzzle)
     # generate image for the puzzle
-    image = task_sliders.render_image(puzzle)
+    image = task_sliders.render_image(layout, targets=[s.target for s in sliders])
     return dict(
         image=encode_image(image),
-        size=puzzle_data['size'],
-        sliders=puzzle_data['sliders'],
-        values=values
+        size=layout['size'],
+        grid=layout['grid'],
+        sliders={s.idx: {'value': s.value, 'is_correct': s.is_correct} for s in sliders}
     )
 
 
@@ -114,38 +131,15 @@ def get_progress(player: Player):
     """Return current player progress"""
     return dict(
         iteration=player.iteration,
-        # num_trials=player.num_trials,
-        # num_solved=player.num_solved,
-        # num_failed=player.num_failed,
+        solved=player.num_correct
     )
 
 
-def handle_response(puzzle, response):
-    solution = json.loads(puzzle.solution)
-    cnt = list(range(len(solution)))
-
-    # response is expected to contain one or more slider values in form of dict
-    response = {int(k): v for k, v in response.items()}  # convert keys to ints
-    keys = list(response.keys())
-
-    # update stored values with submitted values (with snapping to ticks)
-    values = json.loads(puzzle.values)
-    for i, v in response.items():
-        values[i] = task_sliders.snap_value(v, solution[i])
-
-    # check each and every stored slider
-    each_correct = [values[i] == solution[i] for i in cnt]
-    num_correct = sum(each_correct)
-    all_correct = num_correct == len(solution)
-
-    # update puzzle record
-    puzzle.values = json.dumps(values)
-    puzzle.correct = num_correct
-    puzzle.solved = all_correct
-
-    # return feedback and snapped values
-    return dict(is_correct={i: each_correct[i] for i in keys},
-                values={i: values[i] for i in keys})
+def handle_response(puzzle, slider, value):
+    slider.value = task_sliders.snap_value(value, slider.target)
+    slider.is_correct = slider.value == slider.target
+    puzzle.num_correct = len(Slider.filter(puzzle=puzzle, is_correct=True))
+    puzzle.is_solved = puzzle.num_correct == puzzle.num_sliders
 
 
 def play_game(player: Player, message: dict):
@@ -160,16 +154,18 @@ def play_game(player: Player, message: dict):
       in case of midgame page reload
 
     - receive: {'type': 'new'} -- request for a new puzzle
-    - generate new puzzle
+    - generate new sliders
     - respond: {'type': 'puzzle', 'puzzle': data}
 
-    - receive: {'type': 'values', 'values': {i: val}} -- submitted values of a slider #i
-      one or many values accepted
+    - receive: {'type': 'value', 'slider': ..., 'value': ...} -- submitted value of a slider
+      - slider: the index of the slider
+      - value: the value of slider in pixels
     - check if the answer is correct
-    - respond: {'type': 'feedback', 'is_completed': true|false, 'is_correct': ..., 'values': ...}
+    - respond: {'type': 'feedback', 'slider': ..., 'value': ..., 'is_correct': ..., 'is_completed': ...}
+      - slider: the index of slider submitted
+      - value: the value aligned to slider steps
+      - is_corect: if submitted value is correct
       - is_completed: if all sliders are correct
-      - is_corect: feedback for each submitted slider
-      - values: values of sliders corrected to snap to ticks
     """
     session = player.session
     my_id = player.id_in_group
@@ -177,69 +173,60 @@ def play_game(player: Player, message: dict):
 
     now = time.time()
     # the current puzzle or none
-    current = get_current_puzzle(player)
+    puzzle = get_current_puzzle(player)
 
     message_type = message['type']
 
-    # page loaded
     if message_type == 'load':
         p = get_progress(player)
-        if current:
-            return {
-                my_id: dict(type='status', progress=p, puzzle=encode_puzzle(current))
-            }
+        if puzzle:
+            return {my_id: dict(type='status', progress=p, puzzle=encode_puzzle(puzzle))}
         else:
             return {my_id: dict(type='status', progress=p)}
 
-    if message_type == "cheat" and settings.DEBUG:
-        return {my_id: dict(type='solution', solution=json.loads(current.solution))}
-
-    # client requested new puzzle
     if message_type == "new":
-        if current is not None:
-            if current.correct is None:
-                raise RuntimeError("trying to skip over unsolved puzzle")
-            if current.iteration == task_params['num_iterations']:
-                return {
-                    my_id: dict(
-                        type='status', progress=get_progress(player), iterations_left=0
-                    )
-                }
+        if puzzle is not None:
+            raise RuntimeError("trying to create 2nd puzzle")
 
-        # generate new puzzle
         player.iteration += 1
         z = generate_puzzle(player)
-
-        # update player progress
         p = get_progress(player)
 
         return {my_id: dict(type='puzzle', puzzle=encode_puzzle(z), progress=p)}
 
-    if message_type == "values":
-        if current is None:
-            raise RuntimeError("trying to answer no puzzle")
+    if message_type == "value":
+        if puzzle is None:
+            raise RuntimeError("missing puzzle")
+        if puzzle.response_timestamp and now < puzzle.response_timestamp + task_params["retry_delay"]:
+            raise RuntimeError("retrying too fast")
 
-        response = message["values"]
+        slider = get_slider(puzzle, int(message["slider"]))
 
-        if response == "" or response is None:
-            raise ValueError("bogus response")
+        if slider is None:
+            raise RuntimeError("missing slider")
+        if slider.attempts >= task_params['attempts_per_slider']:
+            raise RuntimeError("too many slider motions")
 
-        feedback = handle_response(current, response)
-        current.response_timestamp = now
-
-        # if current.solved:
-        #     player.num_solved += 1
+        value = int(message["value"])
+        handle_response(puzzle, slider, value)
+        puzzle.response_timestamp = now
+        slider.attempts += 1
+        player.num_correct = puzzle.num_correct
 
         p = get_progress(player)
         return {
             my_id: dict(
                 type='feedback',
-                is_correct=feedback['is_correct'],
-                values=feedback['values'],
-                is_complete=current.solved,
+                slider=slider.idx,
+                value=slider.value,
+                is_correct=slider.is_correct,
+                is_completed=puzzle.is_solved,
                 progress=p,
             )
         }
+
+    if message_type == "cheat" and settings.DEBUG:
+        return {my_id: dict(type='solution', solution={s.idx: s.target for s in Slider.filter(puzzle=puzzle)})}
 
     raise RuntimeError("unrecognized message from client")
 
@@ -265,12 +252,12 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        # if not timeout_happened and not player.session.task_params['num_iterations']:
-        #     raise RuntimeError("malicious page submission")
-        current = get_current_puzzle(player)
-        player.elapsed_time = current.response_timestamp - current.timestamp
-        player.solved_sliders = current.correct
-        player.payoff = player.solved_sliders
+        puzzle = get_current_puzzle(player)
+
+        if puzzle and puzzle.response_timestamp:
+            player.elapsed_time = puzzle.response_timestamp - puzzle.timestamp
+            player.num_correct = puzzle.num_correct
+            player.payoff = player.num_correct
 
 
 class Results(Page):

@@ -20,12 +20,8 @@ TARGET_COLOR = "#EE6300"
 CORRECT_COLOR = "#008B00"
 
 
-def generate_puzzle(params):
-    """Generate randomply placed sliders, their target and initial values
-    Sliders are positioned by center of bbox in regular grid cells
-    Target (middle) position is a pixel-wise shift from the center
-    Initial value is random shift from moddle
-    """
+def generate_layout(params):
+    """Generate grid of sliders"""
 
     count = params['num_sliders']
     columns = params['num_columns']
@@ -45,43 +41,40 @@ def generate_puzzle(params):
 
     grid = [center(i) for i in range(count)]
 
-    # target (middle) positions, randomly shifted from bbox center
-    solution = [
-        random.randint(-SLIDER_EXTRA // 2, SLIDER_EXTRA // 2) for i in range(count)
-    ]
+    return dict(size=[total_w, total_h], grid=grid)
 
-    # initial positions, randomly shifted from target, tick-aligned
-    initial = [
-        solution[i] + random.randint(-50, 50) * SLIDER_SNAP for i in range(count)
-    ]
-    return dict(size=[total_w, total_h], sliders=grid, solution=solution, initial=initial)
+
+def generate_slider():
+    """Generate a slider, with target center position shifted within grid cell"""
+    target = random.randint(-SLIDER_EXTRA // 2, SLIDER_EXTRA // 2)
+    initial = target + random.randint(-50, 50) * SLIDER_SNAP
+
+    return target, initial
 
 
 def snap_value(value, center):
     return round((value - center) / SLIDER_SNAP) * SLIDER_SNAP + center
 
 
-def render_image(puzzle):
-    puzzle_data = json.loads(puzzle.data)
-    size = puzzle_data["size"]
-    sliders = puzzle_data["sliders"]
-    solution = json.loads(puzzle.solution)
+def render_image(layout, targets):
+    size = layout["size"]
+    grid = layout["grid"]
 
     image = Image.new("RGB", size)
     draw = ImageDraw.Draw(image, "RGBA")
 
     draw.rectangle((0, 0, size[0], size[1]), fill="#e0e0e0")
 
-    for i in range(len(sliders)):
-        x0, y0 = sliders[i]  # bbox center
-        xm = x0 + solution[i]  # actual target center
+    for i, target in enumerate(targets):
+        x0, y0 = grid[i]  # bbox center
+        xm = x0 + target
 
         # bbox for debug
-        # w, h = SLIDER_BBOX
-        # draw.rectangle(
-        #     [x0 - w / 2, y0 - h / 2, x0 + w / 2, y0 + h / 2],
-        #     outline="gray",
-        # )
+        w, h = SLIDER_BBOX
+        draw.rectangle(
+            [x0 - w / 2, y0 - h / 2, x0 + w / 2, y0 + h / 2],
+            outline="gray",
+        )
 
         draw.rounded_rectangle(
             [xm - SLIDER_WIDTH / 2 - 4, y0 - 4, xm + SLIDER_WIDTH / 2 + 4, y0 + 4],
