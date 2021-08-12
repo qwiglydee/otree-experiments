@@ -123,7 +123,7 @@ def encode_puzzle(puzzle: Puzzle):
         image=encode_image(image),
         size=layout['size'],
         grid=layout['grid'],
-        values=[s.value for s in sliders]
+        sliders={s.idx: {'value': s.value, 'is_correct': s.is_correct} for s in sliders}
     )
 
 

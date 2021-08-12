@@ -2,20 +2,17 @@ class Model {
     /** hold all current game state */
     constructor() {
 //        this.progress = {};
-        this.values = [];
-        this.correct = [];
-        this.attempts = [];
+        this.sliders = {};
     }
 
     reset() {
-        this.values = [];
-        this.correct = [];
+//        this.progress = {};
+        this.sliders = {};
     }
 
-    load(values) {
-        this.values = values;
-        this.correct = values.map(v => false);
-        this.attempts = values.map(v => 0);
+    load(sliders) {
+        this.sliders = sliders;
+        for(let s in this.sliders) this.sliders[s].attempts = 0;
     }
 }
 
@@ -61,9 +58,10 @@ class View {
         }
         this.canvas.drawImage(this.img, 0, 0);
         this.grid.forEach((coord, i) => {
-            let x = coord[0] + this.model.values[i],
+            let slider = this.model.sliders[i]
+            let x = coord[0] + slider.value,
                 y = coord[1];
-            this.drawHandle(x, y, {correct: this.model.correct[i]});
+            this.drawHandle(x, y, {correct: slider.is_correct});
         });
     }
 
@@ -74,8 +72,9 @@ class View {
         // copy slider cell from vackground image
         this.canvas.drawImage(this.img, sx, sy, w, h, sx, sy, w, h);
         // draw handle
-        let x = x0 + this.model.values[i];
-        state.correct = this.model.correct[i];
+        let slider = this.model.sliders[i];
+        let x = x0 + slider.value;
+        state.correct = slider.is_correct;
         this.drawHandle(x, y0, state);
     }
 
@@ -108,10 +107,11 @@ class View {
 
     pickHandle(x, y) {
         for(let i=0; i < this.grid.length; i++) {
-            let x0 = this.grid[i][0] + this.model.values[i], y0 = this.grid[i][1];
+            let slider = this.model.sliders[i];
+            let x0 = this.grid[i][0] + slider.value, y0 = this.grid[i][1];
             let dx = x - x0, dy = y - y0;
             if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-                if (this.model.attempts[i] < js_vars.params.attempts_per_slider) return i;
+                if (slider.attempts < js_vars.params.attempts_per_slider) return i;
                 return null;
             }
         }
@@ -188,15 +188,15 @@ class Controller {
     }
 
     recvPuzzle(data) {
-        this.model.load(data.values);
+        this.model.load(data.sliders);
         this.view.load(data.size, data.image, data.grid);
         this.view.render();
     }
 
     recvFeedback(message) {
         let i = message.slider;
-        this.model.values[i] = message.value;
-        this.model.correct[i] = message.is_correct;
+        this.model.sliders[i].value = message.value;
+        this.model.sliders[i].is_correct = message.is_correct;
         this.view.render();
 
         if (message.is_completed) { // current puzzle solved
@@ -216,8 +216,10 @@ class Controller {
     }
 
     submitSlider(i) {
-        this.model.attempts[i] ++;
-        liveSend({type: 'value', slider: i, value: this.model.values[i]});
+        let slider = this.model.sliders[i];
+        slider.attempts ++;
+        slider.is_correct = null;
+        liveSend({type: 'value', slider: i, value: slider.value});
     }
 
     reqNew() {
@@ -255,7 +257,7 @@ class Controller {
         let i = this.picked_slider;
         let val = this.view.mapHandle(i, event.offsetX, event.offsetY);
         if (val !== null) {
-            this.model.values[i] = val;
+            this.model.sliders[i].value = val;
             this.view.drawSlider(i, {dragged: true});
         }
     }
@@ -275,13 +277,12 @@ class Controller {
     }
 
     cheat(values) {
-        let i = 0;
+        let i = 0, cnt=Object.keys(obj).length;
         let timer = window.setInterval(() => {
-            this.model.values[i] = values[i];
+            this.model.sliders[i].value = values[i];
             this.submitSlider(i);
-
             i++;
-            if (i >= this.model.values.length) window.clearInterval(timer);
+            if (i == cnt) window.clearInterval(timer);
         }, 100);
     }
 }
