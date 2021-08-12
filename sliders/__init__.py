@@ -131,6 +131,7 @@ def get_progress(player: Player):
     """Return current player progress"""
     return dict(
         iteration=player.iteration,
+        solved=player.num_correct
     )
 
 
@@ -210,6 +211,7 @@ def play_game(player: Player, message: dict):
         handle_response(puzzle, slider, value)
         puzzle.response_timestamp = now
         slider.attempts += 1
+        player.num_correct = puzzle.num_correct
 
         p = get_progress(player)
         return {

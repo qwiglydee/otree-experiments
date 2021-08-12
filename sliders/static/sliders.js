@@ -1,12 +1,12 @@
 class Model {
     /** hold all current game state */
     constructor() {
-//        this.progress = {};
+        this.progress = {};
         this.sliders = {};
     }
 
     reset() {
-//        this.progress = {};
+        this.progress = {};
         this.sliders = {};
     }
 
@@ -22,7 +22,7 @@ class View {
     constructor(model, size) {
         this.model = model;
         this.slider_size = size;
-//        this.$progress = document.getElementById("progress-bar");
+        this.$progress = document.getElementById("progress-bar");
         this.$canvas = document.getElementById("canvas");
         this.size = [];
         this.grid = [];
@@ -124,13 +124,9 @@ class View {
         return Math.abs(dx) < this.slider_size[0]/2 ? dx : null;
     }
 
-//    renderProgress() {
-//        if (this.model.progress.total !== null) {
-//            this.$progress.value = this.model.progress.iteration;
-//        } else {
-//            this.$progress.value = 0;
-//        }
-//    }
+    renderProgress() {
+        this.$progress.value = this.model.progress.solved;
+    }
 }
 
 class Controller {
@@ -182,9 +178,9 @@ class Controller {
                 break;
         }
 
-//        if ('progress' in message) { // can be added to message of any type
-//            this.recvProgress(message.progress);
-//        }
+        if ('progress' in message) { // can be added to message of any type
+            this.recvProgress(message.progress);
+        }
     }
 
     recvPuzzle(data) {
@@ -205,10 +201,10 @@ class Controller {
         }
     }
 
-//    recvProgress(data) {
-//        this.model.progress = data;
-//        this.view.renderProgress();
-//    }
+    recvProgress(data) {
+        this.model.progress = data;
+        this.view.renderProgress();
+    }
 
     startGame() {
         this.starting = false;
