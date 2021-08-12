@@ -27,7 +27,6 @@ def creating_session(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         trial_delay=1.0,
-        num_iterations=1,
         num_sliders=48,
         num_columns=3
     )
@@ -41,26 +40,22 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
-    solved_sliders = models.IntegerField(initial=0)
-    elapsed_time = models.FloatField()
-
-    # for multi-iteration setup
+    # only suported 1 iteration for now
     iteration = models.IntegerField(initial=0)
-    # num_trials = models.IntegerField(initial=0)
-    # num_solved = models.IntegerField(initial=0)
-    # num_failed = models.IntegerField(initial=0)
+
+    num_correct = models.IntegerField(initial=0)
+    elapsed_time = models.FloatField(initial=0)
 
 
 # puzzle-specific stuff
 
 
 class Puzzle(ExtraModel):
-    """A model to keep record of all generated puzzles"""
+    """A model to keep record of sliders setup"""
 
     player = models.Link(Player)
-    iteration = models.IntegerField(initial=0)
-    attempts = models.IntegerField(initial=0)
-    timestamp = models.FloatField(initial=0)
+    iteration = models.IntegerField()
+    timestamp = models.FloatField()
 
     # slider puzzle parameters json encoded
     data = models.LongStringField()
@@ -72,9 +67,9 @@ class Puzzle(ExtraModel):
     # timestamp of last response
     response_timestamp = models.FloatField()
     # number of correct sliders
-    correct = models.IntegerField()
+    correct = models.IntegerField(initial=0)
     # if all sliders solved
-    solved = models.BooleanField()
+    solved = models.BooleanField(initial=False)
 
 
 def generate_puzzle(player: Player) -> Puzzle:
@@ -114,9 +109,6 @@ def get_progress(player: Player):
     """Return current player progress"""
     return dict(
         iteration=player.iteration,
-        # num_trials=player.num_trials,
-        # num_solved=player.num_solved,
-        # num_failed=player.num_failed,
     )
 
 
@@ -180,36 +172,19 @@ def play_game(player: Player, message: dict):
 
     message_type = message['type']
 
-    # page loaded
     if message_type == 'load':
         p = get_progress(player)
         if current:
-            return {
-                my_id: dict(type='status', progress=p, puzzle=encode_puzzle(current))
-            }
+            return {my_id: dict(type='status', progress=p, puzzle=encode_puzzle(current))}
         else:
             return {my_id: dict(type='status', progress=p)}
 
-    if message_type == "cheat" and settings.DEBUG:
-        return {my_id: dict(type='solution', solution=json.loads(current.solution))}
-
-    # client requested new puzzle
     if message_type == "new":
         if current is not None:
-            if current.correct is None:
-                raise RuntimeError("trying to skip over unsolved puzzle")
-            if current.iteration == task_params['num_iterations']:
-                return {
-                    my_id: dict(
-                        type='status', progress=get_progress(player), iterations_left=0
-                    )
-                }
+            raise RuntimeError("trying to create 2nd puzzle")
 
-        # generate new puzzle
         player.iteration += 1
         z = generate_puzzle(player)
-
-        # update player progress
         p = get_progress(player)
 
         return {my_id: dict(type='puzzle', puzzle=encode_puzzle(z), progress=p)}
@@ -224,9 +199,6 @@ def play_game(player: Player, message: dict):
         feedback = handle_response(current, slider, value)
         current.response_timestamp = now
 
-        # if feedback.is_completed:
-        #     player.num_solved += 1
-
         p = get_progress(player)
         return {
             my_id: dict(
@@ -238,6 +210,9 @@ def play_game(player: Player, message: dict):
                 progress=p,
             )
         }
+
+    if message_type == "cheat" and settings.DEBUG:
+        return {my_id: dict(type='solution', solution=json.loads(current.solution))}
 
     raise RuntimeError("unrecognized message from client")
 
@@ -263,12 +238,12 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        # if not timeout_happened and not player.session.task_params['num_iterations']:
-        #     raise RuntimeError("malicious page submission")
         current = get_current_puzzle(player)
-        player.elapsed_time = current.response_timestamp - current.timestamp
-        player.solved_sliders = current.correct
-        player.payoff = player.solved_sliders
+
+        if current and current.response_timestamp:
+            player.elapsed_time = current.response_timestamp - current.timestamp
+            player.num_correct = current.correct
+            player.payoff = player.num_correct
 
 
 class Results(Page):

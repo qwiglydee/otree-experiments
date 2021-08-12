@@ -44,7 +44,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=1.00, participation_fee=0.00, doc=""
 )
 
-PARTICIPANT_FIELDS = []
+PARTICIPANT_FIELDS = ['is_dropout']
 SESSION_FIELDS = ['task_params']
 
 # ISO-639 code
@@ -104,3 +104,13 @@ if sys.argv[1] == 'test':
                 ),
             ]
         )
+    SESSION_CONFIGS.append(
+        dict(
+            name=f"sliders",
+            num_demo_participants=1,
+            app_sequence=['sliders'],
+            trial_delay=PUZZLE_DELAY,
+            retry_delay=RETRY_DELAY,
+            num_sliders=3
+        )
+    )
