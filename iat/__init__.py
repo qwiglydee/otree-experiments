@@ -73,7 +73,7 @@ def get_num_iterations_for_round(rnd):
     The `rnd`: Player or Subsession
     """
     idx = rnd.round_number
-    num = rnd.session.iat_params['num_iterations'][idx]
+    num = rnd.session.params['num_iterations'][idx]
     return num
 
 
@@ -88,11 +88,11 @@ def creating_session(subsession: Subsession):
         secondary_images=False,
         num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
     )
-    session.iat_params = {}
+    session.params = {}
     for param in defaults:
-        session.iat_params[param] = session.config.get(param, defaults[param])
+        session.params[param] = session.config.get(param, defaults[param])
 
-    block = get_block_for_round(subsession.round_number, session.iat_params)
+    block = get_block_for_round(subsession.round_number, session.params)
 
     subsession.practice = block['practice']
     subsession.primary_left = block['left'].get('primary', "")
@@ -137,7 +137,7 @@ class Trial(ExtraModel):
 
 def generate_trial(player: Player) -> Trial:
     """Create new question for a player"""
-    block = get_block_for_round(player.round_number, player.session.iat_params)
+    block = get_block_for_round(player.round_number, player.session.params)
     chosen_side = random.choice(['left', 'right'])
     chosen_cls = random.choice(list(block[chosen_side].keys()))
     chosen_cat = block[chosen_side][chosen_cls]
@@ -256,7 +256,7 @@ def play_game(player: Player, message: dict):
     """
     session = player.session
     my_id = player.id_in_group
-    ret_params = session.iat_params
+    ret_params = session.params
     max_iters = get_num_iterations_for_round(player)
 
     now = time.time()
@@ -369,7 +369,7 @@ class Intro(Page):
     @staticmethod
     def vars_for_template(player: Player):
         # using 3rd block to take categories labels in instructions
-        params = player.session.iat_params
+        params = player.session.params
         block = get_block_for_round(3, params)
         return dict(
             params=params,
@@ -382,11 +382,11 @@ class RoundN(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(params=player.session.iat_params, keys=Constants.keys)
+        return dict(params=player.session.params, keys=Constants.keys)
 
     @staticmethod
     def vars_for_template(player: Player):
-        params = player.session.iat_params
+        params = player.session.params
         block = get_block_for_round(player.round_number, params)
         return dict(
             params=params,
@@ -431,9 +431,9 @@ class Results(Page):
         dscore = stats.dscore(data3, data4, data6, data7)
 
         # combinations for positive score
-        labels3 = labels_for_block(get_block_for_round(3, player.session.iat_params))
+        labels3 = labels_for_block(get_block_for_round(3, player.session.params))
         # combinations for negative score
-        labels6 = labels_for_block(get_block_for_round(6, player.session.iat_params))
+        labels6 = labels_for_block(get_block_for_round(6, player.session.params))
 
         return dict(dscore=dscore, pos_pairs=labels3, neg_pairs=labels6)
 

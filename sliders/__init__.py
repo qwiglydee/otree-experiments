@@ -32,9 +32,9 @@ def creating_session(subsession: Subsession):
         num_columns=3,
         attempts_per_slider=10
     )
-    session.task_params = {}
+    session.params = {}
     for param in defaults:
-        session.task_params[param] = session.config.get(param, defaults[param])
+        session.params[param] = session.config.get(param, defaults[param])
 
 
 class Group(BaseGroup):
@@ -80,7 +80,7 @@ class Slider(ExtraModel):
 
 def generate_puzzle(player: Player) -> Puzzle:
     """Create new puzzle for a player"""
-    params = player.session.task_params
+    params = player.session.params
     num = params['num_sliders']
     layout = task_sliders.generate_layout(params)
     puzzle = Puzzle.create(
@@ -169,7 +169,7 @@ def play_game(player: Player, message: dict):
     """
     session = player.session
     my_id = player.id_in_group
-    task_params = session.task_params
+    params = session.params
 
     now = time.time()
     # the current puzzle or none
@@ -197,14 +197,14 @@ def play_game(player: Player, message: dict):
     if message_type == "value":
         if puzzle is None:
             raise RuntimeError("missing puzzle")
-        if puzzle.response_timestamp and now < puzzle.response_timestamp + task_params["retry_delay"]:
+        if puzzle.response_timestamp and now < puzzle.response_timestamp + params["retry_delay"]:
             raise RuntimeError("retrying too fast")
 
         slider = get_slider(puzzle, int(message["slider"]))
 
         if slider is None:
             raise RuntimeError("missing slider")
-        if slider.attempts >= task_params['attempts_per_slider']:
+        if slider.attempts >= params['attempts_per_slider']:
             raise RuntimeError("too many slider motions")
 
         value = int(message["value"])
@@ -239,14 +239,14 @@ class Game(Page):
     @staticmethod
     def js_vars(player: Player):
         return dict(
-            params=player.session.task_params,
+            params=player.session.params,
             slider_size=task_sliders.SLIDER_BBOX,
         )
 
     @staticmethod
     def vars_for_template(player: Player):
         return dict(
-            params=player.session.task_params,
+            params=player.session.params,
             DEBUG=settings.DEBUG
         )
 

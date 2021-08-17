@@ -204,7 +204,7 @@ def call_live_method(method, group, case, **kwargs):  # noqa
     except KeyError:
         raise NotImplementedError("Test case not implemented", case)
 
-    test(method, group.get_players()[0], group.session.iat_params)
+    test(method, group.get_players()[0], group.session.params)
 
 
 # test cases

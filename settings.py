@@ -3,14 +3,14 @@ from os import environ
 SESSION_CONFIGS = [
     dict(
         name="sliders",
-        display_name="Slider task",
+        display_name="RET Slider task",
         num_demo_participants=1,
         app_sequence=["sliders"],
     ),
 
     dict(
         name="decoding",
-        display_name="Decoding numbers to words",
+        display_name="RET Decoding numbers to words",
         num_demo_participants=1,
         app_sequence=["real_effort"],
         task='decoding',
@@ -18,7 +18,7 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="transcription",
-        display_name="Transcription of text from an image",
+        display_name="RET Transcription of text from an image",
         num_demo_participants=1,
         app_sequence=["real_effort"],
         task='transcription',
@@ -27,11 +27,41 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="matrices",
-        display_name="Counting symbols in a matrix",
+        display_name="RET Counting symbols in a matrix",
         num_demo_participants=1,
         app_sequence=["real_effort"],
         task='matrix',
         attempts_per_puzzle=1,
+    ),
+    dict(
+        name="iat_words",
+        display_name="IAT using words, from CSV",
+        num_demo_participants=1,
+        app_sequence=["iat"],
+        primary=['male', 'female'],
+        secondary=['career', 'family'],
+        num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
+    ),
+    dict(
+        name="iat_images",
+        display_name="IAT using images",
+        num_demo_participants=1,
+        app_sequence=["iat"],
+        primary_images=True,
+        primary=['images:felidae', 'images:canidae'],
+        secondary_images=True,
+        secondary=['emojis:positive', 'emojis:negative'],
+        num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
+    ),
+    dict(
+        name="iat_mixed",
+        display_name="IAT using images and words",
+        num_demo_participants=1,
+        app_sequence=["iat"],
+        primary_images=True,
+        primary=['images:felidae', 'images:canidae'],
+        secondary=['male', 'female'],
+        num_iterations={1: 5, 2: 5, 3: 10, 4: 20, 5: 5, 6: 10, 7: 20},
     ),
 ]
 
@@ -45,7 +75,7 @@ SESSION_CONFIG_DEFAULTS = dict(
 )
 
 PARTICIPANT_FIELDS = ['is_dropout']
-SESSION_FIELDS = ['task_params']
+SESSION_FIELDS = ['params']
 
 # ISO-639 code
 # for example: de, fr, ja, ko, zh-hans
@@ -80,14 +110,14 @@ if sys.argv[1] == 'test':
         SESSION_CONFIGS.extend(
             [
                 dict(
-                    name=f"{task}_defaults",
+                    name=f"testing_{task}_defaults",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
                     puzzle_delay=PUZZLE_DELAY,
                     retry_delay=RETRY_DELAY,
                 ),
                 dict(
-                    name=f"{task}_retrying",
+                    name=f"testing_{task}_retrying",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
                     puzzle_delay=PUZZLE_DELAY,
@@ -95,7 +125,7 @@ if sys.argv[1] == 'test':
                     attempts_per_puzzle=5,
                 ),
                 dict(
-                    name=f"{task}_limited",
+                    name=f"testing_{task}_limited",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
                     puzzle_delay=PUZZLE_DELAY,
@@ -106,12 +136,24 @@ if sys.argv[1] == 'test':
         )
     SESSION_CONFIGS.append(
         dict(
-            name=f"sliders",
+            name=f"testing_sliders",
             num_demo_participants=1,
             app_sequence=['sliders'],
             trial_delay=PUZZLE_DELAY,
             retry_delay=RETRY_DELAY,
             num_sliders=3,
             attempts_per_slider=3
+        )
+    )
+    SESSION_CONFIGS.append(
+        dict(
+            name=f"testing_iat",
+            num_demo_participants=1,
+            app_sequence=['iat'],
+            trial_delay=PUZZLE_DELAY,
+            retry_delay=RETRY_DELAY,
+            primary=['canidae', 'felidae'],
+            secondary=['positive', 'negative'],
+            num_iterations={1: 2, 2: 2, 3: 3, 4: 3, 5: 2, 6: 3, 7: 3},
         )
     )

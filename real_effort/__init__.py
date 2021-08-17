@@ -48,9 +48,9 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         retry_delay=1.0, puzzle_delay=1.0, attempts_per_puzzle=1, max_iterations=None
     )
-    session.task_params = {}
+    session.params = {}
     for param in defaults:
-        session.task_params[param] = session.config.get(param, defaults[param])
+        session.params[param] = session.config.get(param, defaults[param])
 
 
 class Group(BaseGroup):
@@ -146,7 +146,7 @@ def play_game(player: Player, message: dict):
     """
     session = player.session
     my_id = player.id_in_group
-    task_params = session.task_params
+    params = session.params
     task_module = get_task_module(player)
 
     now = time.time()
@@ -173,9 +173,9 @@ def play_game(player: Player, message: dict):
         if current is not None:
             if current.response is None:
                 raise RuntimeError("trying to skip over unsolved puzzle")
-            if now < current.timestamp + task_params["puzzle_delay"]:
+            if now < current.timestamp + params["puzzle_delay"]:
                 raise RuntimeError("retrying too fast")
-            if current.iteration == task_params['max_iterations']:
+            if current.iteration == params['max_iterations']:
                 return {
                     my_id: dict(
                         type='status', progress=get_progress(player), iterations_left=0
@@ -192,9 +192,9 @@ def play_game(player: Player, message: dict):
             raise RuntimeError("trying to answer no puzzle")
 
         if current.response is not None:  # it's a retry
-            if current.attempts >= task_params["attempts_per_puzzle"]:
+            if current.attempts >= params["attempts_per_puzzle"]:
                 raise RuntimeError("no more attempts allowed")
-            if now < current.response_timestamp + task_params["retry_delay"]:
+            if now < current.response_timestamp + params["retry_delay"]:
                 raise RuntimeError("retrying too fast")
 
             # undo last updation of player progress
@@ -222,7 +222,7 @@ def play_game(player: Player, message: dict):
             player.num_failed += 1
         player.num_trials += 1
 
-        retries_left = task_params["attempts_per_puzzle"] - current.attempts
+        retries_left = params["attempts_per_puzzle"] - current.attempts
         p = get_progress(player)
         return {
             my_id: dict(
@@ -243,7 +243,7 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(params=player.session.task_params)
+        return dict(params=player.session.params)
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -254,7 +254,7 @@ class Game(Page):
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        if not timeout_happened and not player.session.task_params['max_iterations']:
+        if not timeout_happened and not player.session.params['max_iterations']:
             raise RuntimeError("malicious page submission")
 
 

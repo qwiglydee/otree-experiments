@@ -30,7 +30,7 @@ class PlayerBot(Bot):
     ]
 
     def play_round(self):
-        if self.case == 'iter_limit' and not self.session.task_params['max_iterations']:
+        if self.case == 'iter_limit' and not self.session.params['max_iterations']:
             print(f"Skipping case {self.case} under no max_iterations")
             return
 
@@ -118,7 +118,10 @@ def expect_response(r, t, **values):
 
 def expect_response_progress(r, **values):
     expect('progress', 'in', r)
-    expect(r['progress'], values)
+    p = r['progress']
+    for k, v in values.items():
+        expect(k, 'in', p)
+        expect(p[k], v)
 
 
 # test case dispatching
@@ -132,7 +135,7 @@ def call_live_method(method, group, case, **kwargs):  # noqa
     except KeyError:
         raise NotImplementedError("Test case not implemented", case)
 
-    test(method, group.get_players()[0], group.session.task_params)
+    test(method, group.get_players()[0], group.session.params)
 
 
 # test cases
