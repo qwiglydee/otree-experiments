@@ -1,0 +1,22 @@
+{{ block title }}
+    Implicit Association Test
+{{ endblock }}
+
+{% block styles  %}
+    <link href="{% static 'iat.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{{ block content }}
+    <p>This is demo implementation of the Implicit Association Test.</p>
+
+    <p>It measures association between primary and secondary categories.</p>
+
+    <p>In this setup the primary category is
+        <span class="primary">{{ labels.left.primary }}/{{ labels.right.primary }}</span>,
+        and secondary is
+        <span class="secondary">{{ labels.left.secondary }}/{{ labels.right.secondary }}</span>
+    </p>
+
+    {{ next_button }}
+
+{{ endblock }}
