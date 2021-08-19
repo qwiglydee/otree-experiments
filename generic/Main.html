@@ -1,0 +1,47 @@
+{% block styles  %}
+    <link href="{% static 'sliders.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{{ block title }}
+Generic task
+{{ endblock }}
+
+{{ block content }}
+<div class="d-flex flex-column align-items-center">
+    <progress id="progress-bar" max="{{ params.num_iterations }}" value="0"></progress>
+
+    <div class="stimulus-container m-1">
+        <span class="focus hidden" id="focus">⌖</span>
+        <p class="stimulus hidden" id="stimulus-txt"></p>
+        <img class="stimulus hidden" id="stimulus-img" src="">
+    </div>
+
+    <div class="feedback input-group">
+        <input type="text" id="answer-inp" class="form-control" readonly>
+        <div class="invalid-feedback" id="warning-txt"></div>
+    </div>
+
+</div>
+
+{{ if DEBUG }}
+<br><br><br>
+<div class="card debug-info">
+    <h5 class="card-header">Debug cheating</h5>
+    <div class="card-body">
+        RT mean: <input type="number" min="0.1" step="0.1" value="1.0" id="cheat-rt-inp">
+        <button type="button" id="cheat-btn" class="btn btn-dark">Cheat</button>
+    </div>
+</div>
+{{ endif }}
+
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    const IMAGES_URL_PREFIX = "{{ static 'images/emoji_u1f60a.png' }}";
+</script>
+<script src="{{ static 'generic.js' }}"></script>
+
+{{ if DEBUG }}<script src="{{ static 'cheating.js' }}"></script>{{ endif }}
+
+{{ endblock }}

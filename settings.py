@@ -2,6 +2,14 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
+        name="generic",
+        display_name="generic stimulus/response app",
+        num_demo_participants=1,
+        app_sequence=["generic"],
+        categories={'left': 'positive', 'right': 'negative'},
+    ),
+
+    dict(
         name="sliders",
         display_name="RET Slider task",
         num_demo_participants=1,
@@ -105,7 +113,36 @@ if sys.argv[1] == 'test':
     PUZZLE_DELAY = 0.2
     RETRY_DELAY = 0.4  # required anyway because test cases use it
     MAX_ITERATIONS = 3
-    SESSION_CONFIGS = []
+    SESSION_CONFIGS = [
+        dict(
+            name=f"testing_generic",
+            num_demo_participants=1,
+            app_sequence=['generic'],
+            trial_delay=PUZZLE_DELAY,
+            retry_delay=RETRY_DELAY,
+            categories={'left': 'positive', 'right': 'negative'},
+            num_iterations=5
+        ),
+        dict(
+            name=f"testing_iat",
+            num_demo_participants=1,
+            app_sequence=['iat'],
+            trial_delay=PUZZLE_DELAY,
+            retry_delay=RETRY_DELAY,
+            primary=['canidae', 'felidae'],
+            secondary=['positive', 'negative'],
+            num_iterations={1: 2, 2: 2, 3: 3, 4: 3, 5: 2, 6: 3, 7: 3},
+        ),
+        dict(
+            name=f"testing_sliders",
+            num_demo_participants=1,
+            app_sequence=['sliders'],
+            trial_delay=PUZZLE_DELAY,
+            retry_delay=RETRY_DELAY,
+            num_sliders=3,
+            attempts_per_slider=3
+        )
+    ]
     for task in TASKS:
         SESSION_CONFIGS.extend(
             [
@@ -134,26 +171,3 @@ if sys.argv[1] == 'test':
                 ),
             ]
         )
-    SESSION_CONFIGS.append(
-        dict(
-            name=f"testing_sliders",
-            num_demo_participants=1,
-            app_sequence=['sliders'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
-            num_sliders=3,
-            attempts_per_slider=3
-        )
-    )
-    SESSION_CONFIGS.append(
-        dict(
-            name=f"testing_iat",
-            num_demo_participants=1,
-            app_sequence=['iat'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
-            primary=['canidae', 'felidae'],
-            secondary=['positive', 'negative'],
-            num_iterations={1: 2, 2: 2, 3: 3, 4: 3, 5: 2, 6: 3, 7: 3},
-        )
-    )
