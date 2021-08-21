@@ -3,7 +3,7 @@ import random
 
 from otree.api import *
 from otree import settings
-from otree.common2 import static_url_for
+
 
 from . import stimuli
 from . import image_utils
@@ -80,7 +80,7 @@ def creating_session(subsession: Subsession):
         trial_pause=1.0,
         focus_time=1.0,
         stimulus_time=None,
-        freeze_time=0.5,
+        freeze_seconds=0.5,
     )
     required = ["categories"]
     session.params = {}
@@ -98,10 +98,7 @@ def creating_session(subsession: Subsession):
 def get_progress(player: Player) -> dict:
     """Return whatever progress data to show on page"""
     params = player.session.params
-    return dict(
-        iteration=player.iteration,
-        iterations_total=params["num_iterations"],
-    )
+    return dict(iteration=player.iteration, iterations_total=params["num_iterations"],)
 
 
 def update_stats(player: Player, is_correct: bool, inc=1):
@@ -174,6 +171,11 @@ def get_current_trial(player: Player) -> Trial:
     if trials:
         [trial] = trials
         return trial
+
+
+def static_url_for(path):
+    """hardcoded for now"""
+    return f'/static/{path}'
 
 
 def encode_trial(trial: Trial) -> dict:

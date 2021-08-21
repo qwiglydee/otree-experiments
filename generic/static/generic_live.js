@@ -210,7 +210,7 @@ class Controller {
         this.sendMessage('response', {response:resp, reaction: this.response_ts - this.stimulus_ts});
 
         this.freezeInputs();
-        this.timers.delay('unfreeze', PARAMS.freeze_time * 1000, () => this.unfreezeInputs());
+        this.timers.delay('unfreeze', PARAMS.freeze_seconds * 1000, () => this.unfreezeInputs());
     }
 
     /**** handling messages from server ****/
