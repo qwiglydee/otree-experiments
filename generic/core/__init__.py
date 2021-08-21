@@ -5,9 +5,6 @@ from otree.api import *
 from . import image_utils, stimuli
 
 
-# Subsession needs to be in the same module as creating_session.
-# but get_folder_name gets confused trying to determine the app name,
-# unless it's specifically in 'models.py'.
 class Subsession(BaseSubsession):
     is_practice = models.BooleanField(initial=False)
 
@@ -262,7 +259,7 @@ def strip_categories(data: dict):
     return {k: strip(v) for k, v in data.items()}
 
 
-def creating_session(subsession: Subsession):
+def creating_session_core(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         num_iterations=10,

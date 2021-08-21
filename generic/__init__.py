@@ -27,6 +27,9 @@ class Constants(BaseConstants):
     instructions_template = __name__ + "/instructions.html"
 
 
+def creating_session(subsession):
+    creating_session_core(subsession)
+
 
 class Intro(Page):
     @staticmethod
