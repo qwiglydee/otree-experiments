@@ -19,3 +19,13 @@ image:emoji_u1f612.png,emojis:negative
 image:emoji_u1f616.png,emojis:negative
 image:emoji_u1f623.png,emojis:negative
 image:emoji_u1f62c.png,emojis:negative
+font:amusement,font:positive
+font:fun,font:positive
+font:friendship,font:positive
+font:happyness,font:positive
+font:joy,font:positive
+font:anger,font:negative
+font:hate,font:negative
+font:fear,font:negative
+font:panic,font:negative
+font:sickness,font:negative

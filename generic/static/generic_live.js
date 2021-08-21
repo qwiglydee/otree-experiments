@@ -13,10 +13,18 @@ class Model {
     }
 
     setTrial(data) {
-        this.stimulus = {
-            type: 'text',
-            value: data.stimulus
-        };
+        this.stimulus = {type: data.datatype}
+        switch(data.datatype) {
+            case 'text':
+              this.stimulus.value = data.stimulus;
+              break;
+            case 'image-url':
+              this.stimulus.url = data.url;
+              break;
+            case 'image-data':
+              this.stimulus.data = data.data;
+              break;
+        }
     }
 
     setResponse(value) {
@@ -100,8 +108,12 @@ class View {
                 this.$stimulus_txt.textContent = this.model.stimulus.value;
                 this._show(this.$stimulus_txt);
                 break;
-            case 'image':
-                this.$stimulus_img.src = this.model.stimulus.value;
+            case 'image-url':
+                this.$stimulus_img.src = this.model.stimulus.url;
+                this._show(this.$stimulus_img);
+                break;
+            case 'image-data':
+                this.$stimulus_img.src = this.model.stimulus.data;
                 this._show(this.$stimulus_img);
                 break;
         }
@@ -117,7 +129,7 @@ class View {
     }
 
     renderResponse() {
-        this.$response_txt.textContent = PARAMS.categories[this.model.response];
+        this.$response_txt.textContent = js_vars.categories[this.model.response];
         // the feedback can be null
         this.$response.classList.toggle("is-valid", this.model.feedback && this.model.feedback.is_correct === true);
         this.$response.classList.toggle("is-invalid", this.model.feedback && this.model.feedback.is_correct === false);

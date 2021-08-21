@@ -3,8 +3,10 @@ import random
 
 from otree.api import *
 from otree import settings
+from otree.common2 import static_url_for
 
 from . import stimuli
+from . import image_utils
 
 doc = """
 Generic atimulus/response app
@@ -176,7 +178,19 @@ def get_current_trial(player: Player) -> Trial:
 
 def encode_trial(trial: Trial) -> dict:
     """Get trial data to pass to live page"""
-    return dict(stimulus=trial.stimulus)
+    stimulus = trial.stimulus
+
+    if stimulus.startswith("image:"):
+        url = static_url_for("images/" + stimulus[6:])
+        return dict(stimulus=stimulus, url=url, datatype="image-url")
+
+    if stimulus.startswith("font:"):
+        img = image_utils.render_text(trial.stimulus[5:])
+        img = image_utils.distort_image(img)
+        data = image_utils.encode_image(img)
+        return dict(stimulus=stimulus, data=data, datatype="image-data")
+
+    return dict(stimulus=stimulus, datatype="text")
 
 
 def check_response(trial: Trial, response: str) -> bool:
@@ -289,23 +303,39 @@ def play_game(player: Player, message: dict):
     raise RuntimeError("unrecognized message from client")
 
 
+def strip_categories(data: dict):
+    """strip prefix like "images:" from categories"""
+
+    def strip(s):
+        return s.split(':')[1]
+
+    return {k: strip(v) for k, v in data.items()}
+
+
 class Intro(Page):
     @staticmethod
     def vars_for_template(player: Player):
         params = player.session.params
-        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
+        categories = strip_categories(params['categories'])
+        return dict(
+            params=params, categories=categories, keymap=C.keymap, DEBUG=settings.DEBUG
+        )
 
 
 class Main(Page):
     @staticmethod
     def js_vars(player: Player):
         params = player.session.params
-        return dict(params=params, keymap=C.keymap)
+        categories = strip_categories(params['categories'])
+        return dict(params=params, categories=categories, keymap=C.keymap)
 
     @staticmethod
     def vars_for_template(player: Player):
         params = player.session.params
-        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
+        categories = strip_categories(params['categories'])
+        return dict(
+            params=params, categories=categories, keymap=C.keymap, DEBUG=settings.DEBUG
+        )
 
     live_method = play_game
 
