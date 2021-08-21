@@ -11,9 +11,7 @@ from pathlib import Path
 import csv
 
 
-# FIXME: this is hardcode for the user's app to be called 'generic'.
-# need another strategy like lazy-loading at runtime.
-BASE_DIR = Path("generic")
+BASE_DIR = Path(__file__).parent.parent
 CSV_FILE = BASE_DIR / 'stimuli.csv'
 REQ_FIELDS = ['stimulus', 'category']
 

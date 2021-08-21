@@ -6,6 +6,8 @@ from . import image_utils, stimuli
 
 
 # Subsession needs to be in the same module as creating_session.
+# but get_folder_name gets confused trying to determine the app name,
+# unless it's specifically in 'models.py'.
 class Subsession(BaseSubsession):
     is_practice = models.BooleanField(initial=False)
 

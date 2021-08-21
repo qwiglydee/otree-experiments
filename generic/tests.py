@@ -1,1 +1,1 @@
-from generic_core.tests import *  # noqa
+from generic.core import *  # noqa

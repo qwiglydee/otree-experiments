@@ -1,4 +1,4 @@
-from generic_core import *
+from .core import *
 
 doc = """
 Generic stimulus/response app
@@ -25,6 +25,7 @@ class Constants(BaseConstants):
     keymap = {'KeyF': 'left', 'KeyJ': 'right'}
 
     instructions_template = __name__ + "/instructions.html"
+
 
 
 class Intro(Page):
