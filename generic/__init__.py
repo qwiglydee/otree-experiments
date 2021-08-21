@@ -352,7 +352,6 @@ page_sequence = [Intro, Main, Results]
 def custom_export(players):
     yield [
         "participant_code",
-        "is_bot",
         "is_dropout",
         "session",
         "round",
@@ -374,7 +373,6 @@ def custom_export(players):
 
         player_fields = [
             participant.code,
-            participant._is_bot,  # noqa
             participant.is_dropout if 'is_dropout' in participant.vars else None,
             session.code,
             subsession.round_number,

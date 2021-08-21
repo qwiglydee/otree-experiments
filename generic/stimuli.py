@@ -51,8 +51,12 @@ def load_csv(filename, required_fields=None):
             for fld in fields:
                 val = row[fld]
                 if val.startswith("image:"):
+                    # TODO: if we add an API to get an image's static URL,
+                    # we can use that instead, since it will raise if the file
+                    # is missing.
                     path = BASE_DIR / "static" / "images" / val[6:]
-                    if not path.exists():
+                    path_global = Path('_static/images', val[6:])
+                    if not (path.exists() or path_global.exists()):
                         raise RuntimeError(
                             f"missing file '{path}' for field '{fld}' in {filename}:{reader.line_num}"
                         )
