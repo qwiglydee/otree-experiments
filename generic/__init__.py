@@ -59,15 +59,14 @@ class Trial(ExtraModel):
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
-    timestamp = (
-        models.FloatField()
-    )  # time when the trial was picked up, None for pregenerated
+    # time when the trial was picked up, None for pregenerated
+    server_loaded_timestamp = models.FloatField()
 
     stimulus = models.StringField()
     category = models.StringField()
     solution = models.StringField()
 
-    response_timestamp = models.FloatField()
+    server_response_timestamp = models.FloatField()
     response = models.StringField()
     reaction_time = models.FloatField()
     is_correct = models.BooleanField()
@@ -249,7 +248,7 @@ def play_game(player: Player, message: dict):
         if current is not None:
             if current.response is None:
                 raise RuntimeError("trying to skip unanswered trial")
-            if now < current.timestamp + params["trial_pause"]:
+            if now < current.server_loaded_timestamp + params["trial_pause"]:
                 raise RuntimeError("advancing too fast")
 
         player.iteration += 1
@@ -266,7 +265,7 @@ def play_game(player: Player, message: dict):
         if t is None:
             raise RuntimeError("failed to pick next trial")
 
-        t.timestamp = now
+        t.server_loaded_timestamp = now
 
         return respond("trial", trial=encode_trial(t))
 
@@ -279,7 +278,7 @@ def play_game(player: Player, message: dict):
             raise RuntimeError("retrying not allowed")
 
             # scenario with retries
-            # if now < current.response_timestamp + params["freeze_pause"]:
+            # if now < current.server_response_timestamp + params["freeze_pause"]:
             #     raise RuntimeError("retrying too fast")
             #
             # update_stats(player, current.is_correct, -1)  # undo last update
@@ -291,8 +290,9 @@ def play_game(player: Player, message: dict):
 
         current.response = response
         current.reaction_time = message["reaction"]
+        print('current.reaction_time', current.reaction_time)
         current.is_correct = check_response(current, response)
-        current.response_timestamp = now
+        current.server_response_timestamp = now
 
         update_stats(player, current.is_correct)
 
@@ -358,10 +358,10 @@ def custom_export(players):
         "is_practice",
         "player",
         "iteration",
-        "timestamp",
+        "server_loaded_timestamp",
         "stimulus",
         "category",
-        "response_timestamp",
+        "server_response_timestamp",
         "response",
         "response_correct",
         "reaction_time",
@@ -386,10 +386,10 @@ def custom_export(players):
         for trial in Trial.filter(player=player):
             yield player_fields + [
                 trial.iteration,
-                trial.timestamp,
+                trial.server_loaded_timestamp,
                 trial.stimulus,
                 trial.category,
-                trial.response_timestamp,
+                trial.server_response_timestamp,
                 trial.response,
                 trial.is_correct,
                 trial.reaction_time,
