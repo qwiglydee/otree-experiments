@@ -19,15 +19,17 @@ REQ_FIELDS = ['stimulus', 'category']
 POOL = []
 
 
-def filter_by_category(category):
+def filter_by_category(categories: list):
     def filt(row):
-        return row['category'] == category
+        return row['category'] in categories
+
     return list(filter(filt, POOL))
 
 
 def filter_by_fields(**fields):
     def filt(row):
         return all([row[k] == v for k, v in fields.items()])
+
     return list(filter(filt, POOL))
 
 
@@ -43,13 +45,17 @@ def load_csv(filename, required_fields=None):
         for row in reader:
             for fld in required:
                 if row[fld] == "" or row[fld] is None:
-                    raise RuntimeError(f"field '{fld}' is empty in {filename}:{reader.line_num}")
+                    raise RuntimeError(
+                        f"field '{fld}' is empty in {filename}:{reader.line_num}"
+                    )
             for fld in fields:
                 val = row[fld]
                 if val.startswith("image:"):
                     path = BASE_DIR / "static" / "images" / val[6:]
                     if not path.exists():
-                        raise RuntimeError(f"missing file '{path}' for field '{fld}' in {filename}:{reader.line_num}")
+                        raise RuntimeError(
+                            f"missing file '{path}' for field '{fld}' in {filename}:{reader.line_num}"
+                        )
 
             data.append(row)
     return data

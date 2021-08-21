@@ -8,14 +8,12 @@ SESSION_CONFIGS = [
         app_sequence=["generic"],
         categories={'left': 'positive', 'right': 'negative'},
     ),
-
     dict(
         name="sliders",
         display_name="RET Slider task",
         num_demo_participants=1,
         app_sequence=["sliders"],
     ),
-
     dict(
         name="decoding",
         display_name="RET Decoding numbers to words",
@@ -121,7 +119,7 @@ if sys.argv[1] == 'test':
             trial_delay=PUZZLE_DELAY,
             retry_delay=RETRY_DELAY,
             categories={'left': 'positive', 'right': 'negative'},
-            num_iterations=5
+            num_iterations=10,
         ),
         dict(
             name=f"testing_iat",
@@ -140,8 +138,8 @@ if sys.argv[1] == 'test':
             trial_delay=PUZZLE_DELAY,
             retry_delay=RETRY_DELAY,
             num_sliders=3,
-            attempts_per_slider=3
-        )
+            attempts_per_slider=3,
+        ),
     ]
     for task in TASKS:
         SESSION_CONFIGS.extend(

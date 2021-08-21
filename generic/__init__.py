@@ -57,7 +57,9 @@ class Trial(ExtraModel):
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
-    timestamp = models.FloatField(initial=0)
+    timestamp = (
+        models.FloatField()
+    )  # time when the trial was picked up, None for pregenerated
 
     stimulus = models.StringField()
     category = models.StringField()
@@ -87,7 +89,8 @@ def creating_session(subsession: Subsession):
 
     subsession.is_practice = True
 
-    # TODO: load/initialize stimuli sequence
+    for player in subsession.get_players():
+        generate_all_trials(player)
 
 
 def get_progress(player: Player) -> dict:
@@ -123,7 +126,6 @@ def generate_trial(player: Player) -> Trial:
         round=player.round_number,
         player=player,
         iteration=player.iteration,
-        timestamp=time.time(),
         #
         stimulus=target['stimulus'],
         category=target['category'],
@@ -131,10 +133,37 @@ def generate_trial(player: Player) -> Trial:
     )
 
 
-def generate_trials_batch(player: Player, count):
-    """Create `count` trials with non-repeating random stimuli"""
-    # TODO
-    pass
+def generate_all_trials(player: Player):
+    """Create `num_iterations` trials with non-repeating random stimuli"""
+    params = player.session.params
+    categories = params['categories']
+    count = params['num_iterations']
+
+    if not count:
+        raise RuntimeError("Cannot generate trials without `num_iterations`")
+
+    selected = stimuli.filter_by_category(list(categories.values()))
+
+    if len(selected) < count:
+        raise RuntimeError(f"Insufficient stimuli in the pool for {count} iterations")
+
+    random.shuffle(selected)
+
+    categories_inversed = {v: k for k, v in categories.items()}
+
+    for i in range(count):
+        target = selected[i]
+        target_side = categories_inversed[target['category']]
+
+        Trial.create(
+            round=player.round_number,
+            player=player,
+            iteration=1 + i,
+            #
+            stimulus=target['stimulus'],
+            category=target['category'],
+            solution=target_side,
+        )
 
 
 def get_current_trial(player: Player) -> Trial:
@@ -183,14 +212,15 @@ def play_game(player: Player, message: dict):
 
     message_type = message["type"]
 
-    # print("iteration:", player.iteration, "trial:", current)
-    # print("received:", message)
+    print("iteration:", player.iteration)
+    print("current trial:", current)
+    print("received:", message)
 
     def respond(msgtype, **fields):
         """Prepare message to send to current player, add progress"""
         msgdata = {"type": msgtype, "progress": get_progress(player)}
         msgdata.update(fields)
-        # print("response:", msgdata)
+        print("response:", msgdata)
         return {player.id_in_group: msgdata}
 
     if message_type == "load":  # client loaded page
@@ -205,11 +235,23 @@ def play_game(player: Player, message: dict):
                 raise RuntimeError("trying to skip unanswered trial")
             if now < current.timestamp + params["trial_pause"]:
                 raise RuntimeError("advancing too fast")
-            if current.iteration == params["num_iterations"]:
-                return respond("status", game_over=True)
 
         player.iteration += 1
-        t = generate_trial(player)
+
+        if player.iteration > params["num_iterations"]:
+            return respond("status", game_over=True)
+
+        # with on-the-go generated trials
+        # t = generate_trial(player)
+
+        # with pre-generated trials
+        t = get_current_trial(player)
+
+        if t is None:
+            raise RuntimeError("failed to pick next trial")
+
+        t.timestamp = now
+
         return respond("trial", trial=encode_trial(t))
 
     if message_type == "response":  # client responded current trial
@@ -240,33 +282,11 @@ def play_game(player: Player, message: dict):
 
         return respond("feedback", is_correct=current.is_correct)
 
-    # if message_type == "cheat" and settings.DEBUG:  # debugging
-    #     if current:
-    #         current.delete()  # noqa
-    #     cheat_responses(player, message)
-    #     return respond('status', game_over=True)
+    if message_type == "cheat" and settings.DEBUG:  # debugging
+        # TODO
+        pass
 
     raise RuntimeError("unrecognized message from client")
-
-
-# def cheat_responses(player, message):
-#     """generate random responses for all remaining iterations in round"""
-#     params = player.session.params
-#     now = time.time()
-#     rt_mean = float(message['rt'])
-#     rt_std = min(rt_mean, 1.0 - rt_mean)
-#     responses = [params['left_category'], params['right_category']]
-#     for i in range(player.iteration, params['num_iterations']):
-#         ts = now + i
-#         rt = max(0.001, random.gauss(rt_mean, rt_std))
-#
-#         t = generate_trial(player)
-#         t.iteration = i
-#         t.timestamp = ts
-#         t.response_timestamp = ts + rt
-#         t.reaction_time = rt
-#         t.response = random.choice(responses)
-#         t.is_correct = check_response(t, t.response)
 
 
 class Intro(Page):

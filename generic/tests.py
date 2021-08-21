@@ -38,6 +38,10 @@ class PlayerBot(Bot):
         expect(player.num_solved, num_correct)
         expect(player.num_failed, num_incorrect)
 
+        generated = [t.stimulus for t in Trial.filter(player=player)]
+        uniq = set(generated)
+        expect(len(generated), len(uniq))
+
 
 def call_live_method(method, group, case, **kwargs):  # noqa
     print(f"Playing live case: {case}")
