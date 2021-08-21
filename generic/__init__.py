@@ -30,6 +30,8 @@ class Constants(BaseConstants):
     """
     keymap = {'KeyF': 'left', 'KeyJ': 'right'}
 
+    instructions_template = __name__ + "/instructions.html"
+
 
 C = Constants
 
@@ -69,7 +71,13 @@ class Trial(ExtraModel):
 
 def creating_session(subsession: Subsession):
     session = subsession.session
-    defaults = dict(retry_delay=0.5, trial_delay=0.5, num_iterations=100)
+    defaults = dict(
+        num_iterations=10,
+        trial_pause=1.0,
+        focus_time=1.0,
+        stimulus_time=None,
+        freeze_time=0.5,
+    )
     required = ["categories"]
     session.params = {}
     for param in defaults:
@@ -88,9 +96,6 @@ def get_progress(player: Player) -> dict:
     return dict(
         iteration=player.iteration,
         iterations_total=params["num_iterations"],
-        # num_trials=player.num_trials,
-        # num_solved=player.num_solved,
-        # num_failed=player.num_failed,
     )
 
 
@@ -168,7 +173,7 @@ def play_game(player: Player, message: dict):
 
     - receive: {'type': 'response', 'response': ..., 'reaction_time': ...} -- user responded
     - check and record response
-    - respond: {'type': 'feedback', 'is_correct': true|false} -- feedback to the answe r
+    - respond: {'type': 'feedback', 'is_correct': true|false} -- feedback to the response
 
     Field 'progress' is added to all server responses.
     """
@@ -198,8 +203,8 @@ def play_game(player: Player, message: dict):
         if current is not None:
             if current.response is None:
                 raise RuntimeError("trying to skip unanswered trial")
-            if now < current.timestamp + params["trial_delay"]:
-                raise RuntimeError("retrying too fast")
+            if now < current.timestamp + params["trial_pause"]:
+                raise RuntimeError("advancing too fast")
             if current.iteration == params["num_iterations"]:
                 return respond("status", game_over=True)
 
@@ -212,11 +217,14 @@ def play_game(player: Player, message: dict):
             raise RuntimeError("response without trial")
 
         if current.response is not None:  # it's a retry
-            if now < current.response_timestamp + params["retry_delay"]:
-                raise RuntimeError("retrying too fast")
+            # scenario without retries
+            raise RuntimeError("retrying not allowed")
 
-            # undo last update
-            update_stats(player, current.is_correct, -1)
+            # scenario with retries
+            # if now < current.response_timestamp + params["freeze_pause"]:
+            #     raise RuntimeError("retrying too fast")
+            #
+            # update_stats(player, current.is_correct, -1)  # undo last update
 
         response = message["response"]
 
@@ -224,7 +232,7 @@ def play_game(player: Player, message: dict):
             raise ValueError("bogus response")
 
         current.response = response
-        current.reaction_time = message["reaction_time"]
+        current.reaction_time = message["reaction"]
         current.is_correct = check_response(current, response)
         current.response_timestamp = now
 
@@ -232,33 +240,40 @@ def play_game(player: Player, message: dict):
 
         return respond("feedback", is_correct=current.is_correct)
 
-    if message_type == "cheat" and settings.DEBUG:  # debugging
-        if current:
-            current.delete()  # noqa
-        cheat_responses(player, message)
-        return respond('status', game_over=True)
+    # if message_type == "cheat" and settings.DEBUG:  # debugging
+    #     if current:
+    #         current.delete()  # noqa
+    #     cheat_responses(player, message)
+    #     return respond('status', game_over=True)
 
     raise RuntimeError("unrecognized message from client")
 
 
-def cheat_responses(player, message):
-    """generate random responses for all remaining iterations in round"""
-    params = player.session.params
-    now = time.time()
-    rt_mean = float(message['rt'])
-    rt_std = min(rt_mean, 1.0 - rt_mean)
-    responses = [params['left_category'], params['right_category']]
-    for i in range(player.iteration, params['num_iterations']):
-        ts = now + i
-        rt = max(0.001, random.gauss(rt_mean, rt_std))
+# def cheat_responses(player, message):
+#     """generate random responses for all remaining iterations in round"""
+#     params = player.session.params
+#     now = time.time()
+#     rt_mean = float(message['rt'])
+#     rt_std = min(rt_mean, 1.0 - rt_mean)
+#     responses = [params['left_category'], params['right_category']]
+#     for i in range(player.iteration, params['num_iterations']):
+#         ts = now + i
+#         rt = max(0.001, random.gauss(rt_mean, rt_std))
+#
+#         t = generate_trial(player)
+#         t.iteration = i
+#         t.timestamp = ts
+#         t.response_timestamp = ts + rt
+#         t.reaction_time = rt
+#         t.response = random.choice(responses)
+#         t.is_correct = check_response(t, t.response)
 
-        t = generate_trial(player)
-        t.iteration = i
-        t.timestamp = ts
-        t.response_timestamp = ts + rt
-        t.reaction_time = rt
-        t.response = random.choice(responses)
-        t.is_correct = check_response(t, t.response)
+
+class Intro(Page):
+    @staticmethod
+    def vars_for_template(player: Player):
+        params = player.session.params
+        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
 
 
 class Main(Page):
@@ -275,7 +290,11 @@ class Main(Page):
     live_method = play_game
 
 
-page_sequence = [Main]
+class Results(Page):
+    pass
+
+
+page_sequence = [Intro, Main, Results]
 
 
 def custom_export(players):

@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from otree.api import *
 from otree import settings
 
-from . import Constants, Player, Trial, Main
+from . import Constants, Player, Trial, Intro, Main, Results
 
 
 class PlayerBot(Bot):
@@ -20,10 +20,14 @@ class PlayerBot(Bot):
         yield from method()
 
     def play_default(self):  # noqa
+        yield Submission(Intro, check_html=False)
         yield Submission(Main, check_html=False)
+        yield Submission(Results, check_html=False)
 
     def play_normal(self):
+        yield Submission(Intro, check_html=False)
         yield Submission(Main, check_html=False)
+        yield Submission(Results, check_html=False)
 
         player = self.player
         num_correct = len(Trial.filter(player=player, is_correct=True))
@@ -93,10 +97,10 @@ def live_test_normal(method, player, conf):  # noqa
             response = get_correct_response(z)
         else:
             response = get_incorrect_response(z)
-        resp = send(m, p, 'response', response=response, reaction_time=1.0)
+        resp = send(m, p, 'response', response=response, reaction=1.0)
         expect_response(resp, 'feedback', is_correct=give_correct)
 
-        time.sleep(conf['trial_delay'])
+        time.sleep(conf['trial_pause'])
 
     resp = send(m, p, 'new')
     expect_response(resp, 'status', game_over=True)

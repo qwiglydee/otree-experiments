@@ -1,5 +1,6 @@
 {% block styles  %}
-    <link href="{% static 'sliders.css' %}" rel="stylesheet"/>
+    <link href="{% static 'common.css' %}" rel="stylesheet"/>
+    <link href="{% static 'generic_live.css' %}" rel="stylesheet"/>
 {% endblock %}
 
 {{ block title }}
@@ -7,23 +8,41 @@ Generic task
 {{ endblock }}
 
 {{ block content }}
-<div class="d-flex flex-column align-items-center">
-    <progress id="progress-bar" max="{{ params.num_iterations }}" value="0"></progress>
+<div class="main">
+    <div class="touch-spot left" data-response="left"></div>
+    <div class="touch-spot right" data-response="right"></div>
 
-    <div class="stimulus-container m-1">
-        <span class="focus hidden" id="focus">⌖</span>
-        <p class="stimulus hidden" id="stimulus-txt"></p>
-        <img class="stimulus hidden" id="stimulus-img" src="">
+    <div class="center">
+        <span id="focus" class="focus hidden">⌖</span>
+
+        <div id="stimulus" class="stimulus">
+            <p id="stimulus-txt" class="hidden"></p>
+            <img id="stimulus-img" class="hidden">
+        </div>
     </div>
 
-    <div class="feedback input-group">
-        <input type="text" id="answer-inp" class="form-control" readonly>
-        <div class="invalid-feedback" id="warning-txt"></div>
+    <div class="response" id="response">
+        <span id="response-txt"></span>
+        <span class="feedback feedback-valid">✓</span>
+        <span class="feedback feedback-invalid">❌</span>
     </div>
 
+    <div class="warning" id="warning-txt"></div>
 </div>
 
-{{ if DEBUG }}
+<progress id="progress-bar"></progress>
+
+<div class="instructions">
+    <div>
+        {{ include Constants.instructions_template }}
+    </div>
+
+    <div id="start-help">
+        <p>To start press <kbd>Space</kbd> or touch screen to start...</p>
+    </div>
+</div>
+
+{{ if 0 }}
 <br><br><br>
 <div class="card debug-info">
     <h5 class="card-header">Debug cheating</h5>
@@ -37,11 +56,18 @@ Generic task
 {{ endblock }}
 
 {{ block scripts }}
+<script src="{{ static 'generic_live.js' }}"></script>
+{{ if DEBUG }}<script src="{{ static 'generic_cheating.js' }}"></script>{{ endif }}
 <script>
-    const IMAGES_URL_PREFIX = "{{ static 'images/emoji_u1f60a.png' }}";
+const PARAMS = js_vars.params;
+const KEYMAP = js_vars.keymap;
+
+const model = new Model();
+const view = new View(model);
+const ctrl = new Controller(model, view);
+
+window.onload = () => {
+    liveSend({type: 'load'});
+};
 </script>
-<script src="{{ static 'generic.js' }}"></script>
-
-{{ if DEBUG }}<script src="{{ static 'cheating.js' }}"></script>{{ endif }}
-
 {{ endblock }}
