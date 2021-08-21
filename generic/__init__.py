@@ -307,7 +307,7 @@ def strip_categories(data: dict):
     """strip prefix like "images:" from categories"""
 
     def strip(s):
-        return s.split(':')[1]
+        return s.split(':')[1] if ':' in s else s
 
     return {k: strip(v) for k, v in data.items()}
 
