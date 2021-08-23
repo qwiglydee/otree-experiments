@@ -81,7 +81,7 @@ def creating_session(subsession: Subsession):
         stimulus_time=None,
         freeze_seconds=0.5,
     )
-    required = ["categories"]
+    required = ["categories", "labels"]
     session.params = {}
     for param in defaults:
         session.params[param] = session.config.get(param, defaults[param])
@@ -175,26 +175,30 @@ def get_current_trial(player: Player) -> Trial:
         return trial
 
 
-def static_url_for(path):
+def static_image_url(path):
     """hardcoded for now"""
-    return f'/static/{path}'
+    return f'/static/images/{path}'
+
+
+def render_image(text):
+    img = image_utils.render_text(text)
+    img = image_utils.distort_image(img)
+    data = image_utils.encode_image(img)
+    return data
 
 
 def encode_trial(trial: Trial) -> dict:
     """Get trial data to pass to live page"""
-    stimulus = trial.stimulus
+    # for orinary words
+    # return dict(stimulus=trial.stimulus, datatype="text")
 
-    if stimulus.startswith("image:"):
-        url = static_url_for("images/" + stimulus[6:])
-        return dict(stimulus=stimulus, url=url, datatype="image-url")
+    # for static images
+    # url = static_url_for(trial.stimulus)
+    # return dict(image_url=url, datatype="image-url")
 
-    if stimulus.startswith("font:"):
-        img = image_utils.render_text(trial.stimulus[5:])
-        img = image_utils.distort_image(img)
-        data = image_utils.encode_image(img)
-        return dict(stimulus=stimulus, data=data, datatype="image-data")
-
-    return dict(stimulus=stimulus, datatype="text")
+    # for rendered text
+    data = render_image(trial.stimulus)
+    return dict(image_data=data, datatype="image-data")
 
 
 def check_response(trial: Trial, response: str) -> bool:
@@ -326,39 +330,23 @@ def cheat_round(player, rt_mean):
         t.reaction_time = rt
 
 
-def strip_categories(data: dict):
-    """strip prefix like "images:" from categories"""
-
-    def strip(s):
-        return s.split(':')[-1]
-
-    return {k: strip(v) for k, v in data.items()}
-
-
 class Intro(Page):
     @staticmethod
     def vars_for_template(player: Player):
         params = player.session.params
-        categories = strip_categories(params['categories'])
-        return dict(
-            params=params, categories=categories, keymap=C.keymap, DEBUG=settings.DEBUG
-        )
+        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
 
 
 class Main(Page):
     @staticmethod
     def js_vars(player: Player):
         params = player.session.params
-        categories = strip_categories(params['categories'])
-        return dict(params=params, categories=categories, keymap=C.keymap)
+        return dict(params=params, keymap=C.keymap)
 
     @staticmethod
     def vars_for_template(player: Player):
         params = player.session.params
-        categories = strip_categories(params['categories'])
-        return dict(
-            params=params, categories=categories, keymap=C.keymap, DEBUG=settings.DEBUG
-        )
+        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
 
     live_method = play_game
 

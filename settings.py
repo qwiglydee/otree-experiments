@@ -2,25 +2,12 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name="generi_wordsc",
-        display_name="generic stimuli",
+        name="generic",
+        display_name="generic stimuli recognition task",
         num_demo_participants=1,
         app_sequence=["generic"],
         categories={'left': 'positive', 'right': 'negative'},
-    ),
-    dict(
-        name="generic_images",
-        display_name="generic stimuli with images",
-        num_demo_participants=1,
-        app_sequence=["generic"],
-        categories={'left': 'emojis:positive', 'right': 'emojis:negative'},
-    ),
-    dict(
-        name="generic_font",
-        display_name="generic stimuli with rendered text",
-        num_demo_participants=1,
-        app_sequence=["generic"],
-        categories={'left': 'font:positive', 'right': 'font:negative'},
+        labels={'left': 'Positive', 'right': 'Negative'},
     ),
     dict(
         name="sliders",
@@ -133,6 +120,7 @@ if sys.argv[1] == 'test':
             trial_delay=PUZZLE_DELAY,
             retry_delay=RETRY_DELAY,
             categories={'left': 'positive', 'right': 'negative'},
+            labels={'left': 'Positive', 'right': 'Negative'},
             num_iterations=10,
         ),
         dict(

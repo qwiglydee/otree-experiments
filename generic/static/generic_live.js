@@ -19,10 +19,10 @@ class Model {
               this.stimulus.value = data.stimulus;
               break;
             case 'image-url':
-              this.stimulus.url = data.url;
+              this.stimulus.url = data.image_url;
               break;
             case 'image-data':
-              this.stimulus.data = data.data;
+              this.stimulus.data = data.image_data;
               break;
         }
     }
@@ -129,7 +129,7 @@ class View {
     }
 
     renderResponse() {
-        this.$response_txt.textContent = js_vars.categories[this.model.response];
+        this.$response_txt.textContent = PARAMS.labels[this.model.response];
         // the feedback can be null
         this.$response.classList.toggle("is-valid", this.model.feedback && this.model.feedback.is_correct === true);
         this.$response.classList.toggle("is-invalid", this.model.feedback && this.model.feedback.is_correct === false);
