@@ -1,6 +1,5 @@
 import time
 
-from otree import settings
 from otree.api import *
 
 from .image_utils import encode_image
@@ -165,7 +164,7 @@ def play_game(player: Player, message: dict):
         else:
             return {my_id: dict(type='status', progress=p)}
 
-    if message_type == "cheat" and settings.DEBUG:
+    if message_type == "cheat" and session.vars.get('cheat_mode'):
         return {my_id: dict(type='solution', solution=current.solution)}
 
     # client requested new puzzle
@@ -247,10 +246,14 @@ class Game(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
+        session = player.session
+
         task_module = get_task_module(player)
-        return dict(DEBUG=settings.DEBUG,
-                    input_type=task_module.INPUT_TYPE,
-                    placeholder=task_module.INPUT_HINT)
+        return dict(
+            DEBUG=session.vars.get('cheat_mode'),
+            input_type=task_module.INPUT_TYPE,
+            placeholder=task_module.INPUT_HINT,
+        )
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

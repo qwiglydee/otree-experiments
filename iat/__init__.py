@@ -1,7 +1,6 @@
 import time
 import random
 from otree.api import *
-from otree import settings
 from . import stimuli
 from . import blocks
 from . import stats
@@ -338,7 +337,7 @@ def play_game(player: Player, message: dict):
             )
         }
 
-    if message_type == "cheat" and settings.DEBUG:
+    if message_type == "cheat" and session.vars.get('cheat_mode'):
         # generate remaining data for the round
         m = float(message['reaction'])
         if current:
@@ -386,7 +385,8 @@ class RoundN(Page):
 
     @staticmethod
     def vars_for_template(player: Player):
-        params = player.session.params
+        session = player.session
+        params = session.params
         block = get_block_for_round(player.round_number, params)
         return dict(
             params=params,
@@ -394,7 +394,7 @@ class RoundN(Page):
             thumbnails=thumbnails_for_block(block, params),
             labels=labels_for_block(block),
             num_iterations=get_num_iterations_for_round(player),
-            DEBUG=settings.DEBUG,
+            DEBUG=session.vars.get('cheat_mode'),
             keys=Constants.keys,
             lkeys="/".join(
                 [k for k in Constants.keys.keys() if Constants.keys[k] == 'left']

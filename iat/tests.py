@@ -2,7 +2,6 @@ import time
 from contextlib import contextmanager
 
 from otree.api import *
-from otree import settings
 
 from . import Player, Trial as Puzzle, Intro, RoundN, Results, generate_trial
 

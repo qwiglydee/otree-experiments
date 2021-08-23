@@ -3,7 +3,6 @@ import random
 from contextlib import contextmanager
 
 from otree.api import *
-from otree import settings
 
 from generic import Constants, Player, Trial, Intro, Main, Results
 

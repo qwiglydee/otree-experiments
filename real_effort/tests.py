@@ -2,7 +2,6 @@ import time
 from contextlib import contextmanager
 
 from otree.api import *
-from otree import settings
 
 from . import Player, Puzzle, Game
 
@@ -579,7 +578,6 @@ def live_test_iter_limit(method, player, conf):
 
 
 def live_test_cheat_debug(method, player, conf):
-    settings.DEBUG = True
     move_forward(method, player)
 
     resp = method(player.id_in_group, dict(type='cheat'))[player.id_in_group]
@@ -592,7 +590,8 @@ def live_test_cheat_debug(method, player, conf):
 
 
 def live_test_cheat_nodebug(method, player, conf):
-    settings.DEBUG = False
+    session = player.session
+    session.vars['cheat_mode'] = False
     move_forward(method, player)
     with expect_failure(RuntimeError):
         method(player.id_in_group, dict(type='cheat'))

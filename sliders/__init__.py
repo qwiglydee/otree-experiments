@@ -1,7 +1,6 @@
 import time
 import json
 
-from otree import settings
 from otree.api import *
 
 from .image_utils import encode_image
@@ -30,7 +29,7 @@ def creating_session(subsession: Subsession):
         retry_delay=0.1,
         num_sliders=48,
         num_columns=3,
-        attempts_per_slider=10
+        attempts_per_slider=10,
     )
     session.params = {}
     for param in defaults:
@@ -84,18 +83,15 @@ def generate_puzzle(player: Player) -> Puzzle:
     num = params['num_sliders']
     layout = task_sliders.generate_layout(params)
     puzzle = Puzzle.create(
-        player=player, iteration=player.iteration, timestamp=time.time(),
+        player=player,
+        iteration=player.iteration,
+        timestamp=time.time(),
         num_sliders=num,
-        layout=json.dumps(layout)
+        layout=json.dumps(layout),
     )
     for i in range(num):
         target, initial = task_sliders.generate_slider()
-        Slider.create(
-            puzzle=puzzle,
-            idx=i,
-            target=target,
-            value=initial
-        )
+        Slider.create(puzzle=puzzle, idx=i, target=target, value=initial)
     return puzzle
 
 
@@ -123,16 +119,15 @@ def encode_puzzle(puzzle: Puzzle):
         image=encode_image(image),
         size=layout['size'],
         grid=layout['grid'],
-        sliders={s.idx: {'value': s.value, 'is_correct': s.is_correct} for s in sliders}
+        sliders={
+            s.idx: {'value': s.value, 'is_correct': s.is_correct} for s in sliders
+        },
     )
 
 
 def get_progress(player: Player):
     """Return current player progress"""
-    return dict(
-        iteration=player.iteration,
-        solved=player.num_correct
-    )
+    return dict(iteration=player.iteration, solved=player.num_correct)
 
 
 def handle_response(puzzle, slider, value):
@@ -180,7 +175,9 @@ def play_game(player: Player, message: dict):
     if message_type == 'load':
         p = get_progress(player)
         if puzzle:
-            return {my_id: dict(type='status', progress=p, puzzle=encode_puzzle(puzzle))}
+            return {
+                my_id: dict(type='status', progress=p, puzzle=encode_puzzle(puzzle))
+            }
         else:
             return {my_id: dict(type='status', progress=p)}
 
@@ -197,7 +194,10 @@ def play_game(player: Player, message: dict):
     if message_type == "value":
         if puzzle is None:
             raise RuntimeError("missing puzzle")
-        if puzzle.response_timestamp and now < puzzle.response_timestamp + params["retry_delay"]:
+        if (
+            puzzle.response_timestamp
+            and now < puzzle.response_timestamp + params["retry_delay"]
+        ):
             raise RuntimeError("retrying too fast")
 
         slider = get_slider(puzzle, int(message["slider"]))
@@ -225,8 +225,13 @@ def play_game(player: Player, message: dict):
             )
         }
 
-    if message_type == "cheat" and settings.DEBUG:
-        return {my_id: dict(type='solution', solution={s.idx: s.target for s in Slider.filter(puzzle=puzzle)})}
+    if message_type == "cheat" and session.vars.get('cheat_mode'):
+        return {
+            my_id: dict(
+                type='solution',
+                solution={s.idx: s.target for s in Slider.filter(puzzle=puzzle)},
+            )
+        }
 
     raise RuntimeError("unrecognized message from client")
 
@@ -238,17 +243,12 @@ class Game(Page):
 
     @staticmethod
     def js_vars(player: Player):
-        return dict(
-            params=player.session.params,
-            slider_size=task_sliders.SLIDER_BBOX,
-        )
+        return dict(params=player.session.params, slider_size=task_sliders.SLIDER_BBOX,)
 
     @staticmethod
     def vars_for_template(player: Player):
-        return dict(
-            params=player.session.params,
-            DEBUG=settings.DEBUG
-        )
+        session = player.session
+        return dict(params=session.params, DEBUG=session.vars.get('cheat_mode'))
 
     @staticmethod
     def before_next_page(player: Player, timeout_happened):

@@ -4,9 +4,8 @@ import json
 from contextlib import contextmanager
 
 from otree.api import *
-from otree import settings
 
-from . import Player, Puzzle, Slider,  Game
+from . import Player, Puzzle, Slider, Game
 from .task_sliders import snap_value, SLIDER_SNAP
 
 
@@ -151,23 +150,32 @@ def live_test_normal(method, player, conf):
     puzzle = get_last_puzzle(player)
 
     for i in range(num_sliders):
-        last = (i == num_sliders-1)
+        last = i == num_sliders - 1
         target = get_target(puzzle, i)
         # 1st attempt - incorrect
         value = target + SLIDER_SNAP * 2
         resp = send(method, player, 'value', slider=i, value=value)
         expect_puzzle(puzzle, iteration=1, num_correct=i, is_solved=False)
         expect_slider(puzzle, i, value)
-        expect_response(resp, 'feedback', slider=i, value=value, is_correct=False, is_completed=False)
+        expect_response(
+            resp,
+            'feedback',
+            slider=i,
+            value=value,
+            is_correct=False,
+            is_completed=False,
+        )
 
         time.sleep(retry_delay)
 
         # 2nd attempt - correct
         value = target
         resp = send(method, player, 'value', slider=i, value=value)
-        expect_puzzle(puzzle, iteration=1, num_correct=i+1, is_solved=last)
+        expect_puzzle(puzzle, iteration=1, num_correct=i + 1, is_solved=last)
         expect_slider(puzzle, i, value)
-        expect_response(resp, 'feedback', slider=i, value=value, is_correct=True, is_completed=last)
+        expect_response(
+            resp, 'feedback', slider=i, value=value, is_correct=True, is_completed=last
+        )
 
         time.sleep(retry_delay)
 
@@ -328,7 +336,6 @@ def live_test_skipping(method, player, conf):
 
 
 def live_test_cheat_debug(method, player, conf):
-    settings.DEBUG = True
     send(method, player, 'load')
     send(method, player, 'new')
 
@@ -337,7 +344,8 @@ def live_test_cheat_debug(method, player, conf):
 
 
 def live_test_cheat_nodebug(method, player, conf):
-    settings.DEBUG = False
+    session = player.session
+    session.vars['cheat_mode'] = False
     send(method, player, 'load')
     send(method, player, 'new')
 

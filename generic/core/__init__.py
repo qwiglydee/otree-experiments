@@ -1,6 +1,5 @@
 import time
 import random
-from otree import settings  # FIXME: should not import non-API modules
 from otree.api import *
 from . import image_utils, stimuli
 
@@ -166,7 +165,8 @@ def play_game(player: Player, message: dict):
 
     Field 'progress' is added to all server responses.
     """
-    params = player.session.params
+    session = player.session
+    params = session.params
     now = time.time()
     current = get_current_trial(player)
 
@@ -243,7 +243,7 @@ def play_game(player: Player, message: dict):
 
         return respond("feedback", is_correct=current.is_correct)
 
-    if message_type == "cheat" and settings.DEBUG:  # debugging
+    if message_type == "cheat" and session.vars.get('cheat_mode'):  # debugging
         # TODO
         pass
 
@@ -282,13 +282,14 @@ def creating_session_core(subsession: Subsession):
 
 
 def common_vars(player: Player, constants):
-    params = player.session.params
+    session = player.session
+    params = session.params
     categories = strip_categories(params['categories'])
     return dict(
         params=params,
         categories=categories,
         keymap=constants.keymap,
-        DEBUG=settings.DEBUG,
+        DEBUG=session.vars.get('cheat_mode'),
     )
 
 
