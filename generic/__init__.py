@@ -18,7 +18,7 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
-    """possible choices 
+    """choices of categories and responses
     both for stimuli categories and responses
     should be associated with actual categories from pool in session config: 
     `categories={'left': something, 'right': something}`
@@ -97,7 +97,10 @@ def creating_session(subsession: Subsession):
 def get_progress(player: Player) -> dict:
     """Return whatever progress data to show on page"""
     params = player.session.params
-    return dict(iteration=player.iteration, iterations_total=params["num_iterations"],)
+    return dict(
+        iteration=player.iteration,
+        iterations_total=params["num_iterations"],
+    )
 
 
 def update_stats(player: Player, is_correct: bool, inc=1):
@@ -299,10 +302,28 @@ def play_game(player: Player, message: dict):
         return respond("feedback", is_correct=current.is_correct)
 
     if message_type == "cheat" and settings.DEBUG:  # debugging
-        # TODO
-        pass
+        cheat_round(player, message['rt'])
+        return respond("status", game_over=True)
 
     raise RuntimeError("unrecognized message from client")
+
+
+def cheat_round(player, rt_mean):
+    params = player.session.params
+    now = time.time()
+
+    rt_mean = float(rt_mean)
+    rt_std = 1.0
+
+    for i in range(max(1, player.iteration), params['num_iterations'] + 1):
+        r = random.choice(Constants.choices)
+        rt = max(0.0, random.gauss(rt_mean, rt_std))
+        t = Trial.filter(player=player, iteration=i)[0]
+        t.server_loaded_timestamp = now + i
+        t.server_response_timestamp = now + i + rt
+        t.response = r
+        t.is_correct = check_response(t, r)
+        t.reaction_time = rt
 
 
 def strip_categories(data: dict):

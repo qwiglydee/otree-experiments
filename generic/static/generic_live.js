@@ -186,6 +186,10 @@ class Controller {
         this.continueGame();
     }
 
+    endGame() {
+        document.getElementById("form").submit();
+    }
+
     continueGame() {
         this.model.reset();
         this.view.reset();
@@ -193,8 +197,24 @@ class Controller {
         this.sendMessage('new');
     }
 
-    endGame() {
-        document.getElementById("form").submit();
+    displayStimulus() {
+        // show focus cross
+        this.frozen = true;
+        this.view.showFocus();
+
+        // show stimulus
+        this.timers.delay('showstimulus', PARAMS.focus_time, () => {
+            this.unfreezeInputs();
+            this.view.showStimulus();
+            this.stimulus_ts = performance.now();
+        });
+
+        // hide stimulus
+        if (PARAMS.stimulus_time) {
+            this.timers.delay('hidestimulus', PARAMS.focus_time + PARAMS.stimulus_time,() => {
+                this.view.hideStimulus();
+            });
+        }
     }
 
     giveResponse(resp) {
@@ -262,26 +282,6 @@ class Controller {
         this.view.renderStimulus();
 
         this.displayStimulus();
-    }
-
-    displayStimulus() {
-        // show focus cross
-        this.frozen = true;
-        this.view.showFocus();
-
-        // show stimulus
-        this.timers.delay('showstimulus', PARAMS.focus_time, () => {
-            this.unfreezeInputs();
-            this.view.showStimulus();
-            this.display_ts = performance.now();
-        });
-
-        // hide stimulus
-        if (PARAMS.stimulus_time) {
-            this.timers.delay('hidestimulus', PARAMS.focus_time + PARAMS.stimulus_time,() => {
-                this.view.hideStimulus();
-            });
-        }
     }
 
     onFeedback(feedback) {
