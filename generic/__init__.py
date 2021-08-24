@@ -1,4 +1,5 @@
-from .core import *
+from otree.api import *
+from .core import custom_export_core, common_vars, creating_session_core, play_game
 
 doc = """
 Generic stimulus/response app
@@ -27,8 +28,46 @@ class Constants(BaseConstants):
     instructions_template = __name__ + "/instructions.html"
 
 
+class Subsession(BaseSubsession):
+    is_practice = models.BooleanField(initial=False)
+
+
+class Group(BaseGroup):
+    pass
+
+
+class Player(BasePlayer):
+    iteration = models.IntegerField(initial=0)
+    num_trials = models.IntegerField(initial=0)
+    num_solved = models.IntegerField(initial=0)
+    num_failed = models.IntegerField(initial=0)
+
+
+class Trial(ExtraModel):
+    """A record of single iteration"""
+
+    player = models.Link(Player)
+    round = models.IntegerField(initial=0)
+    iteration = models.IntegerField(initial=0)
+    # time when the trial was picked up, None for pregenerated
+    server_loaded_timestamp = models.FloatField()
+
+    stimulus = models.StringField()
+    category = models.StringField()
+    solution = models.StringField()
+
+    server_response_timestamp = models.FloatField()
+    response = models.StringField()
+    reaction_time = models.FloatField()
+    is_correct = models.BooleanField()
+
+
 def creating_session(subsession):
-    creating_session_core(subsession)
+    creating_session_core(subsession, Trial)
+
+
+def custom_export(players):
+    return custom_export_core(players, Trial)
 
 
 class Intro(Page):
@@ -52,7 +91,9 @@ class Main(Page):
         # add any extra keys to d here
         return d
 
-    live_method = play_game
+    @staticmethod
+    def live_method(player: Player, data):
+        return play_game(player, data, Trial)
 
 
 class Results(Page):

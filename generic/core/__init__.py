@@ -1,50 +1,15 @@
 import time
 import random
-from otree.api import *
 from . import image_utils, stimuli
 
 
-class Subsession(BaseSubsession):
-    is_practice = models.BooleanField(initial=False)
-
-
-class Group(BaseGroup):
-    pass
-
-
-class Player(BasePlayer):
-    iteration = models.IntegerField(initial=0)
-    num_trials = models.IntegerField(initial=0)
-    num_solved = models.IntegerField(initial=0)
-    num_failed = models.IntegerField(initial=0)
-
-
-class Trial(ExtraModel):
-    """A record of single iteration"""
-
-    player = models.Link(Player)
-    round = models.IntegerField(initial=0)
-    iteration = models.IntegerField(initial=0)
-    # time when the trial was picked up, None for pregenerated
-    server_loaded_timestamp = models.FloatField()
-
-    stimulus = models.StringField()
-    category = models.StringField()
-    solution = models.StringField()
-
-    server_response_timestamp = models.FloatField()
-    response = models.StringField()
-    reaction_time = models.FloatField()
-    is_correct = models.BooleanField()
-
-
-def get_progress(player: Player) -> dict:
+def get_progress(player) -> dict:
     """Return whatever progress data to show on page"""
     params = player.session.params
     return dict(iteration=player.iteration, iterations_total=params["num_iterations"],)
 
 
-def update_stats(player: Player, is_correct: bool, inc=1):
+def update_stats(player, is_correct: bool, inc=1):
     """Update player stats
 
     if inc==-1 then it's about to undo stats, used for retries
@@ -56,7 +21,7 @@ def update_stats(player: Player, is_correct: bool, inc=1):
         player.num_failed += inc
 
 
-def generate_trial(player: Player, constants) -> Trial:
+def generate_trial(player, constants, trial_cls):
     """Create new trial with random stimuli"""
     params = player.session.params
     target_side = random.choice(constants.choices)
@@ -64,7 +29,7 @@ def generate_trial(player: Player, constants) -> Trial:
     targets = stimuli.filter_by_category(target_cat)
     target = random.choice(targets)
 
-    return Trial.create(
+    return trial_cls.create(
         round=player.round_number,
         player=player,
         iteration=player.iteration,
@@ -75,7 +40,7 @@ def generate_trial(player: Player, constants) -> Trial:
     )
 
 
-def generate_all_trials(player: Player):
+def generate_all_trials(player, trial_cls):
     """Create `num_iterations` trials with non-repeating random stimuli"""
     params = player.session.params
     categories = params['categories']
@@ -97,7 +62,7 @@ def generate_all_trials(player: Player):
         target = selected[i]
         target_side = categories_inversed[target['category']]
 
-        Trial.create(
+        trial_cls.create(
             round=player.round_number,
             player=player,
             iteration=1 + i,
@@ -108,9 +73,9 @@ def generate_all_trials(player: Player):
         )
 
 
-def get_current_trial(player: Player) -> Trial:
+def get_current_trial(player, trial_cls):
     """Get trial for current iteration, or None"""
-    trials = Trial.filter(player=player, iteration=player.iteration)
+    trials = trial_cls.filter(player=player, iteration=player.iteration)
     if trials:
         [trial] = trials
         return trial
@@ -121,7 +86,7 @@ def static_url_for(path):
     return f'/static/{path}'
 
 
-def encode_trial(trial: Trial) -> dict:
+def encode_trial(trial) -> dict:
     """Get trial data to pass to live page"""
     stimulus = trial.stimulus
 
@@ -138,12 +103,12 @@ def encode_trial(trial: Trial) -> dict:
     return dict(stimulus=stimulus, datatype="text")
 
 
-def check_response(trial: Trial, response: str) -> bool:
+def check_response(trial, response: str) -> bool:
     """Check if the response is correct"""
     return trial.solution == response
 
 
-def play_game(player: Player, message: dict):
+def play_game(player, message: dict, trial_cls):
     """Main task workflow on the live page
     Implemented as reactive scheme: receive message from browser, react, respond.
 
@@ -168,7 +133,7 @@ def play_game(player: Player, message: dict):
     session = player.session
     params = session.params
     now = time.time()
-    current = get_current_trial(player)
+    current = get_current_trial(player, trial_cls)
 
     message_type = message["type"]
 
@@ -205,7 +170,7 @@ def play_game(player: Player, message: dict):
         # t = generate_trial(player)
 
         # with pre-generated trials
-        t = get_current_trial(player)
+        t = get_current_trial(player, trial_cls)
 
         if t is None:
             raise RuntimeError("failed to pick next trial")
@@ -259,7 +224,7 @@ def strip_categories(data: dict):
     return {k: strip(v) for k, v in data.items()}
 
 
-def creating_session_core(subsession: Subsession):
+def creating_session_core(subsession, trial_cls):
     session = subsession.session
     defaults = dict(
         num_iterations=10,
@@ -278,10 +243,10 @@ def creating_session_core(subsession: Subsession):
     subsession.is_practice = True
 
     for player in subsession.get_players():
-        generate_all_trials(player)
+        generate_all_trials(player, trial_cls)
 
 
-def common_vars(player: Player, constants):
+def common_vars(player, constants):
     session = player.session
     params = session.params
     categories = strip_categories(params['categories'])
@@ -293,7 +258,7 @@ def common_vars(player: Player, constants):
     )
 
 
-def custom_export(players):
+def custom_export_core(players, trial_cls):
     yield [
         "participant_code",
         "is_dropout",
@@ -327,7 +292,7 @@ def custom_export(players):
         # yield a line for players even without trials
         yield player_fields
 
-        for trial in Trial.filter(player=player):
+        for trial in trial_cls.filter(player=player):
             yield player_fields + [
                 trial.iteration,
                 trial.server_loaded_timestamp,
