@@ -1,11 +1,12 @@
 import time
 import random
+from pathlib import Path
 
 from otree.api import *
 from otree import settings
 
 
-from . import stimuli
+from . import stimuli_utils
 from . import image_utils
 
 doc = """
@@ -36,6 +37,10 @@ class Constants(BaseConstants):
 
 
 C = Constants
+
+POOL = stimuli_utils.load_csv(
+    Path(__file__).parent / "stimuli.csv", ['stimulus', 'category']
+)
 
 
 class Subsession(BaseSubsession):
@@ -120,7 +125,7 @@ def generate_trial(player: Player) -> Trial:
     params = player.session.params
     target_side = random.choice(C.choices)
     target_cat = params['categories'][target_side]
-    targets = stimuli.filter_by_category(target_cat)
+    targets = stimuli_utils.filter_by_category(POOL, [target_cat])
     target = random.choice(targets)
 
     return Trial.create(
@@ -143,7 +148,7 @@ def generate_all_trials(player: Player):
     if not count:
         raise RuntimeError("Cannot generate trials without `num_iterations`")
 
-    selected = stimuli.filter_by_category(list(categories.values()))
+    selected = stimuli_utils.filter_by_category(POOL, list(categories.values()))
 
     if len(selected) < count:
         raise RuntimeError(f"Insufficient stimuli in the pool for {count} iterations")
