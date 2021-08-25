@@ -71,6 +71,7 @@ class Trial(ExtraModel):
     category = models.StringField()
     solution = models.StringField()
 
+    attempts = models.IntegerField(initial=0)
     server_response_timestamp = models.FloatField()
     response = models.StringField()
     reaction_time = models.FloatField()
@@ -85,6 +86,7 @@ def creating_session(subsession: Subsession):
         focus_time=1.0,
         stimulus_time=None,
         freeze_seconds=0.5,
+        attempts_per_trial=1,
     )
     required = ["categories", "labels"]
     session.params = {}
@@ -99,25 +101,32 @@ def creating_session(subsession: Subsession):
         generate_all_trials(player)
 
 
-def get_progress(player: Player) -> dict:
+def get_progress(player: Player, trial: Trial = None) -> dict:
     """Return whatever progress data to show on page"""
     params = player.session.params
     return dict(
         iteration=player.iteration,
         iterations_total=params["num_iterations"],
+        attempts=trial.attempts if trial else None,
+        attempts_total=params["attempts_per_trial"],
+        num_trials=player.num_trials,
     )
 
 
-def update_stats(player: Player, is_correct: bool, inc=1):
-    """Update player stats
-
-    if inc==-1 then it's about to undo stats, used for retries
-    """
-    player.num_trials += inc
-    if is_correct:
-        player.num_solved += inc
+def update_stats(player: Player, trial: Trial):
+    """Update player stats"""
+    if trial.is_correct:
+        player.num_solved += 1
     else:
-        player.num_failed += inc
+        player.num_failed += 1
+
+
+def undo_stats(player: Player, trial: Trial):
+    """Undo last update of stats"""
+    if trial.is_correct:
+        player.num_solved -= 1
+    else:
+        player.num_failed -= 1
 
 
 def generate_trial(player: Player) -> Trial:
@@ -244,9 +253,10 @@ def play_game(player: Player, message: dict):
     print("received:", message)
 
     def respond(msgtype, **fields):
-        """Prepare message to send to current player, add progress"""
-        msgdata = {"type": msgtype, "progress": get_progress(player)}
+        """Prepare message to send to current player"""
+        msgdata = {'type': msgtype}
         msgdata.update(fields)
+        msgdata['progress'] = get_progress(player, current)
         print("response:", msgdata)
         return {player.id_in_group: msgdata}
 
@@ -282,18 +292,22 @@ def play_game(player: Player, message: dict):
         return respond("trial", trial=encode_trial(t))
 
     if message_type == "response":  # client responded current trial
+        max_attempts = params['attempts_per_trial']
+
         if current is None:
             raise RuntimeError("response without trial")
 
         if current.response is not None:  # it's a retry
-            # scenario without retries
-            raise RuntimeError("retrying not allowed")
+            if max_attempts <= 1:
+                raise RuntimeError("retrying not allowed")
 
-            # scenario with retries
-            # if now < current.server_response_timestamp + params["freeze_pause"]:
-            #     raise RuntimeError("retrying too fast")
-            #
-            # update_stats(player, current.is_correct, -1)  # undo last update
+            if current.attempts >= max_attempts:
+                raise RuntimeError("max attempts exhausted")
+
+            if now < current.server_response_timestamp + params["freeze_seconds"]:
+                raise RuntimeError("retrying too fast")
+
+            undo_stats(player, current)
 
         response = message["response"]
 
@@ -302,13 +316,22 @@ def play_game(player: Player, message: dict):
 
         current.response = response
         current.reaction_time = message["reaction"]
-        print('current.reaction_time', current.reaction_time)
         current.is_correct = check_response(current, response)
         current.server_response_timestamp = now
+        current.attempts += 1
 
-        update_stats(player, current.is_correct)
+        if current.attempts == 1:
+            # count trials only once
+            player.num_trials += 1
 
-        return respond("feedback", is_correct=current.is_correct)
+        update_stats(player, current)
+
+        # if this is a final attempt and user should advance
+        is_final = (
+            max_attempts == 1 or current.is_correct or current.attempts == max_attempts
+        )
+
+        return respond("feedback", is_correct=current.is_correct, is_final=is_final)
 
     if message_type == "cheat" and settings.DEBUG:  # debugging
         cheat_round(player, message['rt'])
@@ -379,6 +402,7 @@ def custom_export(players):
         "response",
         "response_correct",
         "reaction_time",
+        "attempts",
     ]
     for player in players:
         participant = player.participant
@@ -407,4 +431,5 @@ def custom_export(players):
                 trial.response,
                 trial.is_correct,
                 trial.reaction_time,
+                trial.attempts,
             ]

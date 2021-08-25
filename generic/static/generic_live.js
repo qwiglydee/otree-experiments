@@ -34,7 +34,8 @@ class Model {
 
     setFeedback(data) {
         this.feedback = {
-            is_correct: data.is_correct
+            is_correct: data.is_correct,
+            is_final: data.is_final
         };
     }
 }
@@ -87,7 +88,7 @@ class View {
 
     renderProgress(progress) {
         this.$progress.max = progress.iterations_total;
-        this.$progress.value = progress.iteration;
+        this.$progress.value = progress.num_trials;
     }
 
     showFocus() {
@@ -199,7 +200,7 @@ class Controller {
 
     displayStimulus() {
         // show focus cross
-        this.frozen = true;
+        this.freezeInputs();
         this.view.showFocus();
 
         // show stimulus
@@ -218,10 +219,12 @@ class Controller {
     }
 
     giveResponse(resp) {
+        this.timers.cancel('hidestimulus');
+        this.timers.cancel('resetinputs');
+
         this.model.setResponse(resp);
         this.view.renderResponse();
 
-        this.timers.cancel('hidestimulus');
         this.view.showStimulus();
         this.view.showResponse();
 
@@ -230,7 +233,7 @@ class Controller {
         this.sendMessage('response', {response:resp, reaction: this.response_ts - this.stimulus_ts});
 
         this.freezeInputs();
-        this.timers.delay('unfreeze', PARAMS.freeze_seconds * 1000, () => this.unfreezeInputs());
+        this.timers.delay('freezing', PARAMS.freeze_seconds * 1000, () => this.unfreezeInputs());
     }
 
     /**** handling messages from server ****/
@@ -243,12 +246,9 @@ class Controller {
     onMessage(message) {
         console.debug("received:", message);
 
-        if ('progress' in message) { // can be added to message of any type
-            this.onProgress(message.progress);
-        }
-
         switch(message.type) {
             case 'status':
+                this.view.renderProgress(message.progress);
                 if (message.trial) {  // restoring existing state
                     this.starting = false;
                     this.view.hideStartHelp();
@@ -288,16 +288,16 @@ class Controller {
         this.model.setFeedback(feedback);
         this.view.renderResponse();
 
-        // scenario with retries allows more responses
-        // if (!feedback.is_correct && feedback.attempts_left > 0) return;
-
-        this.timers.delay('continue', PARAMS.trial_pause, () => this.continueGame());
+        if (feedback.is_final) {
+            // advance to next trial
+            this.view.renderProgress(feedback.progress);
+            this.timers.delay('continue', PARAMS.trial_pause, () => this.continueGame());
+        } else {
+            // let more responses
+            // TODO: perhaps, should better be PARAMS.feedback_time
+            this.timers.delay('resetinputs', PARAMS.freeze_seconds, () => this.resetInputs());
+        }
     }
-
-    onProgress(data) {
-        this.view.renderProgress(data);
-    }
-
 
     /**** handling interactions ****/
 
@@ -310,6 +310,12 @@ class Controller {
         /** unblock inputs */
         this.frozen = false;
         this.view.showWarning("");
+    }
+
+    resetInputs() {
+        this.unfreezeInputs();
+        this.model.setResponse(null);
+        this.view.renderResponse();
     }
 
     checkFrozen() {

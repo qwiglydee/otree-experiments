@@ -95,14 +95,25 @@ def live_test_normal(method, player, conf):  # noqa
 
         z = get_trial(p)
 
-        give_correct = i % 2 == 0
+        max_attempts = conf['attempts_per_trial']
 
+        if max_attempts > 1:
+            # give N-1 wrong responses
+            for j in range(max_attempts - 1):
+                response = get_incorrect_response(z)
+                resp = send(m, p, 'response', response=response, reaction=1.0)
+                expect_response(resp, 'feedback', is_correct=False, is_final=False)
+
+                time.sleep(conf['freeze_seconds'])
+
+        give_correct = i % 2 == 0
         if give_correct:
             response = get_correct_response(z)
         else:
             response = get_incorrect_response(z)
+
         resp = send(m, p, 'response', response=response, reaction=1.0)
-        expect_response(resp, 'feedback', is_correct=give_correct)
+        expect_response(resp, 'feedback', is_correct=give_correct, is_final=True)
 
         time.sleep(conf['trial_pause'])
 
