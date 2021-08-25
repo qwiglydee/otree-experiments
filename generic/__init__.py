@@ -358,24 +358,24 @@ def cheat_round(player, rt_mean):
         t.reaction_time = rt
 
 
+def generic_page_vars(player):
+    return dict(
+        conf=dict(
+            choices=Constants.choices,
+            keymap=Constants.keymap,
+        ),
+        params=player.session.params,
+        DEBUG=settings.DEBUG,
+    )
+
+
 class Intro(Page):
-    @staticmethod
-    def vars_for_template(player: Player):
-        params = player.session.params
-        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
+    vars_for_template = generic_page_vars
 
 
 class Main(Page):
-    @staticmethod
-    def js_vars(player: Player):
-        params = player.session.params
-        return dict(params=params, keymap=C.keymap)
-
-    @staticmethod
-    def vars_for_template(player: Player):
-        params = player.session.params
-        return dict(params=params, keymap=C.keymap, DEBUG=settings.DEBUG)
-
+    js_vars = generic_page_vars
+    vars_for_template = generic_page_vars
     live_method = play_game
 
 

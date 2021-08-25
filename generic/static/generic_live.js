@@ -336,9 +336,9 @@ class Controller {
             return;
         }
 
-        if (event.code in KEYMAP) {
+        if (event.code in CONF.keymap) {
             event.preventDefault();
-            this.giveResponse(KEYMAP[event.code]);
+            this.giveResponse(CONF.keymap[event.code]);
         }
     }
 

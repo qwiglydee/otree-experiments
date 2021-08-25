@@ -56,8 +56,8 @@
 <script src="{{ static 'generic_live.js' }}"></script>
 {{ if DEBUG }}<script src="{{ static 'generic_cheating.js' }}"></script>{{ endif }}
 <script>
+const CONF = js_vars.conf;
 const PARAMS = js_vars.params;
-const KEYMAP = js_vars.keymap;
 
 const model = new Model();
 const view = new View(model);
