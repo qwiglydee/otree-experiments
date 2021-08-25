@@ -33,6 +33,9 @@ class Constants(BaseConstants):
     """
     keymap = {'KeyF': 'left', 'KeyJ': 'right'}
 
+    """A response to record automatically after trial_timeout"""
+    timeout_response = None
+
     instructions_template = __name__ + "/instructions.html"
 
 
@@ -76,6 +79,7 @@ class Trial(ExtraModel):
     response = models.StringField()
     reaction_time = models.FloatField()
     is_correct = models.BooleanField()
+    is_timeout = models.BooleanField()
 
 
 def creating_session(subsession: Subsession):
@@ -83,6 +87,7 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         num_iterations=10,
         trial_pause=1.0,
+        trial_timeout=5.0,
         focus_time=1.0,
         stimulus_time=None,
         freeze_seconds=0.5,
@@ -267,7 +272,7 @@ def play_game(player: Player, message: dict):
             return respond("status")
 
     if message_type == "new":  # client requests new trial
-        if current is not None:
+        if current is not None and not current.is_timeout:
             if current.response is None:
                 raise RuntimeError("trying to skip unanswered trial")
             if now < current.server_loaded_timestamp + params["trial_pause"]:
@@ -304,34 +309,48 @@ def play_game(player: Player, message: dict):
             if current.attempts >= max_attempts:
                 raise RuntimeError("max attempts exhausted")
 
-            if now < current.server_response_timestamp + params["freeze_seconds"]:
+            if now < current.server_loaded_timestamp + params["freeze_seconds"]:
                 raise RuntimeError("retrying too fast")
 
             undo_stats(player, current)
 
-        response = message["response"]
+        is_timeout = now > current.server_loaded_timestamp + params["trial_timeout"]
 
-        if response == "" or response is None:
-            raise ValueError("bogus response")
+        if is_timeout:
+            response = Constants.timeout_response
+        else:
+            response = message["response"]
+            if response == "" or response is None:
+                raise ValueError("bogus response")
 
         current.response = response
         current.reaction_time = message["reaction"]
         current.is_correct = check_response(current, response)
         current.server_response_timestamp = now
-        current.attempts += 1
+        current.is_timeout = is_timeout
+        if not is_timeout:
+            current.attempts += 1
 
-        if current.attempts == 1:
-            # count trials only once
+        if current.attempts == 1 or is_timeout:
+            # count trials only once or when timeouted
             player.num_trials += 1
 
         update_stats(player, current)
 
         # if this is a final attempt and user should advance
         is_final = (
-            max_attempts == 1 or current.is_correct or current.attempts == max_attempts
+            max_attempts == 1
+            or is_timeout
+            or current.is_correct
+            or current.attempts == max_attempts
         )
 
-        return respond("feedback", is_correct=current.is_correct, is_final=is_final)
+        return respond(
+            "feedback",
+            is_correct=current.is_correct,
+            is_final=is_final,
+            response=current.response,
+        )
 
     if message_type == "cheat" and settings.DEBUG:  # debugging
         cheat_round(player, message['rt'])

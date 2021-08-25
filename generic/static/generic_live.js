@@ -37,6 +37,9 @@ class Model {
             is_correct: data.is_correct,
             is_final: data.is_final
         };
+        if ('response' in data) {
+            this.response = data.response;
+        }
     }
 }
 
@@ -214,6 +217,13 @@ class Controller {
         if (PARAMS.stimulus_time) {
             this.timers.delay('hidestimulus', PARAMS.focus_time + PARAMS.stimulus_time,() => {
                 this.view.hideStimulus();
+            });
+        }
+
+        // auto response
+        if (PARAMS.trial_timeout) {
+            this.timers.delay('autoresponse', PARAMS.trial_timeout,() => {
+                this.giveResponse( )
             });
         }
     }
