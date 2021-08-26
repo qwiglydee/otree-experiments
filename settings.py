@@ -6,9 +6,8 @@ SESSION_CONFIGS = [
         display_name="generic stimuli recognition task",
         num_demo_participants=1,
         app_sequence=["generic"],
-        categories={'foo': 'positive', 'bar': 'negative'},
+        categories={'foo': 'emojis_positive', 'bar': 'emojis_negative'},
         labels={'foo': 'Positive', 'bar': 'Negative', 'baz': "None"},
-        attempts_per_trial=3,
     ),
     dict(
         name="sliders",

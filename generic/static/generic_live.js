@@ -14,18 +14,7 @@ class Model {
     }
 
     setTrial(data) {
-        this.stimulus = {type: data.datatype}
-        switch(data.datatype) {
-            case 'text':
-              this.stimulus.value = data.stimulus;
-              break;
-            case 'image-url':
-              this.stimulus.url = data.image_url;
-              break;
-            case 'image-data':
-              this.stimulus.data = data.image_data;
-              break;
-        }
+        this.stimulus = data.stimulus;
     }
 
     setResponse(value) {
@@ -47,6 +36,7 @@ class Model {
 /** the View
  * renders everything in html
  */
+
 class View {
     constructor(model) {
         this.model = model;
@@ -55,26 +45,22 @@ class View {
         this.$starthelp = document.getElementById("start-help");
         this.$focus = document.getElementById("focus");
         this.$stimulus = document.getElementById("stimulus");
-        this.$stimulus_img = document.getElementById("stimulus-img");
-        this.$stimulus_txt = document.getElementById("stimulus-txt");
         this.$response = document.getElementById("response");
         this.$response_txt = document.getElementById("response-txt");
         this.$warning_txt = document.getElementById("warning-txt");
     }
 
-    _hide(elem) {
+    hide(elem) {
         elem.classList.add("hidden");
     }
 
-    _show(elem) {
+    show(elem) {
         elem.classList.remove("hidden");
     }
 
     reset() {
         /** clean up and hide everything */
-        this.$stimulus_txt.textContent = null;
-        this.$stimulus_img.src = null;
-        this.$response_txt.textContent = null;
+        this.$stimulus.replaceChildren();
         this.$response.classList.remove("is-valid", "is-invalid");
         this.hideFocus();
         this.hideStimulus();
@@ -83,11 +69,11 @@ class View {
     }
 
     showStartHelp() {
-        this._show(this.$starthelp);
+        this.show(this.$starthelp);
     }
 
     hideStartHelp() {
-        this._hide(this.$starthelp);
+        this.hide(this.$starthelp);
     }
 
     renderProgress() {
@@ -97,43 +83,56 @@ class View {
     }
 
     showFocus() {
-        this._show(this.$focus);
+        this.show(this.$focus);
     }
 
     hideFocus() {
-        this._hide(this.$focus);
+        this.hide(this.$focus);
     }
 
-    loadStimulus() {
-        /** insert stimulus value in an appropriate place
-        TODO: make async
-        */
-        this._hide(this.$stimulus_txt);
-        this._hide(this.$stimulus_img);
 
+    _createStimulusElem(tagname) {
+        let elem = document.createElement(tagname);
+        this.$stimulus.replaceChildren();
+        this.$stimulus.append(elem);
+        return elem;
+    }
+
+    async _loadImage(elem, url) {
+        return new Promise((resolve, reject) => {
+            elem.onload = () => resolve();
+            elem.onerror = reject;
+            elem.src = url;
+        });
+    }
+
+    async loadStimulus() {
+        /** insert stimulus value in an appropriate place
+        Returns: a promise resolving when content is loaded and ready to show
+        */
+        var elem;
         switch(this.model.stimulus.type) {
             case 'text':
-                this.$stimulus_txt.textContent = this.model.stimulus.value;
-                this._show(this.$stimulus_txt);
-                break;
+                elem = this._createStimulusElem("span");
+                elem.textContent = this.model.stimulus.text;
+                return Promise.resolve();
             case 'image-url':
-                this.$stimulus_img.src = this.model.stimulus.url;
-                this._show(this.$stimulus_img);
-                break;
+                elem = this._createStimulusElem("img");
+                return this._loadImage(elem, this.model.stimulus.url);
             case 'image-data':
-                this.$stimulus_img.src = this.model.stimulus.data;
-                this._show(this.$stimulus_img);
-                break;
+                elem = this._createStimulusElem("img");
+                return this._loadImage(elem, this.model.stimulus.data);
         }
+        return Promise.reject("unknown stimulus type");
     }
 
     showStimulus() {
-        this._hide(this.$focus);
-        this._show(this.$stimulus);
+        this.hide(this.$focus);
+        this.show(this.$stimulus);
     }
 
     hideStimulus() {
-        this._hide(this.$stimulus);
+        this.hide(this.$stimulus);
     }
 
     renderResponse() {
@@ -144,11 +143,11 @@ class View {
     }
 
     showResponse() {
-        this._show(this.$response);
+        this.show(this.$response);
     }
 
     hideResponse() {
-        this._show(this.$response);
+        this.show(this.$response);
     }
 
     showWarning(text) {
@@ -204,7 +203,9 @@ class Controller {
     }
 
     async displayTrial() {
-        this.view.loadStimulus(); // TODO: await
+        performance.mark("loading");
+        await this.view.loadStimulus();
+        console.debug("image load:", performance.measure("image_load", "loading"));
 
         this.freezeInputs();
         this.view.showFocus();

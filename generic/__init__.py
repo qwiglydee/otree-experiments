@@ -201,16 +201,14 @@ def render_image(text):
 
 def encode_trial(trial: Trial) -> dict:
     """Get trial data to pass to live page"""
-    # for orinary words
-    # return dict(stimulus=trial.stimulus, datatype="text")
+    # for plain text
+    # return dict(stimulus=dict(type='text', text=trial.stimulus))
 
     # for static images
-    # url = static_url_for(trial.stimulus)
-    # return dict(image_url=url, datatype="image-url")
+    return dict(stimulus=dict(type='image-url', url=static_image_url(trial.stimulus)))
 
     # for rendered text
-    data = render_image(trial.stimulus)
-    return dict(image_data=data, datatype="image-data")
+    # return dict(stimulus=dict(type='image-data', data=render_image(trial.stimulus)))
 
 
 def check_response(trial: Trial, response: str) -> bool:
@@ -260,16 +258,16 @@ def play_game(player: Player, message: dict):
         msgdata = {'type': msgtype}
         msgdata.update(fields)
         msgdata['progress'] = get_progress(player, current)
-        # print("response:", msgdata)
+        print("response:", msgdata)
         return {player.id_in_group: msgdata}
 
     current = get_current_trial(player)
     params = player.session.params
     now = now_ms()
 
-    # print("iteration:", player.iteration)
-    # print("current trial:", current)
-    # print("received:", message)
+    print("iteration:", player.iteration)
+    print("current trial:", current)
+    print("received:", message)
 
     validate('type')
     message_type = message["type"]
