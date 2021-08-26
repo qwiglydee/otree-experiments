@@ -110,9 +110,9 @@ import sys
 
 if sys.argv[1] == 'test':
     MAX_ITERATIONS = 5
-    FREEZE_TIME = 0.1
-    TRIAL_PAUSE = 0.2
-    TRIAL_TIMEOUT = 0.3
+    FREEZE_TIME = 100
+    TRIAL_PAUSE = 200
+    TRIAL_TIMEOUT = 300
 
     SESSION_CONFIGS = [
         dict(
@@ -121,7 +121,7 @@ if sys.argv[1] == 'test':
             app_sequence=['generic'],
             trial_pause=TRIAL_PAUSE,
             trial_timeout=TRIAL_TIMEOUT,
-            freeze_seconds=FREEZE_TIME,
+            freeze_time=FREEZE_TIME,
             num_iterations=MAX_ITERATIONS,
             attempts_per_trial=1,
             categories={'foo': 'positive', 'bar': 'negative'},
@@ -133,7 +133,7 @@ if sys.argv[1] == 'test':
             app_sequence=['generic'],
             trial_pause=TRIAL_PAUSE,
             trial_timeout=TRIAL_TIMEOUT,
-            freeze_seconds=FREEZE_TIME,
+            freeze_time=FREEZE_TIME,
             num_iterations=MAX_ITERATIONS,
             attempts_per_trial=3,
             categories={'foo': 'positive', 'bar': 'negative'},
@@ -143,8 +143,8 @@ if sys.argv[1] == 'test':
             name=f"testing_iat",
             num_demo_participants=1,
             app_sequence=['iat'],
-            trial_delay=TRIAL_PAUSE,
-            retry_delay=FREEZE_TIME,
+            trial_delay=TRIAL_PAUSE / 1000.0,
+            retry_delay=FREEZE_TIME / 1000.0,
             primary=['canidae', 'felidae'],
             secondary=['positive', 'negative'],
             num_iterations={1: 2, 2: 2, 3: 3, 4: 3, 5: 2, 6: 3, 7: 3},
@@ -153,8 +153,8 @@ if sys.argv[1] == 'test':
             name=f"testing_sliders",
             num_demo_participants=1,
             app_sequence=['sliders'],
-            trial_delay=TRIAL_PAUSE,
-            retry_delay=FREEZE_TIME,
+            trial_delay=TRIAL_PAUSE / 1000.0,
+            retry_delay=FREEZE_TIME / 1000.0,
             num_sliders=3,
             attempts_per_slider=3,
         ),
@@ -166,23 +166,23 @@ if sys.argv[1] == 'test':
                     name=f"testing_{task}_defaults",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=TRIAL_PAUSE,
-                    retry_delay=FREEZE_TIME,
+                    puzzle_delay=TRIAL_PAUSE / 1000.0,
+                    retry_delay=FREEZE_TIME / 1000.0,
                 ),
                 dict(
                     name=f"testing_{task}_retrying",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=TRIAL_PAUSE,
-                    retry_delay=FREEZE_TIME,
+                    puzzle_delay=TRIAL_PAUSE / 1000.0,
+                    retry_delay=FREEZE_TIME / 1000.0,
                     attempts_per_puzzle=5,
                 ),
                 dict(
                     name=f"testing_{task}_limited",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=TRIAL_PAUSE,
-                    retry_delay=FREEZE_TIME,
+                    puzzle_delay=TRIAL_PAUSE / 1000.0,
+                    retry_delay=FREEZE_TIME / 1000.0,
                     max_iterations=MAX_ITERATIONS,
                 ),
             ]

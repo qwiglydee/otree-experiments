@@ -1,5 +1,3 @@
-from time import sleep
-
 from otree.api import *
 
 from .testing_utils import *
@@ -105,7 +103,7 @@ def live_test_normal(m, p, conf):  # noqa
                 expect_answered(z, response)
                 expect_attrs(z, is_correct=False)
 
-                sleep(conf['freeze_seconds'])
+                sleep(conf['freeze_time'])
 
         # last response
         give_correct = i % 2 == 0
@@ -263,12 +261,12 @@ def live_test_retrying_exhaust(m, p, conf):  # noqa
     for j in range(max_attempts - 1):
         r = send(m, p, 'response', response=response1, reaction_time=1.0)
         expect_fields(r, type='feedback', is_correct=False, is_final=False)
-        sleep(conf['freeze_seconds'])
+        sleep(conf['freeze_time'])
 
     # give last wrong response
     r = send(m, p, 'response', response=response1, reaction_time=1.0)
     expect_fields(r, type='feedback', is_correct=False, is_final=True)
-    sleep(conf['freeze_seconds'])
+    sleep(conf['freeze_time'])
 
     # fail to give more responses
     with expect_failure(RuntimeError):

@@ -1,4 +1,3 @@
-import time
 import random
 from pathlib import Path
 
@@ -61,17 +60,16 @@ class Trial(ExtraModel):
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
-    # time when the trial was picked up, None for pregenerated
-    server_loaded_timestamp = models.FloatField()
+    server_loaded_timestamp = models.IntegerField()
+    server_response_timestamp = models.IntegerField()
 
     stimulus = models.StringField()
     category = models.StringField()
     solution = models.StringField()
 
     attempts = models.IntegerField(initial=0)
-    server_response_timestamp = models.FloatField()
     response = models.StringField()
-    reaction_time = models.FloatField()
+    reaction_time = models.IntegerField()
     is_correct = models.BooleanField()
     is_timeout = models.BooleanField()
 
@@ -80,12 +78,12 @@ def creating_session(subsession: Subsession):
     session = subsession.session
     defaults = dict(
         num_iterations=10,
-        trial_pause=1.0,
-        trial_timeout=5.0,
-        focus_time=1.0,
-        stimulus_time=None,
-        freeze_seconds=0.5,
         attempts_per_trial=1,
+        trial_pause=500,
+        trial_timeout=2000,
+        focus_time=500,
+        freeze_time=200,
+        stimulus_time=None,
     )
     required = ["categories", "labels"]
     session.params = {}
@@ -219,6 +217,13 @@ def check_response(trial: Trial, response: str) -> bool:
     return trial.solution == response
 
 
+def now_ms():
+    """Returns current epoch time in milliseconds"""
+    import time
+
+    return int(time.time() * 1000)
+
+
 def play_game(player: Player, message: dict):
     """Main task workflow on the live page
     Implemented as reactive scheme: receive message from browser, react, respond.
@@ -259,7 +264,7 @@ def play_game(player: Player, message: dict):
 
     current = get_current_trial(player)
     params = player.session.params
-    now = time.time()
+    now = now_ms()
 
     # print("iteration:", player.iteration)
     # print("current trial:", current)
@@ -312,7 +317,7 @@ def play_game(player: Player, message: dict):
             if current.attempts >= max_attempts:
                 raise RuntimeError("max attempts exhausted")
 
-            if now < current.server_loaded_timestamp + params["freeze_seconds"]:
+            if now < current.server_loaded_timestamp + params["freeze_time"]:
                 raise RuntimeError("retrying too fast")
 
             undo_stats(player, current)
@@ -327,7 +332,7 @@ def play_game(player: Player, message: dict):
             if message['response'] not in Constants.choices:
                 raise ValueError("invalid response")
             current.response = message["response"]
-            current.reaction_time = float(message["reaction_time"])
+            current.reaction_time = int(message["reaction_time"])
 
         current.is_correct = check_response(current, current.response)
         current.server_response_timestamp = now
@@ -365,7 +370,7 @@ def play_game(player: Player, message: dict):
 
 def cheat_round(player, rt_mean):
     params = player.session.params
-    now = time.time()
+    now = now_ms()
 
     rt_mean = float(rt_mean)
     rt_std = 1.0

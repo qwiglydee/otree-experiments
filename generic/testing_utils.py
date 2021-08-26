@@ -1,7 +1,12 @@
 from contextlib import contextmanager
+import time
 import random
 
 from otree.api import expect
+
+
+def sleep(time_ms):
+    time.sleep(time_ms / 1000)
 
 
 def get_trial(Trial, p):  # noqa

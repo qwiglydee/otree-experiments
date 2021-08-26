@@ -243,7 +243,7 @@ class Controller {
         this.sendMessage('response', {response:resp, reaction_time: this.response_ts - this.stimulus_ts});
 
         this.freezeInputs();
-        this.timers.delay('freezing', PARAMS.freeze_seconds * 1000, () => this.unfreezeInputs());
+        this.timers.delay('freezing', PARAMS.freeze_time, () => this.unfreezeInputs());
     }
 
     /**** handling messages from server ****/
@@ -305,7 +305,7 @@ class Controller {
         } else {
             // let more responses
             // TODO: perhaps, should better be PARAMS.feedback_time
-            this.timers.delay('resetinputs', PARAMS.freeze_seconds, () => this.resetInputs());
+            this.timers.delay('resetinputs', PARAMS.freeze_time, () => this.resetInputs());
         }
     }
 
@@ -381,7 +381,7 @@ class Timers {
         this.timers[name] = setTimeout(() => {
             fn();
             delete this.timers[name];
-        }, time * 1000);
+        }, time);
     }
 
     cancel(name) {
