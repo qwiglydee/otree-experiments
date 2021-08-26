@@ -1,3 +1,4 @@
+import time
 import random
 from pathlib import Path
 
@@ -60,8 +61,8 @@ class Trial(ExtraModel):
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
     iteration = models.IntegerField(initial=0)
-    server_loaded_timestamp = models.IntegerField()
-    server_response_timestamp = models.IntegerField()
+    server_loaded_timestamp = models.FloatField()
+    server_response_timestamp = models.FloatField()
 
     stimulus = models.StringField()
     category = models.StringField()
@@ -216,13 +217,6 @@ def check_response(trial: Trial, response: str) -> bool:
     return trial.solution == response
 
 
-def now_ms():
-    """Returns current epoch time in milliseconds"""
-    import time
-
-    return int(time.time() * 1000)
-
-
 def play_game(player: Player, message: dict):
     """Main task workflow on the live page
     Implemented as reactive scheme: receive message from browser, react, respond.
@@ -263,7 +257,11 @@ def play_game(player: Player, message: dict):
 
     current = get_current_trial(player)
     params = player.session.params
-    now = now_ms()
+    now = time.time()
+
+    # time passed (ms) since the last trial retrieved by client
+    # NB: this includes network latency
+    time_passed = (now - current.server_loaded_timestamp) * 1000 if current else None
 
     print("iteration:", player.iteration)
     print("current trial:", current)
@@ -279,14 +277,12 @@ def play_game(player: Player, message: dict):
             return respond("status")
 
     if message_type == "new":  # client requests new trial
-        if current and current.response is None:
-            raise RuntimeError("trying to skip unanswered trial")
+        if current:
+            if current.response is None:
+                raise RuntimeError("trying to skip unanswered trial")
 
-        if (
-            current
-            and now < current.server_loaded_timestamp + params["inter_trial_time"]
-        ):
-            raise RuntimeError("advancing too fast")
+            if time_passed < params['inter_trial_time']:
+                raise RuntimeError("advancing too fast")
 
         if player.iteration == params["num_iterations"]:
             return respond("status", game_over=True)
@@ -319,13 +315,14 @@ def play_game(player: Player, message: dict):
             if current.attempts >= max_attempts:
                 raise RuntimeError("max attempts exhausted")
 
-            if now < current.server_loaded_timestamp + params["input_freezing_time"]:
+            if time_passed < params['input_freezing_time']:
                 raise RuntimeError("retrying too fast")
 
             undo_stats(player, current)
 
+        # NB: does not work reliably with slow internet and slow participant
         is_timeout = (
-            now > current.server_loaded_timestamp + params["auto_response_time"]
+            params['auto_response_time'] and time_passed > params['auto_response_time']
         )
 
         if is_timeout:
@@ -374,7 +371,7 @@ def play_game(player: Player, message: dict):
 
 def cheat_round(player, rt_mean):
     params = player.session.params
-    now = now_ms()
+    now = time.time()
 
     rt_mean = float(rt_mean)
     rt_std = 1.0
@@ -387,7 +384,7 @@ def cheat_round(player, rt_mean):
         t.server_response_timestamp = now + i + rt
         t.response = r
         t.is_correct = check_response(t, r)
-        t.reaction_time = rt
+        t.reaction_time = int(rt * 1000)
 
 
 def generic_page_vars(player):
@@ -456,10 +453,10 @@ def custom_export(players):
         for trial in Trial.filter(player=player):
             yield player_fields + [
                 trial.iteration,
-                trial.server_loaded_timestamp,
+                round(trial.server_loaded_timestamp, 3),
                 trial.stimulus,
                 trial.category,
-                trial.server_response_timestamp,
+                round(trial.server_response_timestamp, 3),
                 trial.response,
                 trial.is_correct,
                 trial.reaction_time,
