@@ -48,6 +48,7 @@ class View {
         this.$response = document.getElementById("response");
         this.$response_txt = document.getElementById("response-txt");
         this.$warning_txt = document.getElementById("warning-txt");
+        this.$warning_keys = document.getElementById("warning-keys");
     }
 
     hide(elem) {
@@ -65,7 +66,7 @@ class View {
         this.hideFocus();
         this.hideStimulus();
         this.hideResponse();
-        this.showWarning("");
+        this.hideWarning();
     }
 
     showStartHelp() {
@@ -151,11 +152,21 @@ class View {
     }
 
     showWarning(text) {
-        if (text) {
-            this.$warning_txt.textContent = text;
-        } else {
-            this.$warning_txt.textContent = "";
-        }
+        this.$warning_txt.textContent = text;
+        this.show(this.$warning_txt);
+    }
+
+    hideWarning() {
+        this.$warning_txt.textContent = "";
+        this.hide(this.$warning_txt);
+    }
+
+    showKeysWarning() {
+        this.show(this.$warning_keys);
+    }
+
+    hideKeysWarning() {
+        this.hide(this.$warning_keys);
     }
 }
 
@@ -225,7 +236,8 @@ class Controller {
         this.view.hideFocus();
         this.view.hideStimulus();
         this.view.hideResponse();
-        this.view.showWarning("");
+        this.view.hideWarning();
+        this.view.hideKeysWarning();
     }
 
     displayResponse() {
@@ -338,7 +350,7 @@ class Controller {
     unfreezeInputs() {
         /** unblock inputs */
         this.frozen = false;
-        this.view.showWarning("");
+        this.view.hideWarning();
     }
 
     checkFrozen() {
@@ -362,6 +374,9 @@ class Controller {
         if (event.code in CONF.keymap) {
             event.preventDefault();
             this.onResponse(CONF.keymap[event.code]);
+            this.view.hideKeysWarning();
+        } else {
+            this.view.showKeysWarning();
         }
     }
 

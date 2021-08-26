@@ -20,17 +20,16 @@
             <span class="feedback feedback-valid">✓</span>
             <span class="feedback feedback-invalid">❌</span>
         </div>
-        <div class="warning" id="warning-txt"></div>
+        <div class="warning hidden" id="warning-txt"></div>
+        <div class="warning hidden" id="warning-keys">
+            Press <kbd>F</kbd> or <kbd>J</kbd>.
+        </div>
     </div>
 </div>
 
 <progress id="progress-bar"></progress>
 
 <div class="instructions">
-    <div>
-        {{ include Constants.instructions_template }}
-    </div>
-
     <div id="start-help">
         <p><b>To start, press <kbd>Space</kbd> or touch screen...</b></p>
     </div>
