@@ -114,6 +114,10 @@ def get_progress(player: Player, trial: Trial = None) -> dict:
 
 def update_stats(player: Player, trial: Trial):
     """Update player stats"""
+    if trial.attempts == 1:
+        # count trials only once
+        player.num_trials += 1
+
     if trial.is_correct:
         player.num_solved += 1
     else:
@@ -235,7 +239,11 @@ def play_game(player: Player, message: dict):
 
     - receive: {'type': 'response', 'response': ..., 'reaction_time': ...} -- user responded
     - check and record response
-    - respond: {'type': 'feedback', 'is_correct': true|false} -- feedback to the response
+    - respond: {'type': 'feedback', 'response': ..., 'is_correct': true|false} -- feedback to the response
+
+    - receive: {'type': 'timeout'} -- response timeout happened
+    - record timeout response
+    - respond: {'type': 'feedback', 'response': ..., 'is_correct': true|false}
 
     Field 'progress' is added to all server responses.
     """
@@ -261,7 +269,9 @@ def play_game(player: Player, message: dict):
 
     # time passed (ms) since the last trial retrieved by client
     # NB: this includes network latency
-    time_passed = (now - current.server_loaded_timestamp) * 1000 if current else None
+    time_passed = (
+        int((now - current.server_loaded_timestamp) * 1000) if current else None
+    )
 
     print("iteration:", player.iteration)
     print("current trial:", current)
@@ -272,7 +282,8 @@ def play_game(player: Player, message: dict):
 
     if message_type == "load":  # client loaded page
         if current:
-            return respond("status", trial=encode_trial(current))
+            timedout = time_passed > params['auto_response_time']
+            return respond("status", trial=encode_trial(current), timed_out=timedout)
         else:
             return respond("status")
 
@@ -320,45 +331,59 @@ def play_game(player: Player, message: dict):
 
             undo_stats(player, current)
 
-        # NB: does not work reliably with slow internet and slow participant
-        is_timeout = (
-            params['auto_response_time'] and time_passed > params['auto_response_time']
-        )
+        # if time_passed > params['auto_response_time']:
+        #     raise RuntimeError("response after timeout", time_passed)
 
-        if is_timeout:
-            current.response = Constants.timeout_response
-            current.reaction_time = None
-        else:
-            validate('response', 'reaction_time')
-            if message['response'] not in Constants.choices:
-                raise ValueError("invalid response")
-            current.response = message["response"]
-            current.reaction_time = int(message["reaction_time"])
+        validate('response', 'reaction_time')
+        if message['response'] not in Constants.choices:
+            raise ValueError("invalid response")
+
+        current.response = message["response"]
+        current.reaction_time = int(message["reaction_time"])
 
         current.is_correct = check_response(current, current.response)
         current.server_response_timestamp = now
-        current.is_timeout = is_timeout
-        if not is_timeout:
-            current.attempts += 1
-
-        if current.attempts == 1 or is_timeout:
-            # count trials only once or when timeouted
-            player.num_trials += 1
+        current.attempts += 1
 
         update_stats(player, current)
 
         # if this is a final attempt and user should advance
         is_final = (
-            max_attempts == 1
-            or is_timeout
-            or current.is_correct
-            or current.attempts == max_attempts
+            max_attempts == 1 or current.is_correct or current.attempts == max_attempts
         )
 
         return respond(
             "feedback",
             is_correct=current.is_correct,
             is_final=is_final,
+            response=current.response,
+        )
+
+    if message_type == "timeout":  # client response timeout
+        if current is None:
+            raise RuntimeError("response without trial")
+
+        if current.response is not None:  # weird timeout after retry
+            undo_stats(player, current)
+
+        if time_passed < params['auto_response_time']:
+            raise RuntimeError("malicious timeout response")
+
+        current.response = Constants.timeout_response
+        current.reaction_time = None
+
+        current.is_correct = check_response(current, current.response)
+        current.server_response_timestamp = now
+        current.is_timeout = True
+
+        update_stats(player, current)
+        if current.attempts == 0:  # no-go trials do count
+            player.num_trials += 1
+
+        return respond(
+            "feedback",
+            is_correct=current.is_correct,
+            is_final=True,
             response=current.response,
         )
 
@@ -454,6 +479,10 @@ def custom_export(players):
         yield player_fields
 
         for trial in Trial.filter(player=player):
+            if trial.server_loaded_timestamp is None:  # buffer trials
+                continue
+            if trial.server_response_timestamp is None:  # unanswered trials
+                continue
             yield player_fields + [
                 trial.iteration,
                 round(trial.server_loaded_timestamp, 3),

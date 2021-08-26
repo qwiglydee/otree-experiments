@@ -194,7 +194,7 @@ def live_test_responding_timeout(m, p, conf):  # noqa
 
     sleep(conf['auto_response_time'])
 
-    r = send(m, p, 'response')
+    r = send(m, p, 'timeout')
     expect_fields(
         r, type='feedback', is_correct=False, is_final=True, response=default_response
     )
@@ -217,18 +217,10 @@ def live_test_responding_aftertimeout(m, p, conf):  # noqa
 
     sleep(conf['auto_response_time'])
 
-    r = send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-    expect_fields(
-        r, type='feedback', is_correct=False, is_final=True, response=default_response
-    )
+    with expect_failure(RuntimeError):
+        send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
 
-    expect_attrs(
-        z,
-        response=default_response,
-        is_correct=False,
-        is_timeout=True,
-        reaction_time=None,
-    )
+    expect_attrs(z, response=None)
 
 
 def live_test_retrying_nofreeze(m, p, conf):  # noqa

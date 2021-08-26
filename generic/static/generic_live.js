@@ -250,6 +250,8 @@ class Controller {
 
     displayFeedback() {
         this.view.renderResponse();
+        this.view.showStimulus();
+        this.view.showResponse();
         timers.delay(PARAMS.feedback_display_time, () => this.hideTrial(), "hiding_feedback");
     }
 
@@ -295,6 +297,9 @@ class Controller {
         this.starting = false;
         this.view.hideStartHelp();
         this.onTrial(message);
+        if (message.timed_out) {
+            this.onTimeout();
+        }
     }
 
     onTrial(message) {
@@ -309,7 +314,7 @@ class Controller {
         this.displayTrial();
 
         if (PARAMS.auto_response_time) {
-            timers.delay(PARAMS.auto_response_time,() => this.onResponse(null), "auto_responding");
+            timers.delay(PARAMS.auto_response_time,() => this.onTimeout(), "auto_responding");
         }
     }
 
@@ -324,6 +329,12 @@ class Controller {
         this.sendMessage('response', {response: this.model.response, reaction_time: measure.duration});
     }
 
+    onTimeout() {
+        timers.clear();
+        this.freezeInputs();
+        this.sendMessage('timeout');
+    }
+
     onFeedback(feedback) {
         timers.clear();
         this.model.setFeedback(feedback);
@@ -333,10 +344,6 @@ class Controller {
             this.view.renderProgress();
             timers.delay(PARAMS.inter_trial_time, () => this.continueGame(), "advancing");
             return;
-        }
-
-        if (PARAMS.auto_response_time) {
-            timers.delay(PARAMS.auto_response_time,() => this.onResponse(null), "auto_responding");
         }
     }
 
