@@ -147,7 +147,7 @@ class View {
     }
 
     hideResponse() {
-        this.show(this.$response);
+        this.hide(this.$response);
     }
 
     showWarning(text) {
@@ -221,6 +221,13 @@ class Controller {
         }
     }
 
+    hideTrial() {
+        this.view.hideFocus();
+        this.view.hideStimulus();
+        this.view.hideResponse();
+        this.view.showWarning("");
+    }
+
     displayResponse() {
         this.view.renderResponse();
         this.view.showStimulus();
@@ -231,7 +238,7 @@ class Controller {
 
     displayFeedback() {
         this.view.renderResponse();
-        timers.delay(PARAMS.feedback_display_time, () => this.resetInputs(), "hiding_feedback");
+        timers.delay(PARAMS.feedback_display_time, () => this.hideTrial(), "hiding_feedback");
     }
 
     /**** handling messages from server ****/
@@ -332,12 +339,6 @@ class Controller {
         /** unblock inputs */
         this.frozen = false;
         this.view.showWarning("");
-    }
-
-    resetInputs() {
-        this.unfreezeInputs();
-        this.model.setResponse(null);
-        this.view.renderResponse();
     }
 
     checkFrozen() {

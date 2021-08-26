@@ -84,7 +84,7 @@ def creating_session(subsession: Subsession):
         feedback_display_time=1000,
         auto_response_time=5000,
         input_freezing_time=100,
-        inter_trial_time=1000,
+        inter_trial_time=2000,
     )
     required = ["categories", "labels"]
     session.params = {}

@@ -6,10 +6,6 @@
     visibility: none;
 }
 
-.focus {
-    font-size: xxx-large;
-}
-
 .main {
     position: relative;
     min-height: 50vh;
@@ -23,6 +19,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+.bottom {
+    /* reserve fixed space for invisible feedback and warning */
+    min-height: 84px;
 }
 
 .touch-spot {
@@ -43,6 +44,10 @@
 
 progress {
     width: 100%;
+}
+
+.focus {
+    font-size: xxx-large;
 }
 
 .stimulus {
