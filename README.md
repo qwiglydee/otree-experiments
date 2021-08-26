@@ -2,6 +2,71 @@
 
 Some experimental implementation of games for oTree v5
 
+- `generic`: base code
+- `real_effort`: some real effort tasks
+- `sliders`: the sliders task
+- `iat`: implicit association test
+- `ldt_choice`: lexical decision task with word/nonword responses
+- `ldt_gonogo`: lexical decision task with go/nogo
+
+## Genric code
+
+The code implements generic stimulus/response app with many useful features.
+It is intended to be used as base code to develop other apps with some particular design.
+
+Features:
+- loading stimuli from csv file
+- selecting stimuli by category for a session
+- pregenerating random non-repeating sequence of trials
+- running the experiment on real-time live page
+- displaying stimuli as plain text, static images or images generated on the go
+- configurable keymap for any number of keys/responses
+- configurable go/no-go scheme
+- basic touch screen support
+- recording all trials and responses
+- recording reaction time
+- custom export of all the data
+
+Anti-cheating and anti-scripting protection: 
+- all trials generated on server
+- not revealing any important data in browser
+- responses are validated on server
+- data and timing violations are checked
+
+Generic configuration params:
+- app constants:
+  - `choices`: set of responses, independent from keys or selected stimuli categories
+  - `keymap`: mapping of keys to responses
+  - `timeout_response`: response for no-go timeout
+- session config:
+  - `categories`: mapping of response choices to categories in stimuli pool 
+  - `labels`: text labels for choices to show in page instructions
+  - `num_iterations`: number of trials (stimuli) to show in a single session/round
+  - `attempts_per_trial`: number of response attempts allowed
+- timing parameters in session config, all in ms
+  - `focus_display_time`: time to display attention focus cross
+  - `stimulus_display_time`: time to display stimulus, `0` to do not hide it
+  - `feedback_display_time`: time to display given response and feedback
+  - `auto_response_time`: timeout of autoresponse for no-go option, `0` to disable
+  - `input_freezing_time`: time to block all inputs after response, to prevent rage typing
+  - `inter_trial_time`: time after response is given before next trial starts (including post-response feedback display time) 
+ 
+ Note: the inter-trial time is affected by network latency and extended by time of transfering data from server and loading an image.
+ However, the latency does not affect display timing of measuring reaction time.
+ 
+ The generic implemented trial scheme is:
+ - load trial from server and wait until all images are loaded
+ - display focus cross for some configured time
+ - display stimulus
+ - wait for response
+ - hide stimulus after some configured time, while still waiting for response
+ - auto submit a timeout response after some configured time
+ - wait for some time and advance for next trial
+ 
+ The reaction time is measured since the moment when stimuli get actually displayed on screen and until a response is given.
+ It is not affected by network latency but might be affected by some other processes running in the same browser or other applications running on the same device.
+
+
 ## Real-effort tasks
 
 Games:
