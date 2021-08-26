@@ -240,7 +240,7 @@ class Controller {
 
         this.response_ts = performance.now();
 
-        this.sendMessage('response', {response:resp, reaction: this.response_ts - this.stimulus_ts});
+        this.sendMessage('response', {response:resp, reaction_time: this.response_ts - this.stimulus_ts});
 
         this.freezeInputs();
         this.timers.delay('freezing', PARAMS.freeze_seconds * 1000, () => this.unfreezeInputs());

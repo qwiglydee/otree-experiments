@@ -10,7 +10,7 @@ from . import stimuli_utils
 from . import image_utils
 
 doc = """
-Generic atimulus/response app
+Generic stimulus/response app
 """
 
 
@@ -19,22 +19,16 @@ class Constants(BaseConstants):
     players_per_group = None
     num_rounds = 1
 
-    """choices of categories and responses
-    both for stimuli categories and responses
-    should be associated with actual categories from pool in session config: 
-    `categories={'left': something, 'right': something}`
-    """
-    choices = ["left", "right"]
+    """choices of responses"""
+    choices = ["foo", "bar", "baz"]
 
     """Mapping of keys to choices
-    the key names to use to match KeyboardEvent
-    possible key names reference and compatibility: 
-    https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
+    possible key names: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
     """
-    keymap = {'KeyF': 'left', 'KeyJ': 'right'}
+    keymap = {'KeyF': 'foo', 'KeyJ': 'bar'}
 
     """A response to record automatically after trial_timeout"""
-    timeout_response = None
+    timeout_response = "baz"
 
     instructions_template = __name__ + "/instructions.html"
 
@@ -247,23 +241,32 @@ def play_game(player: Player, message: dict):
 
     Field 'progress' is added to all server responses.
     """
-    params = player.session.params
-    now = time.time()
-    current = get_current_trial(player)
+    if not isinstance(message, dict):
+        raise ValueError("invalid message")
 
-    message_type = message["type"]
-
-    print("iteration:", player.iteration)
-    print("current trial:", current)
-    print("received:", message)
+    def validate(*fields):
+        """Checks if the message has all the fields and they're nonempty"""
+        if any([message.get(f) in ("", None) for f in fields]):
+            raise ValueError("invalid message")
 
     def respond(msgtype, **fields):
         """Prepare message to send to current player"""
         msgdata = {'type': msgtype}
         msgdata.update(fields)
         msgdata['progress'] = get_progress(player, current)
-        print("response:", msgdata)
+        # print("response:", msgdata)
         return {player.id_in_group: msgdata}
+
+    current = get_current_trial(player)
+    params = player.session.params
+    now = time.time()
+
+    # print("iteration:", player.iteration)
+    # print("current trial:", current)
+    # print("received:", message)
+
+    validate('type')
+    message_type = message["type"]
 
     if message_type == "load":  # client loaded page
         if current:
@@ -272,16 +275,16 @@ def play_game(player: Player, message: dict):
             return respond("status")
 
     if message_type == "new":  # client requests new trial
-        if current is not None and not current.is_timeout:
-            if current.response is None:
-                raise RuntimeError("trying to skip unanswered trial")
-            if now < current.server_loaded_timestamp + params["trial_pause"]:
-                raise RuntimeError("advancing too fast")
+        if current and current.response is None:
+            raise RuntimeError("trying to skip unanswered trial")
+
+        if current and now < current.server_loaded_timestamp + params["trial_pause"]:
+            raise RuntimeError("advancing too fast")
+
+        if player.iteration == params["num_iterations"]:
+            return respond("status", game_over=True)
 
         player.iteration += 1
-
-        if player.iteration > params["num_iterations"]:
-            return respond("status", game_over=True)
 
         # with on-the-go generated trials
         # t = generate_trial(player)
@@ -317,15 +320,16 @@ def play_game(player: Player, message: dict):
         is_timeout = now > current.server_loaded_timestamp + params["trial_timeout"]
 
         if is_timeout:
-            response = Constants.timeout_response
+            current.response = Constants.timeout_response
+            current.reaction_time = None
         else:
-            response = message["response"]
-            if response == "" or response is None:
-                raise ValueError("bogus response")
+            validate('response', 'reaction_time')
+            if message['response'] not in Constants.choices:
+                raise ValueError("invalid response")
+            current.response = message["response"]
+            current.reaction_time = float(message["reaction_time"])
 
-        current.response = response
-        current.reaction_time = message["reaction"]
-        current.is_correct = check_response(current, response)
+        current.is_correct = check_response(current, current.response)
         current.server_response_timestamp = now
         current.is_timeout = is_timeout
         if not is_timeout:

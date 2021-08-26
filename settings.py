@@ -6,8 +6,8 @@ SESSION_CONFIGS = [
         display_name="generic stimuli recognition task",
         num_demo_participants=1,
         app_sequence=["generic"],
-        categories={'left': 'positive', 'right': 'negative'},
-        labels={'left': 'Positive', 'right': 'Negative'},
+        categories={'foo': 'positive', 'bar': 'negative'},
+        labels={'foo': 'Positive', 'bar': 'Negative'},
     ),
     dict(
         name="sliders",
@@ -107,39 +107,44 @@ SECRET_KEY = "2015765205890"
 # generating session configs for all varieties of features
 import sys
 
+
 if sys.argv[1] == 'test':
-    TASKS = ['decoding', 'matrix', 'transcription']
-    PUZZLE_DELAY = 0.2
-    RETRY_DELAY = 0.4  # required anyway because test cases use it
-    MAX_ITERATIONS = 3
+    MAX_ITERATIONS = 5
+    FREEZE_TIME = 0.1
+    TRIAL_PAUSE = 0.2
+    TRIAL_TIMEOUT = 0.3
+
     SESSION_CONFIGS = [
         dict(
             name=f"testing_generic",
             num_demo_participants=1,
             app_sequence=['generic'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
-            categories={'left': 'positive', 'right': 'negative'},
-            labels={'left': 'Positive', 'right': 'Negative'},
-            num_iterations=5,
+            trial_pause=TRIAL_PAUSE,
+            trial_timeout=TRIAL_TIMEOUT,
+            freeze_seconds=FREEZE_TIME,
+            num_iterations=MAX_ITERATIONS,
+            attempts_per_trial=1,
+            categories={'foo': 'positive', 'bar': 'negative'},
+            labels={'foo': 'Positive', 'bar': 'Negative'},
         ),
         dict(
             name=f"testing_generic_retries",
             num_demo_participants=1,
             app_sequence=['generic'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
-            categories={'left': 'positive', 'right': 'negative'},
-            labels={'left': 'Positive', 'right': 'Negative'},
-            num_iterations=5,
+            trial_pause=TRIAL_PAUSE,
+            trial_timeout=TRIAL_TIMEOUT,
+            freeze_seconds=FREEZE_TIME,
+            num_iterations=MAX_ITERATIONS,
             attempts_per_trial=3,
+            categories={'foo': 'positive', 'bar': 'negative'},
+            labels={'foo': 'Positive', 'bar': 'Negative'},
         ),
         dict(
             name=f"testing_iat",
             num_demo_participants=1,
             app_sequence=['iat'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
+            trial_delay=TRIAL_PAUSE,
+            retry_delay=FREEZE_TIME,
             primary=['canidae', 'felidae'],
             secondary=['positive', 'negative'],
             num_iterations={1: 2, 2: 2, 3: 3, 4: 3, 5: 2, 6: 3, 7: 3},
@@ -148,36 +153,36 @@ if sys.argv[1] == 'test':
             name=f"testing_sliders",
             num_demo_participants=1,
             app_sequence=['sliders'],
-            trial_delay=PUZZLE_DELAY,
-            retry_delay=RETRY_DELAY,
+            trial_delay=TRIAL_PAUSE,
+            retry_delay=FREEZE_TIME,
             num_sliders=3,
             attempts_per_slider=3,
         ),
     ]
-    for task in TASKS:
+    for task in ['decoding', 'matrix', 'transcription']:
         SESSION_CONFIGS.extend(
             [
                 dict(
                     name=f"testing_{task}_defaults",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=PUZZLE_DELAY,
-                    retry_delay=RETRY_DELAY,
+                    puzzle_delay=TRIAL_PAUSE,
+                    retry_delay=FREEZE_TIME,
                 ),
                 dict(
                     name=f"testing_{task}_retrying",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=PUZZLE_DELAY,
-                    retry_delay=RETRY_DELAY,
+                    puzzle_delay=TRIAL_PAUSE,
+                    retry_delay=FREEZE_TIME,
                     attempts_per_puzzle=5,
                 ),
                 dict(
                     name=f"testing_{task}_limited",
                     num_demo_participants=1,
                     app_sequence=['real_effort'],
-                    puzzle_delay=PUZZLE_DELAY,
-                    retry_delay=RETRY_DELAY,
+                    puzzle_delay=TRIAL_PAUSE,
+                    retry_delay=FREEZE_TIME,
                     max_iterations=MAX_ITERATIONS,
                 ),
             ]
