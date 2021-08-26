@@ -4,6 +4,7 @@
 class Model {
     constructor() {
         this.reset();
+        this.progress = null;
     }
 
     reset() {
@@ -89,7 +90,8 @@ class View {
         this._hide(this.$starthelp);
     }
 
-    renderProgress(progress) {
+    renderProgress() {
+        let progress = this.model.progress;
         this.$progress.max = progress.iterations_total;
         this.$progress.value = progress.num_trials;
     }
@@ -102,8 +104,10 @@ class View {
         this._hide(this.$focus);
     }
 
-    renderStimulus() {
-        /** insert stimulus value in an appropriate place */
+    loadStimulus() {
+        /** insert stimulus value in an appropriate place
+        TODO: make async
+        */
         this._hide(this.$stimulus_txt);
         this._hide(this.$stimulus_img);
 
@@ -168,8 +172,6 @@ class Controller {
         this.starting = true;
         this.frozen = false;
 
-        this.timers = new Timers();
-
         window.liveRecv = (message) => this.onMessage(message);
         document.querySelector('body').addEventListener('keydown', (e) => this.onKey(e));
         document.querySelectorAll('.touch-spot').forEach((t) => t.addEventListener('touchstart', (e) => this.onTouch(e)));
@@ -179,7 +181,7 @@ class Controller {
 
     reset() {
         this.frozen = false;
-        this.timers.clear();
+        timers.clear();
     }
 
     /**** game workflow actions ****/
@@ -201,49 +203,34 @@ class Controller {
         this.sendMessage('new');
     }
 
-    displayStimulus() {
-        // show focus cross
+    async displayTrial() {
+        this.view.loadStimulus(); // TODO: await
+
         this.freezeInputs();
         this.view.showFocus();
+        await timers.sleep(PARAMS.focus_display_time);
+        this.view.hideFocus();
 
-        // show stimulus
-        this.timers.delay('showstimulus', PARAMS.focus_time, () => {
-            this.unfreezeInputs();
-            this.view.showStimulus();
-            this.stimulus_ts = performance.now();
-        });
+        this.view.showStimulus();
+        this.unfreezeInputs();
+        performance.mark("display");
 
-        // hide stimulus
-        if (PARAMS.stimulus_time) {
-            this.timers.delay('hidestimulus', PARAMS.focus_time + PARAMS.stimulus_time,() => {
-                this.view.hideStimulus();
-            });
-        }
-
-        // auto response
-        if (PARAMS.trial_timeout) {
-            this.timers.delay('autoresponse', PARAMS.trial_timeout,() => {
-                this.giveResponse( )
-            });
+        if (PARAMS.stimulus_display_time) {
+            timers.delay(PARAMS.stimulus_display_time, () => this.view.hideStimulus(), "hiding_stimulus");
         }
     }
 
-    giveResponse(resp) {
-        this.timers.cancel('hidestimulus');
-        this.timers.cancel('resetinputs');
-
-        this.model.setResponse(resp);
+    displayResponse() {
         this.view.renderResponse();
-
         this.view.showStimulus();
         this.view.showResponse();
-
-        this.response_ts = performance.now();
-
-        this.sendMessage('response', {response:resp, reaction_time: this.response_ts - this.stimulus_ts});
-
         this.freezeInputs();
-        this.timers.delay('freezing', PARAMS.freeze_time, () => this.unfreezeInputs());
+        timers.delay(PARAMS.input_freezing_time, () => this.unfreezeInputs(), "unfreezing");
+    }
+
+    displayFeedback() {
+        this.view.renderResponse();
+        timers.delay(PARAMS.feedback_display_time, () => this.resetInputs(), "hiding_feedback");
     }
 
     /**** handling messages from server ****/
@@ -256,13 +243,13 @@ class Controller {
     onMessage(message) {
         console.debug("received:", message);
 
+        if (message.progress)
+            this.model.progress = message.progress;
+
         switch(message.type) {
             case 'status':
-                this.view.renderProgress(message.progress);
                 if (message.trial) {  // restoring existing state
-                    this.starting = false;
-                    this.view.hideStartHelp();
-                    this.onTrial(message.trial);
+                    this.onReload(message);
                 } else if (message.progress.iteration === 0) {   // start of the game
                     this.starting = true;
                 } else if (message.game_over) {  // exhausted max iterations
@@ -271,7 +258,7 @@ class Controller {
                 break;
 
             case 'trial':
-                this.onTrial(message.trial);
+                this.onTrial(message);
                 break;
 
             case 'feedback':
@@ -284,28 +271,52 @@ class Controller {
         }
     }
 
-    onTrial(trial) {
+    onReload(message) {
+        this.starting = false;
+        this.view.hideStartHelp();
+        this.onTrial(message);
+    }
+
+    onTrial(message) {
+        performance.clearMarks();
+        performance.clearMeasures();
+        timers.clear();
+
         this.model.reset();
         this.view.reset();
+        this.view.renderProgress();
+        this.model.setTrial(message.trial);
+        this.displayTrial();
 
-        this.model.setTrial(trial);
-        this.view.renderStimulus();
+        if (PARAMS.auto_response_time) {
+            timers.delay(PARAMS.auto_response_time,() => this.onResponse(null), "auto_responding");
+        }
+    }
 
-        this.displayStimulus();
+    onResponse(response) {
+        performance.mark("response");
+        timers.clear();
+
+        this.model.setResponse(response);
+        this.displayResponse();
+
+        let measure = performance.measure("reaction_time", "display", "response");
+        this.sendMessage('response', {response: this.model.response, reaction_time: measure.duration});
     }
 
     onFeedback(feedback) {
+        timers.clear();
         this.model.setFeedback(feedback);
-        this.view.renderResponse();
+        this.displayFeedback();
 
         if (feedback.is_final) {
-            // advance to next trial
-            this.view.renderProgress(feedback.progress);
-            this.timers.delay('continue', PARAMS.trial_pause, () => this.continueGame());
-        } else {
-            // let more responses
-            // TODO: perhaps, should better be PARAMS.feedback_time
-            this.timers.delay('resetinputs', PARAMS.freeze_time, () => this.resetInputs());
+            this.view.renderProgress();
+            timers.delay(PARAMS.inter_trial_time, () => this.continueGame(), "advancing");
+            return;
+        }
+
+        if (PARAMS.auto_response_time) {
+            timers.delay(PARAMS.auto_response_time,() => this.onResponse(null), "auto_responding");
         }
     }
 
@@ -348,7 +359,7 @@ class Controller {
 
         if (event.code in CONF.keymap) {
             event.preventDefault();
-            this.giveResponse(CONF.keymap[event.code]);
+            this.onResponse(CONF.keymap[event.code]);
         }
     }
 
@@ -358,42 +369,7 @@ class Controller {
         if (this.starting) {
             this.startGame();
         } else {
-            this.giveResponse(event.target.dataset.response);
-        }
-    }
-}
-
-
-/** timers utility
- * wraps setTimeout and clearTimeout
- * stores all timers by names
- */
-class Timers {
-    constructor() {
-        this.timers = {};
-    }
-
-    delay(name, time, fn) {
-        if (this.timers[name]) {
-            clearTimeout(this.timers[name]);
-        }
-
-        this.timers[name] = setTimeout(() => {
-            fn();
-            delete this.timers[name];
-        }, time);
-    }
-
-    cancel(name) {
-        if (this.timers[name]) {
-            clearTimeout(this.timers[name]);
-            delete this.timers[name];
-        }
-    }
-
-    clear() {
-        for(let name in this.timers) {
-            this.cancel(name);
+            this.onResponse(event.target.dataset.response);
         }
     }
 }

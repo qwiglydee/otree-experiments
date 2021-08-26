@@ -103,7 +103,7 @@ def live_test_normal(m, p, conf):  # noqa
                 expect_answered(z, response)
                 expect_attrs(z, is_correct=False)
 
-                sleep(conf['freeze_time'])
+                sleep(conf['input_freezing_time'])
 
         # last response
         give_correct = i % 2 == 0
@@ -118,7 +118,7 @@ def live_test_normal(m, p, conf):  # noqa
         expect_answered(z, response)
         expect_attrs(z, is_correct=give_correct, attempts=num_attempts)
 
-        sleep(conf['trial_pause'])
+        sleep(conf['inter_trial_time'])
         last = z
 
     expect_attrs(last, iteration=num_iterations)
@@ -192,7 +192,7 @@ def live_test_responding_timeout(m, p, conf):  # noqa
     send(m, p, 'new')
     z = get_trial(Trial, p)
 
-    sleep(conf['trial_timeout'])
+    sleep(conf['auto_response_time'])
 
     r = send(m, p, 'response')
     expect_fields(
@@ -215,7 +215,7 @@ def live_test_responding_aftertimeout(m, p, conf):  # noqa
     send(m, p, 'new')
     z = get_trial(Trial, p)
 
-    sleep(conf['trial_timeout'])
+    sleep(conf['auto_response_time'])
 
     r = send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
     expect_fields(
@@ -261,12 +261,12 @@ def live_test_retrying_exhaust(m, p, conf):  # noqa
     for j in range(max_attempts - 1):
         r = send(m, p, 'response', response=response1, reaction_time=1.0)
         expect_fields(r, type='feedback', is_correct=False, is_final=False)
-        sleep(conf['freeze_time'])
+        sleep(conf['input_freezing_time'])
 
     # give last wrong response
     r = send(m, p, 'response', response=response1, reaction_time=1.0)
     expect_fields(r, type='feedback', is_correct=False, is_final=True)
-    sleep(conf['freeze_time'])
+    sleep(conf['input_freezing_time'])
 
     # fail to give more responses
     with expect_failure(RuntimeError):
@@ -298,7 +298,7 @@ def live_test_advancing_noanswer(m, p, conf):  # noqa
 
     expect_attrs(p, iteration=1)
 
-    sleep(conf['trial_pause'])
+    sleep(conf['inter_trial_time'])
 
     with expect_failure(RuntimeError):
         send(m, p, 'new')
@@ -316,7 +316,7 @@ def live_test_advancing_exhaust(m, p, conf):  # noqa
         send(m, p, 'new')
         z = get_trial(Trial, p)
         send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-        sleep(conf['trial_pause'])
+        sleep(conf['inter_trial_time'])
 
     expect_attrs(p, iteration=num_iterations)
     z = get_trial(Trial, p)

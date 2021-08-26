@@ -79,11 +79,12 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         num_iterations=10,
         attempts_per_trial=1,
-        trial_pause=500,
-        trial_timeout=2000,
-        focus_time=500,
-        freeze_time=200,
-        stimulus_time=None,
+        focus_display_time=500,
+        stimulus_display_time=3000,
+        feedback_display_time=1000,
+        auto_response_time=5000,
+        input_freezing_time=100,
+        inter_trial_time=1000,
     )
     required = ["categories", "labels"]
     session.params = {}
@@ -283,7 +284,10 @@ def play_game(player: Player, message: dict):
         if current and current.response is None:
             raise RuntimeError("trying to skip unanswered trial")
 
-        if current and now < current.server_loaded_timestamp + params["trial_pause"]:
+        if (
+            current
+            and now < current.server_loaded_timestamp + params["inter_trial_time"]
+        ):
             raise RuntimeError("advancing too fast")
 
         if player.iteration == params["num_iterations"]:
@@ -317,12 +321,14 @@ def play_game(player: Player, message: dict):
             if current.attempts >= max_attempts:
                 raise RuntimeError("max attempts exhausted")
 
-            if now < current.server_loaded_timestamp + params["freeze_time"]:
+            if now < current.server_loaded_timestamp + params["input_freezing_time"]:
                 raise RuntimeError("retrying too fast")
 
             undo_stats(player, current)
 
-        is_timeout = now > current.server_loaded_timestamp + params["trial_timeout"]
+        is_timeout = (
+            now > current.server_loaded_timestamp + params["auto_response_time"]
+        )
 
         if is_timeout:
             current.response = Constants.timeout_response
