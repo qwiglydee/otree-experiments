@@ -385,6 +385,7 @@ def cheat_round(player, rt_mean):
         t.response = r
         t.is_correct = check_response(t, r)
         t.reaction_time = int(rt * 1000)
+        t.is_timeout = False
 
 
 def generic_page_vars(player):
@@ -425,12 +426,14 @@ def custom_export(players):
         "player",
         "iteration",
         "server_loaded_timestamp",
+        "server_response_timestamp",
         "stimulus",
         "category",
-        "server_response_timestamp",
+        "solution",
         "response",
         "response_correct",
         "reaction_time",
+        "response_timeout",
         "attempts",
     ]
     for player in players:
@@ -454,11 +457,13 @@ def custom_export(players):
             yield player_fields + [
                 trial.iteration,
                 round(trial.server_loaded_timestamp, 3),
+                round(trial.server_response_timestamp, 3),
                 trial.stimulus,
                 trial.category,
-                round(trial.server_response_timestamp, 3),
+                trial.solution,
                 trial.response,
                 trial.is_correct,
                 trial.reaction_time,
+                trial.is_timeout,
                 trial.attempts,
             ]
