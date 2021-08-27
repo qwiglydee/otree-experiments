@@ -12,10 +12,11 @@ class PlayerBot(Bot):
         "responding_bogus",
         "responding_notrial",
         "responding_timeout",
-        "responding_aftertimeout",
-        "retrying_nofreeze",
+        # "responding_faketimeout",
+        # "responding_aftertimeout",
+        # "retrying_nofreeze",
         "retrying_exhaust",
-        "advancing_nopause",
+        # "advancing_nopause",
         "advancing_noanswer",
         "advancing_exhaust",
     ]
@@ -206,6 +207,17 @@ def live_test_responding_timeout(m, p, conf):  # noqa
         is_timeout=True,
         reaction_time=None,
     )
+
+
+def live_test_responding_faketimeout(m, p, conf):  # noqa
+    send(m, p, 'load')
+    send(m, p, 'new')
+    z = get_trial(Trial, p)
+
+    with expect_failure(RuntimeError):
+        send(m, p, 'timeout')
+
+    expect_attrs(z, response=None)
 
 
 def live_test_responding_aftertimeout(m, p, conf):  # noqa
