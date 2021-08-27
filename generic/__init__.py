@@ -74,6 +74,9 @@ class Trial(ExtraModel):
     is_correct = models.BooleanField()
     is_timeout = models.BooleanField()
 
+    # difference between total trial time measured on server and in browser
+    network_latency = models.IntegerField()
+
 
 def creating_session(subsession: Subsession):
     session = subsession.session
@@ -340,6 +343,8 @@ def play_game(player: Player, message: dict):
 
         current.response = message["response"]
         current.reaction_time = int(message["reaction_time"])
+        if 'total_time' in message:
+            current.network_latency = time_passed - int(message['total_time'])
 
         current.is_correct = check_response(current, current.response)
         current.server_response_timestamp = now
@@ -460,6 +465,7 @@ def custom_export(players):
         "reaction_time",
         "response_timeout",
         "attempts",
+        "network_latency",
     ]
     for player in players:
         participant = player.participant
@@ -495,4 +501,5 @@ def custom_export(players):
                 trial.reaction_time,
                 trial.is_timeout,
                 trial.attempts,
+                trial.network_latency,
             ]

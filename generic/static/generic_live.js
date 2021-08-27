@@ -214,9 +214,7 @@ class Controller {
     }
 
     async displayTrial() {
-        performance.mark("loading");
         await this.view.loadStimulus();
-        console.debug("image load:", performance.measure("image_load", "loading"));
 
         this.freezeInputs();
         this.view.showFocus();
@@ -225,7 +223,7 @@ class Controller {
 
         this.view.showStimulus();
         this.unfreezeInputs();
-        performance.mark("display");
+        performance.mark("displayed");
 
         if (PARAMS.stimulus_display_time) {
             timers.delay(PARAMS.stimulus_display_time, () => this.view.hideStimulus(), "hiding_stimulus");
@@ -305,6 +303,7 @@ class Controller {
     onTrial(message) {
         performance.clearMarks();
         performance.clearMeasures();
+        performance.mark("loaded");
         timers.clear();
 
         this.model.reset();
@@ -319,14 +318,19 @@ class Controller {
     }
 
     onResponse(response) {
-        performance.mark("response");
+        performance.mark("responded");
         timers.clear();
 
         this.model.setResponse(response);
         this.displayResponse();
 
-        let measure = performance.measure("reaction_time", "display", "response");
-        this.sendMessage('response', {response: this.model.response, reaction_time: measure.duration});
+        let reaction_measure = performance.measure("reaction", "displayed", "responded");
+        let loading_measure = performance.measure("loading", "loaded", "responded");
+        this.sendMessage('response', {
+            response: this.model.response,
+            reaction_time: reaction_measure.duration,
+            total_time: loading_measure.duration,
+        });
     }
 
     onTimeout() {
