@@ -7,6 +7,7 @@ from . import Constants, Trial, Intro, Main, Results
 class PlayerBot(Bot):
     cases = [
         "normal",
+        "normal_slow",
         "messaging_bogus",
         "reloading",
         "responding_bogus",
@@ -15,15 +16,6 @@ class PlayerBot(Bot):
         "retrying_exhaust",
         "advancing_noanswer",
         "advancing_exhaust",
-        # timing checks
-        "responding_faketimeout",
-        # "responding_faketimeout_slow",  # fails
-        "responding_aftertimeout",
-        # "responding_aftertimeout_slow",  # fails
-        "retrying_nofreeze",
-        # "retrying_nofreeze_slow",  # fails
-        "advancing_nopause",
-        # "advancing_nopause_slow",  # fails
     ]
 
     def play_round(self):
@@ -133,6 +125,61 @@ def live_test_normal(m, p, conf):  # noqa
     expect_fields(resp, type='status', game_over=True)
 
 
+def live_test_normal_slow(m, p, conf):  # noqa
+    """normal flow woth network delay simulation"""
+    num_iterations = conf['num_iterations']
+    num_attempts = conf['attempts_per_trial']
+
+    r = send_slow(m, p, 'load')
+    expect_fields(r, type='status')
+
+    last = None
+
+    for i in range(num_iterations):
+        r = send_slow(m, p, 'new')
+        expect_fields(r, type='trial')
+
+        z = get_trial(Trial, p)
+        expect_attrs(z, iteration=i + 1)
+        expect_attrs(p, iteration=i + 1)
+
+        if last:
+            expect_new(z, last)
+
+        if num_attempts > 1:
+            # give N-1 wrong responses
+            for j in range(num_attempts - 1):
+                response = get_incorrect_response(z, Constants.choices)
+                r = send_slow(m, p, 'response', response=response, reaction_time=1.0)
+                expect_fields(r, type='feedback', is_correct=False, is_final=False)
+
+                expect_answered(z, response)
+                expect_attrs(z, is_correct=False)
+
+                sleep(conf['input_freezing_time'])
+
+        # last response
+        give_correct = i % 2 == 0
+        if give_correct:
+            response = get_correct_response(z)
+        else:
+            response = get_incorrect_response(z, Constants.choices)
+
+        r = send_slow(m, p, 'response', response=response, reaction_time=1.0)
+        expect_fields(r, type='feedback', is_correct=give_correct, is_final=True)
+
+        expect_answered(z, response)
+        expect_attrs(z, is_correct=give_correct, attempts=num_attempts)
+
+        sleep(conf['inter_trial_time'])
+        last = z
+
+    expect_attrs(last, iteration=num_iterations)
+
+    resp = send_slow(m, p, 'new')
+    expect_fields(resp, type='status', game_over=True)
+
+
 def live_test_messaging_bogus(m, p, conf):  # noqa
 
     with expect_failure(ValueError):
@@ -214,86 +261,6 @@ def live_test_responding_timeout(m, p, conf):  # noqa
     )
 
 
-def live_test_responding_faketimeout(m, p, conf):  # noqa
-    send(m, p, 'load')
-    send(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    with expect_failure(RuntimeError):
-        send(m, p, 'timeout')
-
-    expect_attrs(z, response=None)
-
-
-def live_test_responding_faketimeout_slow(m, p, conf):  # noqa
-    send_slow(m, p, 'load')
-    send_slow(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    with expect_failure(RuntimeError):
-        send_slow(m, p, 'timeout')
-
-    expect_attrs(z, response=None)
-
-
-def live_test_responding_aftertimeout(m, p, conf):  # noqa
-    send(m, p, 'load')
-    send(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    sleep(conf['auto_response_time'])
-
-    with expect_failure(RuntimeError):
-        send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-
-    expect_attrs(z, response=None)
-
-
-def live_test_responding_aftertimeout(m, p, conf):  # noqa
-    send(m, p, 'load')
-    send(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    sleep(conf['auto_response_time'])
-
-    with expect_failure(RuntimeError):
-        send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-
-    expect_attrs(z, response=None)
-
-
-def live_test_retrying_nofreeze(m, p, conf):  # noqa
-    send(m, p, 'load')
-    send(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    response1 = get_incorrect_response(z, Constants.choices)
-    response2 = get_correct_response(z)
-
-    r = send(m, p, 'response', response=response1, reaction_time=1.0)
-
-    with expect_failure(RuntimeError):
-        send(m, p, 'response', response=response2, reaction_time=1.0)
-
-    expect_attrs(z, response=response1, is_correct=False)
-
-
-def live_test_retrying_nofreeze_slow(m, p, conf):  # noqa
-    send_slow(m, p, 'load')
-    send_slow(m, p, 'new')
-    z = get_trial(Trial, p)
-
-    response1 = get_incorrect_response(z, Constants.choices)
-    response2 = get_correct_response(z)
-
-    r = send_slow(m, p, 'response', response=response1, reaction_time=1.0)
-
-    with expect_failure(RuntimeError):
-        send_slow(m, p, 'response', response=response2, reaction_time=1.0)
-
-    expect_attrs(z, response=response1, is_correct=False)
-
-
 def live_test_retrying_exhaust(m, p, conf):  # noqa
     max_attempts = conf['attempts_per_trial']
 
@@ -320,36 +287,6 @@ def live_test_retrying_exhaust(m, p, conf):  # noqa
         send(m, p, 'response', response=response2, reaction_time=1.0)
 
     expect_attrs(z, response=response1, is_correct=False)
-
-
-def live_test_advancing_nopause(m, p, conf):  # noqa
-    send(m, p, 'load')
-    send(m, p, 'new')
-
-    z = get_trial(Trial, p)
-    send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-
-    expect_attrs(p, iteration=1)
-
-    with expect_failure(RuntimeError):
-        send(m, p, 'new')
-
-    expect_attrs(p, iteration=1)
-
-
-def live_test_advancing_nopause_slow(m, p, conf):  # noqa
-    send_slow(m, p, 'load')
-    send_slow(m, p, 'new')
-
-    z = get_trial(Trial, p)
-    send_slow(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
-
-    expect_attrs(p, iteration=1)
-
-    with expect_failure(RuntimeError):
-        send_slow(m, p, 'new')
-
-    expect_attrs(p, iteration=1)
 
 
 def live_test_advancing_noanswer(m, p, conf):  # noqa

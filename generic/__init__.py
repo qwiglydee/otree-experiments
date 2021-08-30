@@ -74,7 +74,7 @@ class Trial(ExtraModel):
     is_correct = models.BooleanField()
     is_timeout = models.BooleanField()
 
-    # difference between total trial time measured on server and in browser
+    # network delay, includes: transfering trial data, loading images, transfering response data
     network_latency = models.IntegerField()
 
 
@@ -276,6 +276,7 @@ def play_game(player: Player, message: dict):
         int((now - current.server_loaded_timestamp) * 1000) if current else None
     )
 
+    print("time:", now, "passed:", time_passed)
     print("iteration:", player.iteration)
     print("current trial:", current)
     print("received:", message)
@@ -285,6 +286,7 @@ def play_game(player: Player, message: dict):
 
     if message_type == "load":  # client loaded page
         if current:
+            # NB: not accurate because of delays
             timedout = time_passed > params['auto_response_time']
             return respond("status", trial=encode_trial(current), timed_out=timedout)
         else:
@@ -294,9 +296,6 @@ def play_game(player: Player, message: dict):
         if current:
             if current.response is None:
                 raise RuntimeError("trying to skip unanswered trial")
-
-            if time_passed < params['inter_trial_time']:
-                raise RuntimeError("advancing too fast")
 
         if player.iteration == params["num_iterations"]:
             return respond("status", game_over=True)
@@ -329,13 +328,7 @@ def play_game(player: Player, message: dict):
             if current.attempts >= max_attempts:
                 raise RuntimeError("max attempts exhausted")
 
-            if time_passed < params['input_freezing_time']:
-                raise RuntimeError("retrying too fast")
-
             undo_stats(player, current)
-
-        if time_passed > params['auto_response_time']:
-            raise RuntimeError("response after timeout", time_passed)
 
         validate('response', 'reaction_time')
         if message['response'] not in Constants.choices:
@@ -370,9 +363,6 @@ def play_game(player: Player, message: dict):
 
         if current.response is not None:  # weird timeout after retry
             undo_stats(player, current)
-
-        if time_passed < params['auto_response_time']:
-            raise RuntimeError("malicious timeout response")
 
         current.response = Constants.timeout_response
         current.reaction_time = None

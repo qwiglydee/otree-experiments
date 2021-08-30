@@ -214,9 +214,6 @@ class Controller {
     }
 
     async displayTrial() {
-        await this.view.loadStimulus();
-
-        this.freezeInputs();
         this.view.showFocus();
         await timers.sleep(PARAMS.focus_display_time);
         this.view.hideFocus();
@@ -242,15 +239,12 @@ class Controller {
         this.view.renderResponse();
         this.view.showStimulus();
         this.view.showResponse();
-        this.freezeInputs();
-        timers.delay(PARAMS.input_freezing_time, () => this.unfreezeInputs(), "unfreezing");
     }
 
     displayFeedback() {
         this.view.renderResponse();
         this.view.showStimulus();
         this.view.showResponse();
-        timers.delay(PARAMS.feedback_display_time, () => this.hideTrial(), "hiding_feedback");
     }
 
     /**** handling messages from server ****/
@@ -300,16 +294,19 @@ class Controller {
         }
     }
 
-    onTrial(message) {
+    async onTrial(message) {
         performance.clearMarks();
         performance.clearMeasures();
-        performance.mark("loaded");
         timers.clear();
 
+        this.freezeInputs();
         this.model.reset();
         this.view.reset();
         this.view.renderProgress();
         this.model.setTrial(message.trial);
+        await this.view.loadStimulus();
+        performance.mark("loaded");
+
         this.displayTrial();
 
         if (PARAMS.auto_response_time) {
@@ -320,12 +317,15 @@ class Controller {
     onResponse(response) {
         performance.mark("responded");
         timers.clear();
+        this.freezeInputs();
 
         this.model.setResponse(response);
         this.displayResponse();
 
-        let reaction_measure = performance.measure("reaction", "displayed", "responded");
-        let loading_measure = performance.measure("loading", "loaded", "responded");
+        performance.measure("reaction", "displayed", "responded");
+        performance.measure("loading", "loaded", "responded");
+        let loading_measure = performance.getEntriesByName("loading")[0];
+        let reaction_measure = performance.getEntriesByName("reaction")[0];
         this.sendMessage('response', {
             response: this.model.response,
             reaction_time: reaction_measure.duration,
@@ -344,11 +344,15 @@ class Controller {
         this.model.setFeedback(feedback);
         this.displayFeedback();
 
+        timers.delay(PARAMS.feedback_display_time, () => this.hideTrial(), "hiding_feedback");
+
         if (feedback.is_final) {
             this.view.renderProgress();
             timers.delay(PARAMS.inter_trial_time, () => this.continueGame(), "advancing");
             return;
         }
+
+        timers.delay(PARAMS.input_freeze_time, () => this.unfreezeInputs(), "unfreezing");
     }
 
     /**** handling interactions ****/
