@@ -334,8 +334,8 @@ def play_game(player: Player, message: dict):
 
             undo_stats(player, current)
 
-        # if time_passed > params['auto_response_time']:
-        #     raise RuntimeError("response after timeout", time_passed)
+        if time_passed > params['auto_response_time']:
+            raise RuntimeError("response after timeout", time_passed)
 
         validate('response', 'reaction_time')
         if message['response'] not in Constants.choices:

@@ -12,13 +12,18 @@ class PlayerBot(Bot):
         "responding_bogus",
         "responding_notrial",
         "responding_timeout",
-        # "responding_faketimeout",
-        # "responding_aftertimeout",
-        # "retrying_nofreeze",
         "retrying_exhaust",
-        # "advancing_nopause",
         "advancing_noanswer",
         "advancing_exhaust",
+        # timing checks
+        "responding_faketimeout",
+        # "responding_faketimeout_slow",  # fails
+        "responding_aftertimeout",
+        # "responding_aftertimeout_slow",  # fails
+        "retrying_nofreeze",
+        # "retrying_nofreeze_slow",  # fails
+        "advancing_nopause",
+        # "advancing_nopause_slow",  # fails
     ]
 
     def play_round(self):
@@ -220,9 +225,31 @@ def live_test_responding_faketimeout(m, p, conf):  # noqa
     expect_attrs(z, response=None)
 
 
-def live_test_responding_aftertimeout(m, p, conf):  # noqa
-    default_response = Constants.timeout_response
+def live_test_responding_faketimeout_slow(m, p, conf):  # noqa
+    send_slow(m, p, 'load')
+    send_slow(m, p, 'new')
+    z = get_trial(Trial, p)
 
+    with expect_failure(RuntimeError):
+        send_slow(m, p, 'timeout')
+
+    expect_attrs(z, response=None)
+
+
+def live_test_responding_aftertimeout(m, p, conf):  # noqa
+    send(m, p, 'load')
+    send(m, p, 'new')
+    z = get_trial(Trial, p)
+
+    sleep(conf['auto_response_time'])
+
+    with expect_failure(RuntimeError):
+        send(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
+
+    expect_attrs(z, response=None)
+
+
+def live_test_responding_aftertimeout(m, p, conf):  # noqa
     send(m, p, 'load')
     send(m, p, 'new')
     z = get_trial(Trial, p)
@@ -247,6 +274,22 @@ def live_test_retrying_nofreeze(m, p, conf):  # noqa
 
     with expect_failure(RuntimeError):
         send(m, p, 'response', response=response2, reaction_time=1.0)
+
+    expect_attrs(z, response=response1, is_correct=False)
+
+
+def live_test_retrying_nofreeze_slow(m, p, conf):  # noqa
+    send_slow(m, p, 'load')
+    send_slow(m, p, 'new')
+    z = get_trial(Trial, p)
+
+    response1 = get_incorrect_response(z, Constants.choices)
+    response2 = get_correct_response(z)
+
+    r = send_slow(m, p, 'response', response=response1, reaction_time=1.0)
+
+    with expect_failure(RuntimeError):
+        send_slow(m, p, 'response', response=response2, reaction_time=1.0)
 
     expect_attrs(z, response=response1, is_correct=False)
 
@@ -290,6 +333,21 @@ def live_test_advancing_nopause(m, p, conf):  # noqa
 
     with expect_failure(RuntimeError):
         send(m, p, 'new')
+
+    expect_attrs(p, iteration=1)
+
+
+def live_test_advancing_nopause_slow(m, p, conf):  # noqa
+    send_slow(m, p, 'load')
+    send_slow(m, p, 'new')
+
+    z = get_trial(Trial, p)
+    send_slow(m, p, 'response', response=get_correct_response(z), reaction_time=1.0)
+
+    expect_attrs(p, iteration=1)
+
+    with expect_failure(RuntimeError):
+        send_slow(m, p, 'new')
 
     expect_attrs(p, iteration=1)
 

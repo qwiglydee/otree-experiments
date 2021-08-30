@@ -29,6 +29,11 @@ def send(m, p, tp, **values):
     return m(p.id_in_group, data)[p.id_in_group]
 
 
+def send_slow(m, p, tp, slowdown=0.5, **values):
+    time.sleep(slowdown)
+    return send(m, p, tp, **values)
+
+
 @contextmanager
 def expect_failure(*exceptions):
     try:
