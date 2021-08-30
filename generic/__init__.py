@@ -335,13 +335,12 @@ def play_game(player: Player, message: dict):
             raise ValueError("invalid response")
 
         current.response = message["response"]
-        current.reaction_time = int(message["reaction_time"])
-        if 'total_time' in message:
-            current.network_latency = time_passed - int(message['total_time'])
-
         current.is_correct = check_response(current, current.response)
-        current.server_response_timestamp = now
         current.attempts += 1
+
+        current.reaction_time = int(message["reaction_time"])
+        current.network_latency = time_passed - int(message.get('total_time', 0))
+        current.server_response_timestamp = now
 
         update_stats(player, current)
 
@@ -447,6 +446,8 @@ def custom_export(players):
         "iteration",
         "server_loaded_timestamp",
         "server_response_timestamp",
+        "server_response_time",
+        "network_latency",
         "stimulus",
         "category",
         "solution",
@@ -455,7 +456,6 @@ def custom_export(players):
         "reaction_time",
         "response_timeout",
         "attempts",
-        "network_latency",
     ]
     for player in players:
         participant = player.participant
@@ -479,10 +479,15 @@ def custom_export(players):
                 continue
             if trial.server_response_timestamp is None:  # unanswered trials
                 continue
+            server_response_time = (
+                trial.server_response_timestamp - trial.server_loaded_timestamp
+            )
             yield player_fields + [
                 trial.iteration,
                 round(trial.server_loaded_timestamp, 3),
                 round(trial.server_response_timestamp, 3),
+                int(server_response_time * 1000),
+                trial.network_latency,
                 trial.stimulus,
                 trial.category,
                 trial.solution,
@@ -491,5 +496,4 @@ def custom_export(players):
                 trial.reaction_time,
                 trial.is_timeout,
                 trial.attempts,
-                trial.network_latency,
             ]
