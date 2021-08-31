@@ -289,7 +289,10 @@ def play_game(player: Player, message: dict):
             return respond("status", progress=progress, game_over=True)
         elif current:
             # NB: not accurate because of network delays
-            timedout = time_passed > params['auto_response_time']
+            timedout = (
+                params['auto_response_time']
+                and time_passed > params['auto_response_time']
+            )
 
             return respond(
                 "status",

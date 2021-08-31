@@ -25,6 +25,10 @@ class PlayerBot(Bot):
             print(f"Skipping test case: {self.case}")
             return
 
+        if 'responding_timeout' in self.case and params['auto_response_time'] is None:
+            print(f"Skipping test case: {self.case}")
+            return
+
         print(f"Playing test case: {self.case}")
         method_name = f"play_{self.case}"
         method = getattr(self, method_name, self.play_default)
