@@ -10,6 +10,20 @@ SESSION_CONFIGS = [
         labels={'foo': 'Positive', 'bar': 'Negative', 'baz': "None"},
     ),
     dict(
+        name="ldt_yesno",
+        display_name="LDT with yes/no responses",
+        num_demo_participants=1,
+        app_sequence=["ldt_yesno"],
+        labels={'word': 'word', 'nonword': "non-word"},
+    ),
+    dict(
+        name="ldt_gonogo",
+        display_name="LDT with go/nogo",
+        num_demo_participants=1,
+        app_sequence=["ldt_gonogo"],
+        labels={'word': 'word', 'nonword': "non-word"},
+    ),
+    dict(
         name="sliders",
         display_name="RET Slider task",
         num_demo_participants=1,

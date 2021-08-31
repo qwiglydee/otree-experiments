@@ -6,29 +6,28 @@ from otree.api import *
 from otree import settings
 
 
-from . import stimuli_utils
-from . import image_utils
+from ldt_core import stimuli_utils, image_utils, nonword_utils
 
 doc = """
-Generic stimulus/response app
+Lexical Decision Task.
 """
 
 
 class Constants(BaseConstants):
-    name_in_url = "generic"
+    name_in_url = "ldt_gonogo"
     players_per_group = None
     num_rounds = 1
 
     """choices of responses"""
-    choices = ["foo", "bar", "baz"]
+    choices = ["word", "nonword"]
 
     """Mapping of keys to choices
     possible key names: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values
     """
-    keymap = {'KeyF': 'foo', 'KeyJ': 'bar'}
+    keymap = {'Enter': 'word'}
 
     """A response to record automatically after trial_timeout"""
-    timeout_response = "baz"
+    timeout_response = 'nonword'
 
     instructions_template = __name__ + "/instructions.html"
 
@@ -36,9 +35,7 @@ class Constants(BaseConstants):
 C = Constants
 
 POOL = []
-stimuli_utils.load_csv(
-    POOL, Path(__file__).parent / "stimuli.csv", ['stimulus', 'category']
-)
+stimuli_utils.load_csv(POOL, Path(__file__).parent / "words_top1000.csv", ['target'])
 
 
 class Subsession(BaseSubsession):
@@ -65,8 +62,7 @@ class Trial(ExtraModel):
     server_loaded_timestamp = models.FloatField()
     server_response_timestamp = models.FloatField()
 
-    stimulus = models.StringField()
-    category = models.StringField()
+    target = models.StringField()
     solution = models.StringField()
 
     attempts = models.IntegerField(initial=0)
@@ -84,14 +80,15 @@ def creating_session(subsession: Subsession):
     defaults = dict(
         num_iterations=10,
         attempts_per_trial=1,
+        nonwords_proportion=0.5,
         focus_display_time=500,
-        stimulus_display_time=3000,
+        stimulus_display_time=None,
         feedback_display_time=1000,
-        auto_response_time=5000,
+        auto_response_time=2000,
         input_freezing_time=100,
         inter_trial_time=2000,
     )
-    required = ["categories", "labels"]
+    required = ["labels"]
     session.params = {}
     for param in defaults:
         session.params[param] = session.config.get(param, defaults[param])
@@ -135,55 +132,36 @@ def undo_stats(player: Player, trial: Trial):
         player.num_failed -= 1
 
 
-def generate_trial(player: Player) -> Trial:
-    """Create new trial with random stimuli"""
-    params = player.session.params
-    target_side = random.choice(C.choices)
-    target_cat = params['categories'][target_side]
-    targets = stimuli_utils.filter_by_category(POOL, [target_cat])
-    target = random.choice(targets)
-
-    return Trial.create(
-        round=player.round_number,
-        player=player,
-        iteration=player.iteration,
-        #
-        stimulus=target['stimulus'],
-        category=target['category'],
-        solution=target_side,
-    )
-
-
 def generate_all_trials(player: Player):
     """Create `num_iterations` trials with non-repeating random stimuli"""
     params = player.session.params
-    categories = params['categories']
     count = params['num_iterations']
+    proportion = params['nonwords_proportion']
 
     if not count:
         raise RuntimeError("Cannot generate trials without `num_iterations`")
 
-    selected = stimuli_utils.filter_by_category(POOL, list(categories.values()))
-
-    if len(selected) < count:
+    if len(POOL) < count:
         raise RuntimeError(f"Insufficient stimuli in the pool for {count} iterations")
 
-    random.shuffle(selected)
-
-    categories_inversed = {v: k for k, v in categories.items()}
+    words = [row['target'] for row in POOL]
+    random.shuffle(words)
 
     for i in range(count):
-        target = selected[i]
-        target_side = categories_inversed[target['category']]
+        is_nonword = random.uniform(0, 1) < proportion
+
+        target = words[i]
+
+        if is_nonword:
+            target = nonword_utils.mutate_word(target)
 
         Trial.create(
             round=player.round_number,
             player=player,
             iteration=1 + i,
             #
-            stimulus=target['stimulus'],
-            category=target['category'],
-            solution=target_side,
+            target=target,
+            solution='nonword' if is_nonword else 'word',
         )
 
 
@@ -213,10 +191,10 @@ def encode_trial(trial: Trial) -> dict:
     # return dict(stimulus=dict(type='text', text=trial.stimulus))
 
     # for static images
-    return dict(stimulus=dict(type='image-url', url=static_image_url(trial.stimulus)))
+    # return dict(stimulus=dict(type='image-url', url=static_image_url(trial.stimulus)))
 
     # for rendered text
-    # return dict(stimulus=dict(type='image-data', data=render_image(trial.stimulus)))
+    return dict(stimulus=dict(type='image-data', data=render_image(trial.target)))
 
 
 def check_response(trial: Trial, response: str) -> bool:
@@ -462,8 +440,7 @@ def custom_export(players):
         "server_response_timestamp",
         "server_response_time",
         "network_latency",
-        "stimulus",
-        "category",
+        "target",
         "solution",
         "response",
         "response_correct",
@@ -502,8 +479,7 @@ def custom_export(players):
                 round(trial.server_response_timestamp, 3),
                 int(server_response_time * 1000),
                 trial.network_latency,
-                trial.stimulus,
-                trial.category,
+                trial.target,
                 trial.solution,
                 trial.response,
                 trial.is_correct,
