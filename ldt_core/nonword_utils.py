@@ -128,6 +128,7 @@ CLUSTER_re = make_re(VOWL_CLUSTERS + CONS_CLUSTERS)
 
 def fragmentize_word(word):
     """Split word into fragments of clustered letters"""
+    word = word.lower()
     return [f for f in CLUSTER_re.split(word) if f != ""]
 
 

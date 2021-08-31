@@ -24,6 +24,13 @@ SESSION_CONFIGS = [
         labels={'word': 'word', 'nonword': "non-word"},
     ),
     dict(
+        name="ldt_priming",
+        display_name="LDT with semantic priming",
+        num_demo_participants=1,
+        app_sequence=["ldt_priming"],
+        labels={'word': 'word', 'nonword': "non-word"},
+    ),
+    dict(
         name="sliders",
         display_name="RET Slider task",
         num_demo_participants=1,

@@ -5,9 +5,6 @@
 
 {{ block content }}
 <div class="main">
-    <div class="touch-spot left" data-response="left"></div>
-    <div class="touch-spot right" data-response="right"></div>
-
     <div class="center">
         <span id="focus" class="focus hidden">⌖</span>
 
@@ -23,7 +20,7 @@
         </div>
         <div class="warning hidden" id="warning-txt"></div>
         <div class="warning hidden" id="warning-keys">
-            Press <kbd>F</kbd> or <kbd>J</kbd>.
+            Press <kbd>Enter</kbd> or wait.
         </div>
     </div>
 </div>
@@ -52,7 +49,7 @@
 
 {{ block scripts }}
 <script src="{{ static 'timers.js' }}"></script>
-<script src="{{ static 'generic_live.js' }}"></script>
+<script src="{{ static 'priming_live.js' }}"></script>
 {{ if DEBUG }}<script src="{{ static 'generic_cheating.js' }}"></script>{{ endif }}
 <script>
 const CONF = js_vars.conf;
