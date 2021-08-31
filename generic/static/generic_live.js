@@ -79,8 +79,8 @@ class View {
 
     renderProgress() {
         let progress = this.model.progress;
-        this.$progress.max = progress.iterations_total;
-        this.$progress.value = progress.num_trials;
+        this.$progress.max = progress.total;
+        this.$progress.value = progress.completed;
     }
 
     showFocus() {
@@ -264,10 +264,10 @@ class Controller {
             case 'status':
                 if (message.trial) {  // restoring existing state
                     this.onReload(message);
-                } else if (message.progress.iteration === 0) {   // start of the game
-                    this.starting = true;
                 } else if (message.game_over) {  // exhausted max iterations
                     this.endGame();
+                } else { // start of the game
+                    this.starting = true;
                 }
                 break;
 

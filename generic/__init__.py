@@ -107,11 +107,10 @@ def get_progress(player: Player, trial: Trial = None) -> dict:
     """Return whatever progress data to show on page"""
     params = player.session.params
     return dict(
-        iteration=player.iteration,
-        iterations_total=params["num_iterations"],
-        attempts=trial.attempts if trial else None,
-        attempts_total=params["attempts_per_trial"],
-        num_trials=player.num_trials,
+        total=params['num_iterations'],
+        completed=player.num_trials,
+        # attempts_total=params["attempts_per_trial"],
+        # attempts_used=trial.attempts if trial else None,
     )
 
 
@@ -262,7 +261,6 @@ def play_game(player: Player, message: dict):
         """Prepare message to send to current player"""
         msgdata = {'type': msgtype}
         msgdata.update(fields)
-        msgdata['progress'] = get_progress(player, current)
         print("response:", msgdata)
         return {player.id_in_group: msgdata}
 
@@ -285,12 +283,22 @@ def play_game(player: Player, message: dict):
     message_type = message["type"]
 
     if message_type == "load":  # client loaded page
-        if current:
-            # NB: not accurate because of delays
+        progress = get_progress(player, current)
+
+        if player.iteration == params["num_iterations"]:
+            return respond("status", progress=progress, game_over=True)
+        elif current:
+            # NB: not accurate because of network delays
             timedout = time_passed > params['auto_response_time']
-            return respond("status", trial=encode_trial(current), timed_out=timedout)
+
+            return respond(
+                "status",
+                progress=progress,
+                trial=encode_trial(current),
+                timed_out=timedout,
+            )
         else:
-            return respond("status")
+            return respond("status", progress=progress)
 
     if message_type == "new":  # client requests new trial
         if current:
@@ -354,6 +362,7 @@ def play_game(player: Player, message: dict):
             is_correct=current.is_correct,
             is_final=is_final,
             response=current.response,
+            progress=get_progress(player, current),
         )
 
     if message_type == "timeout":  # client response timeout
@@ -379,6 +388,7 @@ def play_game(player: Player, message: dict):
             is_correct=current.is_correct,
             is_final=True,
             response=current.response,
+            progress=get_progress(player, current),
         )
 
     if message_type == "cheat" and settings.DEBUG:  # debugging
