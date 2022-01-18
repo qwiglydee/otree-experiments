@@ -1,0 +1,49 @@
+.flex-col {
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.flex-row {
+  display: flex;
+  flex-flow: row nowrap;
+}
+
+.center {
+  justify-content: center;
+  align-items: center;
+}
+
+.icon-char {
+  font-family: Roboto, monospace;
+  font-size: x-large;
+  vertical-align: middle;
+}
+
+progress {
+  width: 100%;
+}
+
+.feedback {
+  height: 2em;
+  line-height: 100%;   
+}
+
+.aim {
+  font-family: Roboto, monospace;
+  font-size: 100px;
+}
+
+.success {
+  color: green;
+}
+
+.failure {
+  color: red;
+}
+
+.overlay[data-ot-ready] {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;  
+}
