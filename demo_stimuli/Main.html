@@ -1,0 +1,62 @@
+{{ block title }} Main game {{ endblock }} 
+
+{{ block styles }}
+<link href="{{ static 'global/fullscreen.css' }}" rel="stylesheet" />
+<link href="{{ static 'global/common.css' }}" rel="stylesheet" />
+<link href="{{ static 'demo_stimuli.css' }}" rel="stylesheet" />
+{{ endblock }} 
+
+{{ block content }}
+
+<div class="flex-fill"></div>
+
+<div class="stimulus-block">
+  <div class="icon-char aim" data-ot-display="aim">⌖</div>
+  <div
+    class="prime"
+    data-ot-display="prime"
+    data-ot-text="game.prime"
+    data-ot-class="game.prime_category"
+  ></div>
+  <div class="target" data-ot-display="target" data-ot-img="game.target"></div>
+</div>
+
+<div class="flex-fill">
+
+  <div class="flex-row center feedback">
+    <span data-ot-when="result.timeout==true">(skipped)</span>
+    <span data-ot-when="result.response" data-ot-text="result.response"></span>
+    <span class="icon-char success" data-ot-when="result.success==true">✔</span>
+    <span class="icon-char failure" data-ot-when="result.success==false">✘</span>
+  </div>
+  
+</div>
+
+<progress data-ot-max="config.NUM_TRIALS" data-ot-value="progress.completed"></progress>
+
+<div class="overlay left-side" data-ot-touch data-ot-click data-ot-input="response=negative"></div>
+
+<div class="overlay right-side" data-ot-touch data-ot-click data-ot-input="response=positive"></div>
+
+<div class="overlay" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
+  {{ include C.INSTRUCTIONS }}
+  <p>
+    Press <kbd data-ot-input="response=negative" data-ot-key="KeyF">F</kbd> or touch/click left side for
+    <u>negative</u> emoji.
+    <br />
+    Press <kbd data-ot-input="response=positive" data-ot-key="KeyJ">J</kbd> or touch/click right side for
+    <u>positive</u> emoji.
+  </p>
+  <p>Press <kbd>Space</kbd> or click the message to start.</p>
+</div>
+</div>
+
+
+<input type="hidden" name="results_data" />
+
+{{ endblock }} 
+
+{{ block scripts }}
+<script type="module" src="{{ static 'otree-ui-1.0.0.js' }}"></script>
+<script src="{{ static 'demo_stimuli.js' }}"></script>
+{{ endblock }}

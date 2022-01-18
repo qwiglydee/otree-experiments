@@ -1,0 +1,20 @@
+.stimulus-block {
+  height: 50%; /* fixed height */
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.prime {
+  font-size: xx-large;
+}
+
+.prime.positive {
+  color: orange;
+}
+
+.prime.negative {
+  color: blue;
+}
+
