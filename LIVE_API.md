@@ -92,7 +92,7 @@ Several messages are combined into a list to send together.
 ### Reponding with a trial data
 
 - `type` = 'trial'
-- `trial`: whatever data is needed for a game
+- whatever data is needed for a game
 
 ### Sending user input
 
@@ -113,6 +113,7 @@ Server feedback for a user input that is a subject of assesment correct/incorrec
 - `error`: if present, indicates the input is wrong (a player fail)
   - `code`: a string code of an error to use in program code
   - `message`: a human readable string to display
+- `final`: indicates no more responses on the trial allowed  
 
 
 ### Sending game updates
@@ -128,7 +129,7 @@ Send to the same single user or to all users.
 
 - `type`: 'status'
 - `trial_completed`: indicates that current trial is completed
-- `trial_succeeded`: indicated if the trial is solved/failed
+- `trial_succesful`: indicated if the trial is solved/failed
 - `game_over`: indicates that the whole iteration loop is over
 - `current_player`: indicates id of a current player in sequential multiplayer gam
 - `winner_player`: indicates who win the game if it is over 
@@ -144,11 +145,11 @@ Server sends status of the iterating progress
 - `completed`: number of completed trials
 - `solved`: number of succesfully completed trials
 - `failed`: number of unsuccesfully completed iterations
-
+- `retries`: number of retries for current trial
 
 ### Requesting game restore
 
-- `type` = 'restore'
+- `type` = 'reload'
 -  no data
 
 

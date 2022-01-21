@@ -1,0 +1,42 @@
+{{ block title }} Main game {{ endblock }} 
+
+{{ block styles }}
+<link href="{{ static 'global/fullscreen.css' }}" rel="stylesheet" />
+<link href="{{ static 'global/common.css' }}" rel="stylesheet" />
+<link href="{{ static 'demo_trials.css' }}" rel="stylesheet" />
+{{ endblock }} 
+
+{{ block content }}
+
+<div class="flex-fill"></div>
+
+<div class="main flex-col center">
+  <div class="target" data-ot-img="game.image"></div>
+</div>
+
+<div class="flex-fill flex-col center">
+  <div class="flex-row center">
+    <!-- FIXME: should be hidden on 'get ready' phase -->
+    <input type="text" data-ot-input="answer" placeholder="type characters from the image above">
+    <span class="icon-char success" data-ot-when="feedback.correct==true">✔</span>
+    <span class="icon-char failure" data-ot-when="feedback.correct==false">✘</span>
+    <span data-ot-when="status.trial_skipped">(skipping)</span>
+  </div>
+  <div>
+    Retry <span data-ot-text="progress.retries"></span> / <span data-ot-text="config.max_retries"></span>
+    <button type="button" id="skip-btn">Skip</button>
+  </div>
+</div>
+
+<div class="overlay" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
+  {{ include C.INSTRUCTIONS }}
+  <p>Press <kbd>Space</kbd> or click the message to start.</p>
+</div>
+
+{{ endblock }} 
+
+{{ block scripts }}
+<script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
+<script src="{{ static 'otree-front-live.js' }}"></script>
+<script src="{{ static 'demo_trials.js' }}"></script>
+{{ endblock }}
