@@ -1,9 +1,14 @@
-.stimulus-block {
-  height: 50%; /* fixed height */
-  display: flex;
-  flex-flow: column nowrap;
-  justify-content: center;
-  align-items: center;
+.main {
+  height: 50vh; /* fixed height */
+}
+
+.bottom {
+  height: 25vh; /* fixed height */
+}
+
+.aim {
+  font-family: Roboto, monospace;
+  font-size: 100px;
 }
 
 .prime {
@@ -18,3 +23,6 @@
   color: blue;
 }
 
+.get-ready {
+  background: white;
+}

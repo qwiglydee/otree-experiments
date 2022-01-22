@@ -15,22 +15,13 @@
 
 .icon-char {
   font-family: Roboto, monospace;
-  font-size: x-large;
+  font-size: 64px;
   vertical-align: middle;
 }
 
 progress {
   width: 100%;
 }
-
-.feedback.icon-char {
-  height: 32px;
-  font-size: 32px;
-  line-height: 100%;
-  position: relative;
-  left: -32px;   
-}
-
 
 .aim {
   font-family: Roboto, monospace;

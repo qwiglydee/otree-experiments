@@ -1,16 +1,12 @@
 let config = js_vars.config;
 let trials = [];
 let results = [];
-
-// make mseconds, FIXME: do it on back
-config.TRIAL_PAUSE *= 1000;
-config.TRIAL_TIMEOUT *= 1000; 
+ 
 
 /** loads all images and ata and waits them to complete loading */
 async function loadData() {
   trials = js_vars.trials;
-  for(let i=0; i<trials.length; i++) {
-    // NB: forEach doesn't work with await
+  for(let i=0; i<trials.length; i++) { // NB: forEach doesn't work with await
     let trial = trials[i];
     trial.target = await otree.dom.loadImage('/static/images/' + trial.target);
   }
@@ -18,12 +14,21 @@ async function loadData() {
 
 /** saves results data to page form */
 function saveData() {
-  page.form.results_data.value = JSON.stringify(results); 
+  formInputs.results_data.value = JSON.stringify(results); 
 }
+
 
 async function main() {
   // load all images
   await loadData();
+  saveData(); // save empty  
+
+  let progress = {
+    total: config.num_trials,
+    current: 0,
+    retries: 0,
+    completed: 0 
+  }
 
   schedule.setup({
     phases: [
@@ -31,67 +36,93 @@ async function main() {
       { time: 1000, display: 'prime' },
       { time: 1500, display: 'target', input: true },      
     ],
-    timeout: config.TRIAL_TIMEOUT
+    timeout: config.trial_timeout
   });
 
-  game.setup(config);
+  game.setConfig(config);
+  
 
-  game.onStart = function() {
-    let trial = trials[game.iteration - 1];  // NB: indexing from 0, iterating from 1
-    game.updateState(trial);
-    console.debug("iter:", game.iteration);
-    console.debug("trial:", game.state);
+  game.loadTrial = function() {
+    progress.current ++;
+    progress.retries =0;
+    game.setProgress(progress);
+
+    let trial = trials[progress.current - 1];
+    game.setTrial(trial);
+  }
+
+  game.startTrial = function(trial) {
     schedule.start();
+    game.updateStatus({ trialStarted: true });
   }
 
   game.onPhase = function(phase) {
     if (phase.input) {
-      otree.measurement.begin('reaction');
+      otree.measurement.begin();
     }
   }
 
-  game.onInput = function(input) {
-    schedule.stop();
+  game.onInput = function(inp) {
     page.freezeInputs();
+    progress.retries ++;
 
-    let reaction = otree.measurement.end('reaction');
-    let response = input.response;
-    let success = response == game.state.target_category; 
+    let input = inp.response;
+    let rt = otree.measurement.begin();
 
-    game.complete({ response, reaction, success });
+    validateInput(input);
+
+    if (config.max_retries && progress.retries < config.max_retries && !game.feedback.correct) {
+      // continue
+      page.unfreezeInputs();
+      return;
+    } else {
+      schedule.stop();
+      completeTrial(input, rt, progress.retries);
+    }
   }
 
   game.onTimeout = function() {
-    schedule.stop();
     page.freezeInputs();
 
-    let reaction = otree.measurement.end('reaction');
-    let response = null;
-    let success = false;
+    let input = null;
+    if (config.nogo_response) {
+      input = config.nogo_response;
+    }
 
-    game.complete({ response, reaction, success, timeout: true });
+    validateInput(input);
+
+    schedule.stop();
+    completeTrial(input, null, progress.retries);
   }
 
-  // FIXME: avoid result
-  game.onComplete = function(result) {
-    console.debug("result:", result);
+  function validateInput(input) {
+    let correct;
+    if (input !== null) {
+      correct = input == game.trial.target_category; 
+    } // else undefined
 
-    trial = trials[game.iteration];
-    results.push({ i: game.iteration, ...result });
+    game.setFeedback({ input, correct });
   }
 
-
-  page.form.onsubmit = function() {
+  function completeTrial(input, rt, retr) {
+    // rt=null means timeout
+    results.push({ i: progress.current, input, rt, retr }); 
     saveData();
-  }
 
-  game.reset();
+    progress.completed ++;
+    game.setProgress(progress);
+
+    game.updateStatus({ 
+      trialCompleted: true, 
+      trialSuccessful: game.feedback.correct,
+      gameOver: progress.current == progress.total 
+    });
+  }
 
   await page.waitEvent("ot.ready");
 
-  await game.playIterations(config.NUM_TRIALS, config.TRIAL_PAUSE);
+  await game.playIterations();
 
-  saveData(); // FIXME
-  page.submit();
+  document.querySelector("#form").submit();
 }
 

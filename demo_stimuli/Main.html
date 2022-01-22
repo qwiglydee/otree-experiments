@@ -8,37 +8,31 @@
 
 {{ block content }}
 
-<div class="flex-fill"></div>
-
-<div class="stimulus-block">
+<div class="main">
   <div class="icon-char aim" data-ot-display="aim">⌖</div>
   <div
     class="prime"
     data-ot-display="prime"
-    data-ot-text="game.prime"
-    data-ot-class="game.prime_category"
+    data-ot-text="trial.prime"
+    data-ot-class="trial.prime_category"
   ></div>
-  <div class="target" data-ot-display="target" data-ot-img="game.target"></div>
+  <div class="target" data-ot-display="target" data-ot-img="trial.target"></div>
 </div>
 
-<div class="flex-fill">
 
-  <div class="flex-row center feedback">
-    <span data-ot-when="result.timeout==true">(skipped)</span>
-    <span data-ot-when="result.response" data-ot-text="result.response"></span>
-    <span class="icon-char success" data-ot-when="result.success==true">✔</span>
-    <span class="icon-char failure" data-ot-when="result.success==false">✘</span>
-  </div>
-  
+<progress data-ot-max="progress.total" data-ot-value="progress.completed"></progress>
+
+<div class="bottom">
+  <span class="feedback icon-char success" data-ot-when="feedback.correct==true">✔</span>
+  <span class="feedback icon-char failure" data-ot-when="feedback.correct==false">✘</span>
+  <span data-ot-when="status.trialSuccessful==null">(skipping)</span>
 </div>
-
-<progress data-ot-max="config.NUM_TRIALS" data-ot-value="progress.completed"></progress>
 
 <div class="overlay left-side" data-ot-touch data-ot-click data-ot-input="response=negative"></div>
 
 <div class="overlay right-side" data-ot-touch data-ot-click data-ot-input="response=positive"></div>
 
-<div class="overlay" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
+<div class="overlay get-ready" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
   {{ include C.INSTRUCTIONS }}
   <p>
     Press <kbd data-ot-input="response=negative" data-ot-key="KeyF">F</kbd> or touch/click left side for

@@ -16,10 +16,16 @@ class C(BaseConstants):
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
     INSTRUCTIONS = __name__ + "/instructions.html"
-    NUM_TRIALS = 10
-    TRIAL_TIMEOUT = 3 # seconds
-    GAME_TIMEOUT = 600 # seconds 
-    TRIAL_PAUSE = 1 # seconds
+
+    GAME_TIMEOUT = 120  # seconds
+
+    # default values reconfigurable from session config:
+
+    NUM_TRIALS = 5
+    MAX_RETRIES = 3
+    TRIAL_TIMEOUT = 3  # seconds
+    POSTTRIAL_PAUSE = 0.5  # seconds
+    NOGO_RESPONSE = None
 
 
 DATA = []
@@ -36,8 +42,21 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     subsession.is_practice = True
+
+    session = subsession.session
+    defaults = dict(
+        num_trials=C.NUM_TRIALS,
+        max_retries=C.MAX_RETRIES,
+        trial_timeout=C.TRIAL_TIMEOUT,
+        nogo_response=C.NOGO_RESPONSE,
+        post_trial_pause=C.POSTTRIAL_PAUSE
+    )
+    session.params = {}
+    for param in defaults:
+        session.params[param] = session.config.get(param, defaults[param])
+
     for player in subsession.get_players():
-        generate_trials(player)
+        pregenerate_trials(player)
 
 
 class Group(BaseGroup):
@@ -45,12 +64,16 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    # number of completed trials
     num_trials = models.IntegerField(initial=0)
-    num_correct = models.IntegerField(initial=0)
-    num_incorrect = models.IntegerField(initial=0)
+    # number of trials whth correct responses
+    num_solved = models.IntegerField(initial=0)
+    # number of trials with incorrect responses
+    num_failed = models.IntegerField(initial=0)
+    # number of trials without response (timeouted)
     num_skipped = models.IntegerField(initial=0)
 
-    # field to pass data from page
+    # temporary field to pass data from page
     results_data = models.LongStringField(blank=True)
 
 
@@ -67,11 +90,15 @@ class Trial(ExtraModel):
     target_category = models.StringField()
     is_congruent = models.BooleanField()
 
-    reaction_time = models.IntegerField()
-    is_timeouted = models.BooleanField()
+    # either solved/failed or skipped
+    is_completed = models.BooleanField(initial=False)
 
     response = models.StringField()
     is_correct = models.BooleanField()
+
+    retries = models.IntegerField(initial=0)
+    response_time = models.IntegerField()
+    is_timeouted = models.BooleanField()
 
 
 def generate_trial(player: Player, iteration: int) -> Trial:
@@ -88,46 +115,70 @@ def generate_trial(player: Player, iteration: int) -> Trial:
         prime_category=prime_row["category"],
         target=target_row["stimulus"],
         target_category=target_row["category"],
-        is_congruent=prime_row["category"] == target_row["category"]
+        is_congruent=prime_row["category"] == target_row["category"],
     )
 
 
-def generate_trials(player):
-    for i in range(1, C.NUM_TRIALS+1):
+def pregenerate_trials(player):
+    for i in range(1, C.NUM_TRIALS + 1):
         generate_trial(player, i)
 
 
-def validate_trial(trial, response, reaction, timeouted):
+def get_trials(player):
+    return Trial.filter(player=player)
+
+
+def encode_trial(trial):
+    return dict(
+        iteration=trial.iteration,
+        prime=trial.prime,
+        prime_category=trial.prime_category,
+        target=trial.target,
+        target_category=trial.target_category,
+    )
+
+
+def encode_trials(player):
+    return list(map(encode_trial, get_trials(player)))
+
+
+def validate_trial(trial, response):
     """Checks if a trial is correctly answered"""
     trial.response = response
-    trial.reaction_time = reaction
-    if timeouted:
-        trial.is_timeouted = True
-        trial.is_correct = False
+    if response is None:
+        trial.is_correct = None
     else:
         trial.is_correct = trial.response == trial.target_category
 
 
+def validate_trials(player, results):
+    player.num_trials = len(results)
+
+    # this relies that trials retrieved in the same order as results
+    # unmatched trials remain incomplete
+    for trial, result in zip(get_trials(player), results):
+        assert trial.iteration == result['i']
+        trial.is_completed = True
+
+        trial.retries = result.get('retr')
+        trial.is_timeouted = result.get('rt') == None
+        validate_trial(trial, result["input"])
+
+
 def cleanup_trials(player):
-    for i in range(player.num_trials+1, C.NUM_TRIALS+1):
-        Trial.filter(player=player, iteration=i)[0].delete()
+    for trial in Trial.filter(player=player, is_completed=False):
+        trial.delete()
 
 
-def encode_session(player):
-    """Creates data structure to pass to a page"""
-    # NB: providing `target_category` allows javascript cheating  
-    def encode_trial(t):
-        return dict(
-            iteration=t.iteration,
-            prime=t.prime,
-            prime_category=t.prime_category,
-            target=t.target,
-            target_category=t.target_category,
-        )
-
-    return dict(
-        config=dict(vars(C)),
-        trials=list(map(encode_trial, Trial.filter(player=player))), 
+def calc_stats(player):
+    player.num_solved = len(
+        Trial.filter(player=player, is_completed=True, is_correct=True)
+    )
+    player.num_failed = len(
+        Trial.filter(player=player, is_completed=True, is_correct=False)
+    )
+    player.num_skipped = len(
+        Trial.filter(player=player, is_completed=True, is_correct=None)
     )
 
 
@@ -143,35 +194,38 @@ class Main(Page):
 
     @staticmethod
     def js_vars(player):
-        return encode_session(player)
+        params = player.session.params
+        return dict(
+            config=dict(
+                num_trials=params["num_trials"],
+                max_retries=params['max_retries'],
+                trial_timeout=params["trial_timeout"] * 1000,
+                post_trial_pause=params["post_trial_pause"] * 1000,
+                nogo_response=params['nogo_response']
+            ),
+            trials=encode_trials(player),
+        )
 
-    form_model = 'player'
-    form_fields = ['results_data']
+    form_model = "player"
+    form_fields = ["results_data"]
 
     def before_next_page(player, timeout_happened):
         results = json.loads(player.results_data)
-        player.num_trials = len(results)
+        player.results_data = ""
 
-        player.results_data = "" 
+        validate_trials(player, results)
         cleanup_trials(player)
-
-        for result in results:
-            trial = Trial.filter(player=player, iteration=result['i'])[0]
-            validate_trial(trial, result['response'], result['reaction'], result.get('timeout', False))
-
-        player.num_correct = len(Trial.filter(player=player, is_correct=True))
-        player.num_incorrect = len(Trial.filter(player=player, is_correct=False))
-        player.num_skipped = len(Trial.filter(player=player, is_timeouted=True))
+        calc_stats(player)
 
 
 class Results(Page):
     @staticmethod
     def vars_for_template(player):
         return dict(
-            num_correct=player.num_correct,
-            frac_correct=100 * player.num_correct / player.num_trials,
-            num_incorrect=player.num_incorrect,
-            frac_incorrect=100 * player.num_incorrect / player.num_trials,
+            num_solved=player.num_solved,
+            frac_solved=100 * player.num_solved / player.num_trials,
+            num_failed=player.num_failed,
+            frac_failed=100 * player.num_failed / player.num_trials,
             num_skipped=player.num_skipped,
             frac_skipped=100 * player.num_skipped / player.num_trials,
         )
@@ -189,7 +243,7 @@ def custom_export(players):
         "round",
         "is_practice",
         "player",
-        # trial fields 
+        # trial fields
         "iteration",
         "prime",
         "prime_category",
@@ -208,7 +262,7 @@ def custom_export(players):
 
         player_fields = [
             participant.code,
-            participant.is_dropout if 'is_dropout' in participant.vars else None,
+            participant.is_dropout if "is_dropout" in participant.vars else None,
             session.code,
             subsession.round_number,
             subsession.is_practice,
@@ -232,5 +286,5 @@ def custom_export(players):
                 trial.response,
                 trial.is_correct,
                 trial.reaction_time,
-                trial.is_timeouted
+                trial.is_timeouted,
             ]
