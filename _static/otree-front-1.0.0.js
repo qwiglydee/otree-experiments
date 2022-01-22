@@ -638,7 +638,7 @@ registerDirective("[ot-ready]", otReady);
  * Directive `ot-display="phaseflag"`
  * 
  * It shows/hides an element when {@link Phase} contains matching `display` field.
- * If the phase doesn't contain the field, it is ignored (i.e. phases toggling just `input` do not affect the display). 
+ * If the phase doesn't contain the field, it is ignored (i.e. phases toggling just `inputEnabled` do not affect the display). 
  * 
  * @hideconstructor
  */
@@ -697,7 +697,7 @@ class otRealInput extends DirectiveBase {
   }
 
   onPhase(event, phase) {
-    toggleDisabled(this.elem, !phase.input);
+    toggleDisabled(this.elem, !phase.inputEnabled);
   }
 
   onChange(event) {
@@ -779,8 +779,8 @@ class otCustomInput extends DirectiveBase {
   }
 
   onPhase(event, phase) {
-    if (!('input' in phase)) return;
-    toggleDisabled(this.elem, !phase.input);
+    if (!('inputEnabled' in phase)) return;
+    toggleDisabled(this.elem, !phase.inputEnabled);
   }
 
   onClick(event) {
@@ -992,7 +992,7 @@ registerDirective("[ot-when]", otWhen);
  *
  * *NB*: The installation happens only once, directives won't work in dynamically added html code.
  *
- * @property {Phase} phase set of flags indicating common state of directives, `{ display, input }`
+ * @property {Phase} phase set of flags indicating common state of directives, `{ display, inputEnabled }`
  */
 class Page {
   /**
@@ -1049,9 +1049,9 @@ class Page {
    *
    * Example:
    *
-   *    await page.waitEvent('ot.time.out'); // suspend script until timeout emitd
+   *    await page.waitForEvent('ot.time.out'); // suspend script until timeout emitd
    *
-   *    let waiting = page.waitEvent('ot.timeout'); // start waiting without suspending
+   *    let waiting = page.waitForEvent('ot.timeout'); // start waiting without suspending
    *    // do some work during which a timeout might happen
    *    await waiting; // suspend for an event happend since the 'waiting' created
    *
@@ -1059,7 +1059,7 @@ class Page {
    * @param {HTMLElement} [target=page.body]
    * @returns {Promise} resolved when event emitd
    */
-  waitEvent(type, target) {
+  waitForEvent(type, target) {
     target = target || this.body;
     return new Promise((resolve) => {
       function listener(event) {
@@ -1142,7 +1142,7 @@ class Page {
    * @fires Page.phase
    */
   freezeInputs() {
-    this.emitEvent("ot.phase", { input: false, _freezing: true });
+    this.emitEvent("ot.phase", { inputEnabled: false, _freezing: true });
   }
 
   /**
@@ -1154,8 +1154,8 @@ class Page {
    * @fires Page.phase
    */
   unfreezeInputs() {
-    if (!this.phase.input) return;
-    this.emitEvent("ot.phase", { input: true, _freezing: true });
+    if (!this.phase.inputEnabled) return;
+    this.emitEvent("ot.phase", { inputEnabled: true, _freezing: true });
   }
 
   /**
@@ -1175,7 +1175,7 @@ class Page {
    * @param {Object} [flags] some additional initial flags
    */
   resetPhase(flags) {
-    let phase0 = { display: null, input: false };
+    let phase0 = { display: null, inputEnabled: false };
     if (flags) {
       Object.assign(phase0, flags);
     }
@@ -1187,7 +1187,7 @@ class Page {
    * Toggles page phase.
    *
    * The provided flags override existing, unaffected flags are preserved.
-   * I.e. `togglePhase({ input: true })` keeps current value of `display` flag.
+   * I.e. `togglePhase({ inputEnabled: true })` keeps current value of `display` flag.
    *
    * @param {Phase} phase set of flags to change
    * @fires Page.phase
@@ -1209,7 +1209,7 @@ class Page {
  *
  * @typedef {Object} Phase
  * @property {string} [display] to toggle `ot-display` directives
- * @property {bool} [input] to enable/disable `ot-input` directives
+ * @property {bool} [inputEnabled] to enable/disable `ot-input` directives
  */
 
 /**
@@ -1246,11 +1246,11 @@ class Page {
  */
 
 /**
- * Indicates a timed phase switching display, input, or something else
+ * Indicates a timed phase switching display, inputEnabled, or something else
  *
  * @event Page.phase
  * @property {string} type `ot.phase`
- * @property {object} detail an object like `{display: something, input: bool, ...}`
+ * @property {object} detail an object like `{display: something, inputEnabled: bool, ...}`
  */
 
 /**
@@ -1332,7 +1332,7 @@ class Game {
     this.trial = trial;
 
     this.page.emitUpdate({ trial });
-    await this.page.waitEvent("ot.update"); // make sure the hook is called after page update
+    await this.page.waitForEvent("ot.update"); // make sure the hook is called after page update
     this.startTrial(this.trial);
   }
 
@@ -1516,7 +1516,7 @@ class Game {
    */
   async playTrial() {
     this.resetTrial();
-    await this.page.waitEvent("ot.completed");
+    await this.page.waitForEvent("ot.completed");
   }
 
   async playIterations() {
@@ -1616,8 +1616,8 @@ class Schedule {
    * The `phases` in config is a list of {@link Phase} augmented with `time` field indicating time in ms to emit phase events.
    * ```
    * { phases: [
-   *  { time: 0, display: "something", }
-   *  { time: 1000, display: "somethingelse", input: false }
+   *  { at: 0, display: "something", }
+   *  { at: 1000, display: "somethingelse", inputEnabled: false }
    * ]}
    * ```
    *
@@ -1637,14 +1637,14 @@ class Schedule {
     if (this.phases) {
       this.phases.forEach((phase, i) => {
         const flags = Object.assign({}, phase);
-        delete flags.time;
+        delete flags.at;
 
         this.timers.delay(
           `phase-${i}`,
           () => {
             this.page.togglePhase(flags);
           },
-          phase.time
+          phase.at
         );
       });
     }
@@ -1675,9 +1675,9 @@ const otree = {
 };
 
 window.addEventListener('load', function() {
-  window.page = new Page(document.body);
-  window.game = new Game(window.page);
-  window.schedule = new Schedule(window.page);
+  otree.page = new Page(document.body);
+  otree.game = new Game(otree.page);
+  otree.schedule = new Schedule(otree.page);
 
   if (!window.main) {
     throw new Error("You need to define global `function main()` to make otree work");

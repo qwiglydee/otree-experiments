@@ -30,7 +30,7 @@ class C(BaseConstants):
 
     NUM_TRIALS = None  # None for infinite
     MAX_RETRIES = 3
-    TRIAL_TIMEOUT = 10  # seconds
+    TRIAL_TIMEOUT = 10 # seconds
     NOGO_RESPONSE = None
 
 

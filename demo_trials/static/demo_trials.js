@@ -13,27 +13,29 @@ function liveRecv(data) {
     switch (type) {
       case "trial":
         datum.image = await otree.dom.loadImage(datum.image);
-        game.setTrial(datum);
+        otree.game.setTrial(datum);
         break;
       case "status":
-        game.updateStatus(datum);
+        otree.game.updateStatus(datum);
         break;
       case "update":
-        game.updateTrial(datum.changes);
+        otree.game.updateTrial(datum.changes);
         break;
       case "feedback":
-        game.setFeedback(datum);
+        otree.game.setFeedback(datum);
         break;
       case "progress":
-        game.setProgress(datum);
+        otree.game.setProgress(datum);
     }
   });
 }
 
 async function main() {
+  let game = otree.game, page = otree.page, schedule = otree.schedule;
   let $input = document.querySelector('[ot-input]');
   let $skip_btn = document.querySelector("#skip-btn"), $submit_btn=document.querySelector("#submit-btn")
   let trial_time0, trial_time, trial_timer;
+
 
   schedule.setup({
     timeout: config.trial_timeout,
@@ -50,12 +52,13 @@ async function main() {
     console.debug("starting:", trial);
     schedule.start();
     otree.measurement.begin();
-    page.togglePhase({ input: true });
+    page.togglePhase({ inputEnabled: true });
     game.updateStatus({ trialStarted: true });
   };
 
   game.onPhase = function (phase) {
-    if (phase.input) {
+    // postponed
+    if (phase.inputEnabled) {
       $input.focus();
     }
   };
@@ -114,7 +117,7 @@ async function main() {
     page.emitInput({ answer: $input.value });
   }
 
-  await page.waitEvent("ot.ready");
+  await page.waitForEvent("ot.ready");
 
   await game.playIterations();
 

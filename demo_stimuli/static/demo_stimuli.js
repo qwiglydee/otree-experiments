@@ -19,6 +19,8 @@ function saveData() {
 
 
 async function main() {
+  let game = otree.game, page = otree.page, schedule = otree.schedule;
+
   // load all images
   await loadData();
   saveData(); // save empty  
@@ -32,9 +34,9 @@ async function main() {
 
   schedule.setup({
     phases: [
-      { time: 0, display: 'aim' },
-      { time: 1000, display: 'prime' },
-      { time: 1500, display: 'target', input: true },      
+      { at: 0, display: 'aim' },
+      { at: 1000, display: 'prime' },
+      { at: 1500, display: 'target', inputEnabled: true },      
     ],
     timeout: config.trial_timeout
   });
@@ -57,7 +59,7 @@ async function main() {
   }
 
   game.onPhase = function(phase) {
-    if (phase.input) {
+    if (phase.inputEnabled) {
       otree.measurement.begin();
     }
   }
@@ -118,7 +120,7 @@ async function main() {
     });
   }
 
-  await page.waitEvent("ot.ready");
+  await page.waitForEvent("ot.ready");
 
   await game.playIterations();
 
