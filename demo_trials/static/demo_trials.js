@@ -32,7 +32,7 @@ function liveRecv(data) {
 
 async function main() {
   let $input = document.querySelector('[data-ot-input="answer"]');
-  let $skipbtn = document.querySelector("#skip-btn");
+  let $skip_btn = document.querySelector("#skip-btn"), $submit_btn=document.querySelector("#submit-btn")
   let trial_time0, trial_time, trial_timer;
 
   schedule.setup({
@@ -105,11 +105,15 @@ async function main() {
     }
   };
 
-  $skipbtn.onclick = function () {
+  $skip_btn.onclick = function () {
     $input.value="";
     game.clearFeedback();
-    liveSend({ type: "input", input: null });
+    page.emitInput({ answer: null });
   };
+
+  $submit_btn.onclick = function() {
+    page.emitInput({ answer: $input.value });
+  }
 
   await page.waitEvent("ot.ready");
 

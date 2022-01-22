@@ -22,17 +22,19 @@
     Retry <span data-ot-text="progress.retries"></span> /
     <span data-ot-text="config.max_retries"></span>
   </div>
-  <input
-    type="text"
-    data-ot-input="answer"
-    class="form-control"
-    data-ot-class="feedback.class"
-    placeholder="type characters from the image above"
-  />
-  <div>
-  <button type="button" id="skip-btn">Skip</button>
-  <span data-ot-when="status.trialSuccessful==null">(skipping)</span>  
+
+  <div class="input-group">
+    <button class="btn btn-outline-secondary" type="button" id="skip-btn">Skip</button>
+    <input
+      type="text"
+      data-ot-input="answer"
+      class="form-control"
+      data-ot-class="feedback.class"
+      placeholder="type characters from the image above"
+    />
+    <button class="btn btn-outline-primary" type="button" id="submit-btn">Submit</button>
   </div>
+  <span data-ot-when="status.trialSuccessful==null">(skipping)</span>  
 </div>
 
 <div class="overlay get-ready" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>

@@ -40,5 +40,6 @@ progress {
   display: flex;
   flex-flow: column nowrap;
   justify-content: center;
-  align-items: center;  
+  align-items: center;
+  z-index: 5;
 }
