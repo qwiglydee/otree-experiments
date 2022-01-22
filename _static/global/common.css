@@ -36,7 +36,7 @@ progress {
   color: red;
 }
 
-.overlay[data-ot-ready] {
+[ot-ready] {
   display: flex;
   flex-flow: column nowrap;
   justify-content: center;

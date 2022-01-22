@@ -465,7 +465,7 @@ const registry = new Map();
  * Registers a directive class.
  * 
  * The {@link Page} sets up all registered directives on all found elements in html.
- * The elements a searched by provided selector, which is something like `[data-ot-something]` but actually can be anything.
+ * The elements a searched by provided selector, which is something like `[ot-something]` but actually can be anything.
  * 
  * @param {string} selector a css selector for elements
  * @param {class} cls a class derived from {@link DirectiveBase}  
@@ -483,7 +483,7 @@ class DirectiveBase {
   /** 
    * directive name
    * 
-   * like "foo" for `data-ot-foo`
+   * like "foo" for `ot-foo`
    * 
    * should be redefined in derived classes 
    */  
@@ -492,13 +492,13 @@ class DirectiveBase {
   }
 
   /** 
-   * Returns a value from attribute `data-ot-name`.
+   * Returns a value from attribute `ot-name`.
    * 
    * @param {string} [name=this.name] the param to get 
    */
-  param(name) {
-    if (name === undefined) name = this.name; 
-    return this.elem.dataset["ot" + name[0].toUpperCase() + name.slice(1).toLowerCase()];
+  param(attr) {
+    if (attr === undefined) attr = this.name; 
+    return this.elem.getAttribute(`ot-${attr}`)
   }
 
   /**
@@ -586,9 +586,9 @@ class DirectiveBase {
 }
 
 /**
- * Directive `data-ot-ready`
+ * Directive `ot-ready`
  * 
- * It is activated by any configured trigger `data-ot-key="keycode"`, `data-ot-touch`, `data-ot-click`, and triggers {@link Page.event:start}. 
+ * It is activated by any configured trigger `ot-key="keycode"`, `ot-touch`, `ot-click`, and triggers {@link Page.event:start}. 
  * 
  * @hideconstructor
  */
@@ -598,11 +598,10 @@ class otReady extends DirectiveBase {
   }
 
   init() {
-    const dataset = this.elem.dataset;
     this.trigger = {
-      click: "otClick" in dataset,
-      touch: "otTouch" in dataset,
-      key: "otKey" in dataset ? dataset.otKey : false,
+      click: this.elem.hasAttribute("ot-click"),
+      touch: this.elem.hasAttribute("ot-touch"),
+      key: this.elem.hasAttribute("ot-key") ?  this.elem.getAttribute("ot-key"): false,
     };
     this.disabled = false;
   }
@@ -633,10 +632,10 @@ class otReady extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-ready]", otReady);
+registerDirective("[ot-ready]", otReady);
 
 /**
- * Directive `data-ot-display="phaseflag"`
+ * Directive `ot-display="phaseflag"`
  * 
  * It shows/hides an element when {@link Phase} contains matching `display` field.
  * If the phase doesn't contain the field, it is ignored (i.e. phases toggling just `input` do not affect the display). 
@@ -666,7 +665,7 @@ class otDisplay extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-display]", otDisplay);
+registerDirective("[ot-display]", otDisplay);
 
 /**
  * Directive `ot-input` for native inputs: `<input>`, `<select>`, `<textarea>`.
@@ -725,20 +724,20 @@ class otRealInput extends DirectiveBase {
 }
 
 registerDirective(
-  "input[data-ot-input], select[data-ot-input], textarea[data-ot-input]",
+  "input[ot-input], select[ot-input], textarea[ot-input]",
   otRealInput
 );
 
 
 /**
- * Directive `data-ot-input="field"` for custom inputs: any `<div>`, `<span>`, `<button>`, `<kbd>`.
+ * Directive `ot-input` for custom inputs: any `<div>`, `<span>`, `<button>`, `<kbd>`.
  * 
- * The directive should be accompanied with method of triggering `data-ot-
+ * The directive should be accompanied with method of triggering `ot-
  * 
  * It triggers {@link Page.event:response} by a configred trigger:
- * - `data-ot-click` to trigger on click
- * - `data-ot-touch` to trigger on touch
- * - `data-ot-key="keycode" to trigger on keypress
+ * - `ot-click` to trigger on click
+ * - `ot-touch` to trigger on touch
+ * - `ot-key="keycode" to trigger on keypress
  * 
  * The list of available is at MDN: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values  
  * Basically, it is something like 'Enter', 'Space', 'Escape', or 'KeyQ' for "q" key.
@@ -763,11 +762,10 @@ class otCustomInput extends DirectiveBase {
     if (this.inp_value === "true") this.inp_value = true;
     if (this.inp_value === "false") this.inp_value = false; 
 
-    const dataset = this.elem.dataset;
     this.trigger = {
-      click: "otClick" in dataset,
-      touch: "otTouch" in dataset,
-      key: "otKey" in dataset ? dataset.otKey : false,
+      click: this.elem.hasAttribute("ot-click"),
+      touch: this.elem.hasAttribute("ot-touch"),
+      key: this.elem.hasAttribute("ot-key") ?  this.elem.getAttribute("ot-key"): false,
     };
 
     if (this.elem.tagName == "BUTTON") this.trigger.click = true; 
@@ -800,12 +798,12 @@ class otCustomInput extends DirectiveBase {
 }
 
 registerDirective(
-  "div[data-ot-input], span[data-ot-input], button[data-ot-input], kbd[data-ot-input]",
+  "div[ot-input], span[ot-input], button[ot-input], kbd[ot-input]",
   otCustomInput
 );
 
 /**
- * Directive `data-ot-class="reference"`
+ * Directive `ot-class="reference"`
  * 
  * It adds a class with a value from `{@link Page.event:update}`.
  * All other existing lasses are preserved. 
@@ -834,10 +832,10 @@ class otClass extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-class]", otClass);
+registerDirective("[ot-class]", otClass);
 
 /**
- * Directive `data-ot-text="reference"`
+ * Directive `ot-text="reference"`
  * 
  * It inserts text content from {@link Page.event:update}.
  * 
@@ -857,10 +855,10 @@ class otText extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-text]", otText);
+registerDirective("[ot-text]", otText);
 
 /**
- * Directive `data-ot-img="reference"`
+ * Directive `ot-img="reference"`
  * 
  * It inserts image element from {@link Page.event:update} inside its host.
  * The value in the Changes should be an instance of created and pre-loaded Image element. 
@@ -885,10 +883,10 @@ class otImg extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-img]", otImg);
+registerDirective("[ot-img]", otImg);
 
 /**
- * Directives `data-ot-attr-something="reference"`
+ * Directives `ot-attr-something="reference"`
  * 
  * The allowed attributes are: 
  * - `disabled` 
@@ -919,28 +917,28 @@ class otAttrBase extends DirectiveBase {
 const ALLOWED_ATTRIBS = ["disabled", "hidden", "height", "width", "min", "max", "low", "high", "optimum", "value"];
 
 // create subclass for each attr with static property
-// register them as `data-ot-something`
+// register them as `ot-something`
 ALLOWED_ATTRIBS.forEach(attrname => {
   class otAttr extends otAttrBase {
     get name() {
       return attrname;
     }
-  }  registerDirective(`[data-ot-${attrname}]`, otAttr);
+  }  registerDirective(`[ot-${attrname}]`, otAttr);
 });
 
 /**
- * Directive `data-ot-when="var"`, `data-ot-when="var==val", data-ot-when="var===val"`.
+ * Directive `ot-when="var"`, `ot-when="var==val", ot-when="var===val"`.
  *
  * It shows/hides host element on {@link Page.event:update}. 
  * 
  * The `var` is a page var reference like `game.feedback`, the `val` is a primitive json expression 
  * like "true" (boolean), "42" (number), "'foo'" (string). 
  * 
- * For `data-ot-when="var"` element shows when the `var` is defined.
+ * For `ot-when="var"` element shows when the `var` is defined.
  * 
- * For `data-ot-when="var==val"` element shows when the `var` is defined and equal to the val.
+ * For `ot-when="var==val"` element shows when the `var` is defined and equal to the val.
  * 
- * For `data-ot-when="var===val"` element shows when the `var` is defined and strictly equal to the val.
+ * For `ot-when="var===val"` element shows when the `var` is defined and strictly equal to the val.
  * 
  * @hideconstructor
  */
@@ -982,7 +980,7 @@ class otWhen extends DirectiveBase {
   }
 }
 
-registerDirective("[data-ot-when]", otWhen);
+registerDirective("[ot-when]", otWhen);
 
 /** Main page.
  *

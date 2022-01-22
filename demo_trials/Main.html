@@ -9,35 +9,35 @@
 {{ block content }}
 
 <div class="main">
-  <div class="target" data-ot-img="trial.image"></div>
+  <div class="target" ot-img="trial.image"></div>
 </div>
 
 <div>
-  {{ if C.NUM_TRIALS }}<progress data-ot-max="progress.total" data-ot-value="progress.completed"></progress>{{ endif }}
-  <progress data-ot-max="config.trial_timeout" data-ot-value="trial_timer"></progress>    
+  {{ if C.NUM_TRIALS }}<progress ot-max="progress.total" ot-value="progress.completed"></progress>{{ endif }}
+  <progress ot-max="config.trial_timeout" ot-value="trial_timer"></progress>    
 </div>
 
 <div class="bottom">
   <div>
-    Retry <span data-ot-text="progress.retries"></span> /
-    <span data-ot-text="config.max_retries"></span>
+    Retry <span ot-text="progress.retries"></span> /
+    <span ot-text="config.max_retries"></span>
   </div>
 
   <div class="input-group">
     <button class="btn btn-outline-secondary" type="button" id="skip-btn">Skip</button>
     <input
       type="text"
-      data-ot-input
+      ot-input
       class="form-control"
-      data-ot-class="feedback.class"
+      ot-class="feedback.class"
       placeholder="type characters from the image above"
     />
     <button class="btn btn-outline-primary" type="button" id="submit-btn">Submit</button>
   </div>
-  <span data-ot-when="status.trialSuccessful==null">(skipping)</span>  
+  <span ot-when="status.trialSuccessful==null">(skipping)</span>  
 </div>
 
-<div class="overlay get-ready" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
+<div class="overlay get-ready" ot-ready ot-key="Space" ot-touch ot-click>
   {{ include C.INSTRUCTIONS }}
   <p>Press <kbd>Space</kbd> or click the message to start.</p>
 </div>

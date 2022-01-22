@@ -9,36 +9,36 @@
 {{ block content }}
 
 <div class="main">
-  <div class="icon-char aim" data-ot-display="aim">⌖</div>
+  <div class="icon-char aim" ot-display="aim">⌖</div>
   <div
     class="prime"
-    data-ot-display="prime"
-    data-ot-text="trial.prime"
-    data-ot-class="trial.prime_category"
+    ot-display="prime"
+    ot-text="trial.prime"
+    ot-class="trial.prime_category"
   ></div>
-  <div class="target" data-ot-display="target" data-ot-img="trial.target"></div>
+  <div class="target" ot-display="target" ot-img="trial.target"></div>
 </div>
 
 
-<progress data-ot-max="progress.total" data-ot-value="progress.completed"></progress>
+<progress ot-max="progress.total" ot-value="progress.completed"></progress>
 
 <div class="bottom">
-  <span class="feedback icon-char success" data-ot-when="feedback.correct==true">✔</span>
-  <span class="feedback icon-char failure" data-ot-when="feedback.correct==false">✘</span>
-  <span data-ot-when="status.trialSuccessful==null">(skipping)</span>
+  <span class="feedback icon-char success" ot-when="feedback.correct==true">✔</span>
+  <span class="feedback icon-char failure" ot-when="feedback.correct==false">✘</span>
+  <span ot-when="status.trialSuccessful==null">(skipping)</span>
 </div>
 
-<div class="overlay left-side" data-ot-touch data-ot-click data-ot-input value="negative"></div>
+<div class="overlay left-side" ot-touch ot-click ot-input value="negative"></div>
 
-<div class="overlay right-side" data-ot-touch data-ot-click data-ot-input value="positive"></div>
+<div class="overlay right-side" ot-touch ot-click ot-input value="positive"></div>
 
-<div class="overlay get-ready" data-ot-ready data-ot-key="Space" data-ot-touch data-ot-click>
+<div class="overlay get-ready" ot-ready ot-key="Space" ot-touch ot-click>
   {{ include C.INSTRUCTIONS }}
   <p>
-    Press <kbd data-ot-input value="negative" data-ot-key="KeyF">F</kbd> or touch/click left side for
+    Press <kbd ot-input value="negative" ot-key="KeyF">F</kbd> or touch/click left side for
     <u>negative</u> emoji.
     <br />
-    Press <kbd data-ot-input value="positive" data-ot-key="KeyJ">J</kbd> or touch/click right side for
+    Press <kbd ot-input value="positive" ot-key="KeyJ">J</kbd> or touch/click right side for
     <u>positive</u> emoji.
   </p>
   <p>Press <kbd>Space</kbd> or click the message to start.</p>
