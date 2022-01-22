@@ -1,4 +1,4 @@
-from time import time
+from time import time as now
 
 def make_response(player, data):
   messages = []
@@ -9,7 +9,7 @@ def make_response(player, data):
 
   if len(messages) == 1 :
     messages = messages[0]
-  
+
   if player:
     return { player.id_in_group: messages }
   else:
@@ -32,7 +32,7 @@ def live_method(*, on_load, on_input, on_reload=None):
       return make_response(player, data)
 
     if msg_type == 'input':
-      data = on_input(player, message.get('input'), message.get('time'), message.get('timeout'))
+      data = on_input(player, message.get('input'), message.get('response_time'), message.get('timeout'))
       return make_response(player, data)
 
     if msg_type == 'reload':
@@ -55,9 +55,9 @@ def live_trials(*, get_trial, encode_trial, get_progress, on_load, on_input, on_
 
   def trials_on_load(player):
     params = player.session.params
-    num_iterations = params['num_iterations']
+    num_trials = params['num_trials']
 
-    if num_iterations and player.cur_iteration >= num_iterations:
+    if num_trials and player.cur_iteration >= num_trials:
       raise RuntimeError("Maximum iterations exhausted")
 
     curtrial = get_trial(player)
@@ -65,37 +65,39 @@ def live_trials(*, get_trial, encode_trial, get_progress, on_load, on_input, on_
         raise RuntimeError("Overstepping uncompleted trial")
 
     resp = on_load(player)
-    curtrial = resp['trial']
-    resp['trial'] = encode_trial(resp['trial'])
-    resp['progress'] = get_progress(player, curtrial) 
+    trial = resp['trial']
+    trial.timestamp_loaded = now()
+    resp['trial'] = encode_trial(trial)
+    resp['progress'] = get_progress(player, trial)
     
     return resp
 
   def trials_on_input(player, input, time, timeout):
     params = player.session.params
     max_retries = params['max_retries']
-    num_iterations = params['num_iterations']
+    num_trials = params['num_trials']
 
-    curtrial = get_trial(player)
-    if curtrial is None:
+    trial = get_trial(player)
+    if trial is None:
         raise RuntimeError("Responding witout trial")
 
-    if curtrial.response is not None and not max_retries:
+    if trial.response is not None and not max_retries:
         raise RuntimeError("retrying not allowed")
 
-    if curtrial.response is not None and curtrial.retries >= max_retries:
+    if trial.response is not None and trial.retries >= max_retries:
         raise RuntimeError("max attempts exhausted")
 
-    resp = on_input(player, curtrial, input, time, timeout)
+    resp = on_input(player, trial, input, time, timeout)
 
-    if curtrial.is_completed:
+    if trial.is_completed:
+      trial.timestamp_completed = now()
       resp['status'] = dict(
-          trial_completed=True,
-          trial_succesful=curtrial.is_correct,
-          game_over=player.cur_iteration == num_iterations,
+          trialCompleted=True,
+          trialSuccessful=trial.is_correct,
+          gameOver=player.cur_iteration == num_trials,
       )
 
-    resp['progress'] = get_progress(player, curtrial)
+    resp['progress'] = get_progress(player, trial)
       
     return resp 
 

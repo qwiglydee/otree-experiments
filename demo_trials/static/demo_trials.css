@@ -1,3 +1,11 @@
 .main {
   height: 50%; /* fixed height */
 }
+
+.get-ready {
+  background: white;
+}
+
+progress {
+  width: 100%;
+}

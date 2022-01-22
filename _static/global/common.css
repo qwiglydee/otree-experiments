@@ -23,10 +23,14 @@ progress {
   width: 100%;
 }
 
-.feedback {
-  height: 2em;
-  line-height: 100%;   
+.feedback.icon-char {
+  height: 32px;
+  font-size: 32px;
+  line-height: 100%;
+  position: relative;
+  left: -32px;   
 }
+
 
 .aim {
   font-family: Roboto, monospace;

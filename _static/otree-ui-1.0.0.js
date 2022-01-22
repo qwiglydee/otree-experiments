@@ -551,7 +551,7 @@ class Directive {
   }
   
   onReset(event, vars) {
-    if (vars.some(topname => includes(topname, this.ref))) {
+    if (vars == "*" || vars.some(topname => includes(topname, this.ref))) {
       this.reset(vars);
     }
   }
@@ -1000,7 +1000,6 @@ class Page {
    */
   constructor(body) {
     this.body = body || document.body;
-    this.form = body.querySelector('form'); 
     this.phase = {};
     this.init();
   }
@@ -1016,6 +1015,7 @@ class Page {
     });
 
     this.resetPhase();
+    this.emitReset();
   }
 
   /**
@@ -1095,7 +1095,12 @@ class Page {
    * @fires Page.reset
    */
   emitReset(vars) {
-    this.emitEvent("ot.reset", vars || ['game']);
+    if (vars === undefined) {
+      this.emitEvent("ot.reset", "*");
+    } else {
+      if (!Array.isArray(vars)) vars = [vars];
+      this.emitEvent("ot.reset", vars);
+    }
   }
 
   /**
@@ -1124,8 +1129,8 @@ class Page {
    *
    * @fires Schedule.timeout
    */
-  emitTimeout() {
-    this.emitEvent("ot.timeout");
+  emitTimeout(time) {
+    this.emitEvent("ot.timeout", time);
   }
 
   /**
@@ -1192,7 +1197,7 @@ class Page {
   }
 
   submit() {
-    this.form.submit();
+    this.documentQuery("form").submit();
   }
 }
 
@@ -1221,7 +1226,6 @@ class Page {
  * @property {string} type `ot.reset`
  * @property {string[]} detail list of top-level vars
  */
-
 
 /**
  * Indicates that page variables has changed.
@@ -1277,11 +1281,10 @@ class Game {
   constructor(page) {
     this.page = page;
     this.config = {};
-    this.state = {};
+
+    this.trial = {};
     this.status = {};
-    this.error = undefined;
-    this.result = undefined;
-    this.iteration = undefined;
+    this.feedback = undefined;
   }
 
   /**
@@ -1292,25 +1295,44 @@ class Game {
    * @param {object} config
    * @fires Page.update
    */
-  setup(config) {
+  setConfig(config) {
     this.config = config;
     this.page.emitUpdate({ config });
   }
 
   /**
-   * Resets game to initial state.
+   * Resets all trial-related data and game state.
    *
-   * Sets `state`, `status`, `error`, `result` to empty objects or nulls.
+   * Sets `trial`, `status`, `feedback` to empty objects or nulls.
    * Updates page with all the affected objects.
+   *
+   * Calls loadTrial hook.
    *
    * @fires Page.reset
    */
-  reset() {
-    this.state = {};
+  resetTrial() {
+    this.trial = {};
     this.status = {};
-    this.error = undefined;
-    this.result = undefined;
-    this.page.emitReset(["game", "status", "error", "result"]);
+    this.feedback = undefined;
+    this.page.emitReset(["trial", "status", "feedback"]);
+    this.loadTrial();
+  }
+
+  /**
+   * Sets initial game state.
+   *
+   * Sets initial trial data and updates page.
+   * Calls startTrial hook after page update.
+   *
+   * @param {Object} trial
+   * @fires Page.update
+   */
+  async setTrial(trial) {
+    this.trial = trial;
+
+    this.page.emitUpdate({ trial });
+    await this.page.waitEvent("ot.update"); // make sure the hook is called after page update
+    this.startTrial(this.trial);
   }
 
   /**
@@ -1318,199 +1340,133 @@ class Game {
    *
    * Applies given changes to game state, using {@link Changes}
    *
-   * Signals them to the page, with all the field prefixed with 'game'.
-   *
-   * Example:
-   *
-   *   game.updateState({'foo': "Foo", 'bar': "Bar"})
-   *   // is equiv:
-   *   game.state.foo = "Foo";
-   *   game.state.bar = "Bar";
-   *   page.update({ 'game.foo': "Foo", 'game.bar': "Bar" });
-   *
    * @param {Object} changes the changes to apply
    * @fires Page.update
    */
-  updateState(changes) {
-    new Changes(changes).patch(this.state);
-    this.page.emitUpdate(new Changes(changes, "game"));
+  updateTrial(changes) {
+    new Changes(changes).patch(this.trial);
+    this.page.emitUpdate(new Changes(changes, "trial"));
   }
 
   /**
    * Sets game status.
    *
+   * Provided flags are updated in game.status
+   *
    * @param {Object} status
+   * @fires Page.update
    * @fires Game.status
    */
-  setStatus(status) {
-    this.status = status;
-    this.page.emitEvent("ot.status", status);
-    this.page.emitUpdate({ status });
+  updateStatus(changes) {
+    let status = this.status;
+    Object.assign(status, changes);
+    this.page.emitUpdate({ status: changes });
+    this.page.emitEvent("ot.status", changes);
+    if (changes.trialStarted) {
+      this.page.emitEvent("ot.started");
+    }
+    if (changes.trialCompleted) {
+      this.page.emitEvent("ot.completed");
+    }
+    if (changes.gameOver) {
+      this.page.emitEvent("ot.gameover");
+    }
   }
 
   /**
-   * Sets error with a code and a message
+   * Sets feedback
    *
-   * Updates 'error' page variables.
+   * Calls hook onFeedback(feedback)
    *
    * @param {string} code
    * @param {string} message
-   * @fires Game.error
    * @fires Page.update
    */
-  setError(code, message) {
-    this.error = { code, message };
-    this.page.emitEvent("ot.error", this.error);
-    this.page.emitUpdate({ error: this.error });
+  setFeedback(feedback) {
+    this.feedback = feedback;
+    this.page.emitUpdate({ feedback });
+    this.onFeedback(this.feedback);
   }
 
   /**
-   * Clears error.
+   * Clears feedback.
    *
-   * Resets 'error' page variables.
-   *
-   * @fires Game.error
    * @fires Page.reset
    */
-  clearError() {
-    this.error = undefined;
-    this.page.emitEvent("ot.error", null);
-    this.page.emitReset("error");
+  clearFeedback() {
+    this.feedback = undefined;
+    this.page.emitReset("feedback");
   }
 
   /**
-   * Signals game start.
+   * Sets progress
    *
-   * @fires Game.start
-   */
-  start() {
-    this.page.emitEvent("ot.started");
-  }
-
-  /**
-   * Signals game completion.
+   * Calls hook onProgress(progress)
    *
-   * @param {object} result some result data.
-   * @fires Game.complete
+   * @param {string} code
+   * @param {string} message
+   * @fires Page.update
    */
-  complete(result) {
-    this.result = result;
-    this.page.emitEvent("ot.completed", result);
-    this.page.emitUpdate({ result });
+  setProgress(progress) {
+    this.progress = progress;
+    this.page.emitUpdate({ progress });
+    this.onProgress(this.progress);
   }
 
   /**
-   * Plays a game (single round)
+   * Clears progress.
    *
-   * @returns {Promise} resolving with result when game completes
+   * @fires Page.reset
    */
-  async play() {
-    this.reset();
-    this.start();
-    let result = (await this.page.waitEvent("ot.completed")).detail;
-    return result;
+  resetProgress() {
+    this.progress = undefined;
+    this.page.emitReset("progress");
   }
 
-
+  /**
+   * A hook called to retrieve initial Trial data.
+   * Shuld call setTria l
+   */
+  loadTrial() {
+    throw new Error("Implement the `loadTrial` hook");
+  }
 
   /**
-   * Runs multiple game rounds, or an infinite loop.
-   * Each iteration calls `this.start({ iteration: i })` and waits for `ot.completed`
+   * A hook called after trial loaded.
    *
-   * The iterator expects final result (reported by `game.complete`) to contain:
-   * - {bool} `success`: indicating to count solved/failed iterations
-   * - {bool} `terminate`: signalling that the loop should be terminated
+   * Should start all game process.
    *
-   * @param {number|null} num_rounds number of rounds to play or null for infinite
-   * @param {number} trial_pause pause between rounds in ms
+   * @param {Object} trial reference to game.trial
    */
-   async playIterations(num_rounds, trial_pause) {
-    let result;
-
-    const progress = {
-      total: num_rounds,
-      current: 0,
-      completed: 0,
-      solved: 0,
-      failed: 0,
-    };
-
-    // continue until num_rounds or _i is deleted
-    const cont = num_rounds ? (i) => i && i <= num_rounds : (i) => i;
-
-    for (this.iteration = 1; cont(this.iteration); this.iteration++) {
-      progress.current = this.iteration;
-
-      this.page.emitUpdate({ progress });
-
-      result = await this.play();
-
-      progress.completed += 1;
-      progress.solved += result.success === true;
-      progress.failed += result.success === false;
-
-      this.page.emitUpdate({ progress });
-
-      await sleep(trial_pause);
-    }
-
-    return progress;
+  startTrial(trial) {
+    throw new Error("Implement the `startTrial` hook");
   }
 
   /**
-   * Cancels iterations loop.
-   */
-  stopIterations() {
-    delete this.iteration;
-  }
-
-  /**
-   * Sets handler for {@link Game.event:started}
+   * A hook called when setFeedback
    *
-   * @type {Game~onStart}
+   * @param {Object} feedback reference to game.feedback
    */
-  set onStart(fn) {
-    this.page.onEvent("ot.started", (ev) => fn(ev.detail));
-  }
+  onFeedback(feedback) {}
 
   /**
-   * Sets handler for {@link Game.status}
+   * A hook called after setProgress
    *
-   * @type {Game~onStatus}
+   * @param {Object} progress reference to game.progress
    */
-  set onStatus(fn) {
-    this.page.onEvent("ot.status", (ev) => fn(ev.detail));
-  }
+  onProgress(progress) {}
 
   /**
-   * Sets handler for {@link Game.error}
+   * A handler for {@link Page.ready}
    *
-   * @type {Game~onError}
+   * @type {Game~onReady}
    */
-  set onError(fn) {
-    this.page.onEvent("ot.error", (ev) => fn(ev.detail));
+  set onReady(fn) {
+    this.page.onEvent("ot.ready", (ev) => fn());
   }
 
   /**
-   * Sets handler for {@link Game.completed}
-   *
-   * @type {Game~onCompleted}
-   */
-  set onComplete(fn) {
-    this.page.onEvent("ot.completed", (ev) => fn(ev.detail));
-  }
-
-  /**
-   * Sets handler for {@link Schedule.timeout}
-   *
-   * @type {Game~onTimeout}
-   */
-  set onTimeout(fn) {
-    this.page.onEvent("ot.timeout", (ev) => fn(ev.detail));
-  }
-
-  /**
-   * Sets handler for {@link Page.input}
+   * A handler for {@link Page.input}
    *
    * @type {Game~onInput}
    */
@@ -1519,15 +1475,54 @@ class Game {
   }
 
   /**
-   * Sets handler for {@link Page.phase}
-   * 
-   * Does not trigger on resetting and temporaty freezing/unfreezing/switching. 
+   * A handler for {@link Page.phase}
+   *
+   * Does not get triggered on resetting and temporaty freezing/unfreezing/switching.
+   *
+   * @type {Game~onPhase}
    */
   set onPhase(fn) {
     this.page.onEvent("ot.phase", (ev) => {
-      if( ev.detail._resetting || ev.detail._freezing || ev.detail._switching ) return;
+      if (ev.detail._resetting || ev.detail._freezing || ev.detail._switching) return;
       fn(ev.detail);
     });
+  }
+
+  /**
+   * A handler for {@link Schedule.timeout}
+   *
+   * @type {Game~onTimeout}
+   */
+  set onTimeout(fn) {
+    this.page.onEvent("ot.timeout", (ev) => fn(ev.detail));
+  }
+
+  /**
+   * A handler for {@link Game.status}
+   *
+   * @type {Game~onStatus}
+   */
+  set onStatus(fn) {
+    this.page.onEvent("ot.status", (ev) => fn(this.status, ev.detail));
+  }
+
+  /**
+   * Plays a game trial.
+   *
+   * It resets trial and waits for status update with trial_completed
+   *
+   * @returns {Promise} resolving with result when game completes
+   */
+  async playTrial() {
+    this.resetTrial();
+    await this.page.waitEvent("ot.completed");
+  }
+
+  async playIterations() {
+    while (!this.status.gameOver) {
+      await this.playTrial();
+      await sleep(this.config.post_trial_pause);
+    }
   }
 }
 
@@ -1658,7 +1653,7 @@ class Schedule {
         `timeout`,
         () => {
           this.stop();
-          this.page.emitTimeout();
+          this.page.emitTimeout(this.timeout);
         },
         this.timeout
       );

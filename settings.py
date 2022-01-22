@@ -3,13 +3,13 @@ from os import environ
 SESSION_CONFIGS = [
     dict(
         name="demo_stimuli",
-        display_name="demo stimulus/response real time",
+        display_name="stimulus/response real time page",
         app_sequence=['demo_stimuli'],
         num_demo_participants=1,
     ),
     dict(
         name="demo_trials",
-        display_name="demo trial/answer live page",
+        display_name="question/answer live page",
         app_sequence=['demo_trials'],
         num_demo_participants=1,
     ),

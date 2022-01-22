@@ -19,19 +19,19 @@ class C(BaseConstants):
 
     CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     LENGTH = 3
-    TEXT_SIZE = 32
-    TEXT_PADDING = 32
+    TEXT_SIZE = 64
+    TEXT_PADDING = 64
     TEXT_FONT = Path(__file__).parent / "assets" / "FreeSansBold.otf"
 
-    GAME_TIMEOUT = 300  # seconds
-    TRIAL_PAUSE = 1  # seconds
+    GAME_TIMEOUT = 60  # seconds
+    POSTTRIAL_PAUSE = 1  # seconds
 
     # default values reconfigurable from session config:
 
-    NUM_ITERATIONS = None  # infinite
+    NUM_TRIALS = None  # None for infinite
     MAX_RETRIES = 3
     TRIAL_TIMEOUT = 10  # seconds
-    NOGO_ANSWER = None
+    NOGO_RESPONSE = None
 
 
 class Subsession(BaseSubsession):
@@ -43,10 +43,11 @@ def creating_session(subsession: Subsession):
 
     session = subsession.session
     defaults = dict(
-        num_iterations=C.NUM_ITERATIONS,
+        num_trials=C.NUM_TRIALS,
         max_retries=C.MAX_RETRIES,
         trial_timeout=C.TRIAL_TIMEOUT,
-        nogo_answer=C.NOGO_ANSWER,
+        post_trial_pause=C.POSTTRIAL_PAUSE,
+        nogo_response=C.NOGO_RESPONSE,
     )
     session.params = {}
     for param in defaults:
@@ -70,15 +71,12 @@ class Player(BasePlayer):
     # number of trials without response (timeouted)
     num_skipped = models.IntegerField(initial=0)
 
-    # field to pass data from page
-    results_data = models.LongStringField(blank=True)
-
 
 class Trial(ExtraModel):
     """A record of single question/answer iteration"""
 
     timestamp_loaded = models.FloatField()
-    timestamp_responded = models.FloatField()
+    timestamp_completed = models.FloatField()
 
     player = models.Link(Player)
     round = models.IntegerField(initial=0)
@@ -93,8 +91,8 @@ class Trial(ExtraModel):
     response = models.StringField()
     is_correct = models.BooleanField()
 
-    retries = models.IntegerField(initial=0)
-    reaction_time = models.IntegerField()
+    retries = models.IntegerField(initial=1)
+    response_time = models.IntegerField()
     is_timeouted = models.BooleanField()
 
 
@@ -139,7 +137,7 @@ def validate_trial(trial, response: str):
 
 def get_progress(player, trial=None):
     return dict(
-        total=C.NUM_ITERATIONS,
+        total=C.NUM_TRIALS,
         current=player.cur_iteration,
         completed=player.num_trials,
         solved=player.num_solved,
@@ -165,16 +163,16 @@ def on_load(player):
 
 
 def on_input(player, trial, input, response_time, timeout):
-    print("handing input:", input, "timeout:", timeout)
+    print("input:", input, "time:", response_time, "timeout:", timeout)
     params = player.session.params
     max_retries = params["max_retries"]
-    nogo_answer = params["nogo_answer"] 
+    nogo_response = params["nogo_response"] 
 
-    trial.reaction_time = response_time
+    trial.response_time = response_time
 
     if timeout:
         trial.is_timeouted = True
-        input = nogo_answer
+        input = nogo_response
 
     if input is not None:
         validate_trial(trial, input)
@@ -210,10 +208,10 @@ class Main(Page):
         params = player.session.params
         return dict(
             config=dict(
-                num_iterations=params["num_iterations"],
+                num_trials=params["num_trials"],
                 max_retries=params["max_retries"],
-                trial_timeout=C.TRIAL_TIMEOUT * 1000,
-                trial_pause=C.TRIAL_PAUSE * 1000,
+                trial_timeout=params['trial_timeout'] * 1000,
+                post_trial_pause=params['post_trial_pause'] * 1000
             )
         )
 
@@ -252,57 +250,54 @@ class Results(Page):
 page_sequence = [Intro, Main, Results]
 
 
-# def custom_export(players):
-#     yield [
-#         # player fields
-#         "participant_code",
-#         "is_dropout",
-#         "session",
-#         "round",
-#         "is_practice",
-#         "player",
-#         # trial fields
-#         "iteration",
-#         "prime",
-#         "prime_category",
-#         "target",
-#         "target_category",
-#         "is_congruent",
-#         "response",
-#         "response_correct",
-#         "reaction_time",
-#         "is_timeout",
-#     ]
-#     for player in players:
-#         participant = player.participant
-#         session = player.session
-#         subsession = player.subsession
+def custom_export(players):
+    yield [
+        # player fields
+        "participant_code",
+        "is_dropout",
+        "session",
+        "round",
+        "is_practice",
+        "player",
+        # trial fields
+        "timestamp_loaded",
+        "timestamp_responed",
+        "iteration",
+        "text",
+        "response",
+        "response_correct",
+        "retries",
+        "response_time",
+        "is_timeout",
+    ]
+    for player in players:
+        participant = player.participant
+        session = player.session
+        subsession = player.subsession
 
-#         player_fields = [
-#             participant.code,
-#             participant.is_dropout if 'is_dropout' in participant.vars else None,
-#             session.code,
-#             subsession.round_number,
-#             subsession.is_practice,
-#             player.id,
-#         ]
+        player_fields = [
+            participant.code,
+            participant.is_dropout if 'is_dropout' in participant.vars else None,
+            session.code,
+            subsession.round_number,
+            subsession.is_practice,
+            player.id,
+        ]
 
-#         trials = Trial.filter(player=player)
+        trials = Trial.filter(player=player)
 
-#         if len(trials) == 0:
-#             # yield a row for players even without trials
-#             yield player_fields
+        # yield a row for players even without trials
+        yield player_fields
 
-#         for trial in trials:
-#             yield player_fields + [
-#                 trial.iteration,
-#                 trial.prime,
-#                 trial.prime_category,
-#                 trial.target,
-#                 trial.target_category,
-#                 trial.is_congruent,
-#                 trial.response,
-#                 trial.is_correct,
-#                 trial.reaction_time,
-#                 trial.is_timeouted
-#             ]
+        for trial in trials:
+            yield player_fields + [
+                round(trial.timestamp_loaded, 3),
+                round(trial.timestamp_completed, 3),
+                trial.iteration,
+                trial.text,
+                trial.response,
+                trial.is_correct,
+                trial.retries,
+                trial.response_time,
+                trial.is_timeouted
+            ]

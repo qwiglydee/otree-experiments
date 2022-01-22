@@ -1,86 +1,119 @@
 let config = js_vars.config;
 
+function liveRecv(data) {
+  console.debug("liveRecv", data);
+
+  if (!Array.isArray(data)) {
+    data = [data];
+  }
+
+  data.forEach(async (datum) => {
+    let type = datum.type;
+    delete datum.type;
+    switch (type) {
+      case "trial":
+        datum.image = await otree.dom.loadImage(datum.image);
+        game.setTrial(datum);
+        break;
+      case "status":
+        game.updateStatus(datum);
+        break;
+      case "update":
+        game.updateTrial(datum.changes);
+        break;
+      case "feedback":
+        game.setFeedback(datum);
+        break;
+      case "progress":
+        game.setProgress(datum);
+    }
+  });
+}
+
 async function main() {
   let $input = document.querySelector('[data-ot-input="answer"]');
   let $skipbtn = document.querySelector("#skip-btn");
+  let trial_time0, trial_time, trial_timer;
 
   schedule.setup({
-    timeout: config.trial_timeout
+    timeout: config.trial_timeout,
   });
 
-  game.setup(config);
+  game.setConfig(config);
 
-  game.onStart = function() {
-    console.debug("start");
-    // FIXME: should be on ot.reset
-    // $input.value = "";  
+  game.loadTrial = function () {
+    console.debug("loading");
+    liveSend({ type: "load" });
+  };
 
-    liveSend({ type: 'load' });
-  }
-
-  game.onLiveTrial = async function(trial) {
-    console.debug("trial:", trial);
-    trial.image = await otree.dom.loadImage(trial.image);
-    game.updateState(trial);
+  game.startTrial = function (trial) {
+    console.debug("starting:", trial);
+    $input.value = ""; // FIXME: should be handled by ot-input
     schedule.start();
-    page.togglePhase({ input: true });
     otree.measurement.begin();
-  }
+    page.togglePhase({ input: true });
+    game.updateStatus({ trialStarted: true });
+  };
 
-  game.onInput = function(input) {
+  game.onPhase = function (phase) {
+    if (phase.input) {
+      $input.focus();
+    }
+  };
+
+  game.onInput = function (input) {
     console.debug("input:", input);
- 
     page.freezeInputs();
-    let reaction_time = otree.measurement.end();
+    let response_time = otree.measurement.end();
+    liveSend({ type: "input", input: input.answer, response_time });
+  };
 
-    liveSend({ type: 'input', input: input.answer, reaction_time });
-  }
-
-  game.onTimeout = function() {
+  game.onTimeout = function () {
     console.debug("timeout");
     page.freezeInputs();
+    liveSend({ type: "input", timeout: true });
+  };
 
-    liveSend({ type: 'input', timeout: true });
-  }
-
-  game.onLiveFeedback = function(feedback) {
+  game.onFeedback = function (feedback) {
     console.debug("feedback", feedback);
-    $input.value = feedback.input; // replace with normalized value
-
-    page.emitUpdate({ feedback }); // display feedback 
-
-    if (!feedback.final) page.unfreezeInputs();
-  }
-  
-  game.onLiveStatus = function(status) {
-    console.debug("status", status);
-    status.trial_skipped = status.trial_completed && status.trial_succesful === null;
-    game.setStatus(status);
-    if (status.trial_completed) {
-      game.complete();
+    if (feedback.input) {
+      // replace with normalized value
+      $input.value = feedback.input;
     }
-  }
 
-  game.onLiveProgress = function(progress) {
-    page.emitUpdate({ progress });
-  }
+    // convert to bootstrap css classes
+    if (feedback.correct === true) page.emitUpdate({ "feedback.class": "is-valid" });
+    if (feedback.correct === false) page.emitUpdate({ "feedback.class": "is-invalid" });
 
-  $skipbtn.onclick = function() {
-    liveSend({ type: 'input', input: null });    
-  }
+    // continue inputs
+    if (!feedback.final) page.unfreezeInputs();
+  };
 
-  console.debug("loaded");
+  game.onStatus = function (status) {
+    console.debug("status", status);
+    if (status.trialStarted && !trial_timer) {
+      trial_time0 = Date.now();
+      trial_timer = setInterval(function () {
+        trial_time = Date.now();
+        page.emitUpdate({ trial_timer: trial_time - trial_time0 });
+      }, 100);
+    }
 
-  page.emitReset(["game", "status", "error", "result", "feedback"]); // FIXME: should be on page/game initialization somehow
+    if (status.trialCompleted && trial_timer) {
+      clearInterval(trial_timer);
+      trial_timer = null;
+    }
+  };
+
+  $skipbtn.onclick = function () {
+    $input.value="";
+    game.clearFeedback();
+    liveSend({ type: "input", input: null });
+  };
 
   await page.waitEvent("ot.ready");
-  console.debug("ready");
 
-  while(!game.status.game_over) {
-    console.debug("playing");
-    await game.play();
-    await otree.timers.sleep(config.trial_pause);
-  }
+  await game.playIterations();
 
-  page.submit();
+  document.querySelector("#form").submit();
 }

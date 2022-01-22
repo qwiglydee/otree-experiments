@@ -2,7 +2,7 @@ let config = js_vars.config;
 let trials = [];
 let results = [];
 
-// make mseconds
+// make mseconds, FIXME: do it on back
 config.TRIAL_PAUSE *= 1000;
 config.TRIAL_TIMEOUT *= 1000; 
 
@@ -72,12 +72,14 @@ async function main() {
     game.complete({ response, reaction, success, timeout: true });
   }
 
+  // FIXME: avoid result
   game.onComplete = function(result) {
     console.debug("result:", result);
 
     trial = trials[game.iteration];
     results.push({ i: game.iteration, ...result });
   }
+
 
   page.form.onsubmit = function() {
     saveData();

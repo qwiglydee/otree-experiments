@@ -21,7 +21,6 @@ html, body, .otree-body, form { height: 100%; }
   display: flex;
   flex-flow: column nowrap;
   justify-content: center;
-  align-items: center;
 }
 
 .overlay {
@@ -38,4 +37,20 @@ html, body, .otree-body, form { height: 100%; }
 
 .overlay.right-side {
   left: 50%;
+}
+
+.main {
+  height: 50vh;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+} 
+
+.bottom {
+  height: 25vh;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
 }
