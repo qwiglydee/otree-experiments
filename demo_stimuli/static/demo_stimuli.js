@@ -62,14 +62,13 @@ async function main() {
     }
   }
 
-  game.onInput = function(inp) {
+  game.onInput = function(name, value) {
     page.freezeInputs();
     progress.retries ++;
 
-    let input = inp.response;
     let rt = otree.measurement.begin();
 
-    validateInput(input);
+    validateInput(value);
 
     if (config.max_retries && progress.retries < config.max_retries && !game.feedback.correct) {
       // continue
@@ -77,22 +76,22 @@ async function main() {
       return;
     } else {
       schedule.stop();
-      completeTrial(input, rt, progress.retries);
+      completeTrial(value, rt, progress.retries);
     }
   }
 
   game.onTimeout = function() {
     page.freezeInputs();
 
-    let input = null;
+    let value = null;
     if (config.nogo_response) {
-      input = config.nogo_response;
+      value = config.nogo_response;
     }
 
-    validateInput(input);
+    validateInput(value);
 
     schedule.stop();
-    completeTrial(input, null, progress.retries);
+    completeTrial(value, null, progress.retries);
   }
 
   function validateInput(input) {

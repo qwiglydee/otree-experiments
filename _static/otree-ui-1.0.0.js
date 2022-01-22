@@ -468,7 +468,7 @@ const registry = new Map();
  * The elements a searched by provided selector, which is something like `[data-ot-something]` but actually can be anything.
  * 
  * @param {string} selector a css selector for elements
- * @param {class} cls a class derived from {@link Directive}  
+ * @param {class} cls a class derived from {@link DirectiveBase}  
  */
 function registerDirective(selector, cls) {
   registry.set(selector, cls);
@@ -479,7 +479,7 @@ function registerDirective(selector, cls) {
  * 
  * Used by all built-in directives and can be used to create custom directives.
  */
-class Directive {
+class DirectiveBase {
   /** 
    * directive name
    * 
@@ -592,7 +592,7 @@ class Directive {
  * 
  * @hideconstructor
  */
-class otReady extends Directive {
+class otReady extends DirectiveBase {
   get name() {
     return "ready";
   }
@@ -643,7 +643,7 @@ registerDirective("[data-ot-ready]", otReady);
  * 
  * @hideconstructor
  */
-class otDisplay extends Directive {
+class otDisplay extends DirectiveBase {
   get name() {
     return "display";
   }
@@ -669,7 +669,7 @@ class otDisplay extends Directive {
 registerDirective("[data-ot-display]", otDisplay);
 
 /**
- * Directive `data-ot-input="field"` for real inputs: `<input>`, `<select>`, `<textarea>`.
+ * Directive `ot-input` for native inputs: `<input>`, `<select>`, `<textarea>`.
  * 
  * It triggers {@link Page.event:response} when value of the input changes.
  * For text inputs it triggers when `Enter` pressed.
@@ -678,20 +678,23 @@ registerDirective("[data-ot-display]", otDisplay);
  * 
  * @hideconstructor
  */
-class otRealInput extends Directive {
+class otRealInput extends DirectiveBase {
   get name() {
     return "input";
   }
 
   init() {
-    this.ref = this.param();
-    validate(this.ref);
   }
 
   setup() {
+    this.onEvent("ot.reset", this.onReset);
     this.onEvent("ot.phase", this.onPhase);
     this.onEvent("change", this.onChange, this.elem);
     if (isTextInput(this.elem)) this.onEvent("keydown", this.onKey, this.elem);
+  }
+
+  onReset(event, vars) {
+    this.elem.value=null;
   }
 
   onPhase(event, phase) {
@@ -702,7 +705,7 @@ class otRealInput extends Directive {
     let value = this.elem.value;
     if (value === "true") value = true;
     if (value === "false") value = false;
-    this.page.emitInput({ [this.ref]: value });
+    this.page.emitInput(this.elem.name, value);
   }
 
   onKey(event) {
@@ -744,22 +747,21 @@ registerDirective(
  * 
  * @hideconstructor
  */
-class otCustomInput extends Directive {
+class otCustomInput extends DirectiveBase {
   get name() {
     return "input";
   }
 
   init() {
-    const param = this.param();
-    const match = param.match(/^([\w.]+)(=(.+))$/);
-    if (!match) throw new Error(`Invalid expression for input: ${param}`);
+    this.inp_name = this.elem.getAttribute('name');
+    this.inp_value = this.elem.getAttribute('value');
 
-    this.ref = match[1];
-    validate(this.ref);
-    
-    this.val = match[3];
-    if (this.val === "true") this.val = true;
-    if (this.val === "false") this.val = false; 
+    if (this.inp_value === undefined) {
+      throw new Error("Missing value attribute for ot-input");
+    }
+
+    if (this.inp_value === "true") this.inp_value = true;
+    if (this.inp_value === "false") this.inp_value = false; 
 
     const dataset = this.elem.dataset;
     this.trigger = {
@@ -786,14 +788,14 @@ class otCustomInput extends Directive {
   onClick(event) {
     if (isDisabled(this.elem)) return;
     event.preventDefault();
-    this.page.emitInput({ [this.ref]: this.val });  
+    this.page.emitInput(this.inp_name, this.inp_value);  
   }
 
   onKey(event) {
     if (isDisabled(this.elem)) return;
     if (event.code != this.trigger.key) return;
     event.preventDefault();
-    this.page.emitInput({ [this.ref]: this.val });  
+    this.page.emitInput(this.inp_name, this.inp_value);  
   }
 }
 
@@ -808,7 +810,7 @@ registerDirective(
  * It adds a class with a value from `{@link Page.event:update}`.
  * All other existing lasses are preserved. 
  */
-class otClass extends Directive {
+class otClass extends DirectiveBase {
   get name() {
     return "class";
   }
@@ -841,7 +843,7 @@ registerDirective("[data-ot-class]", otClass);
  * 
  * @hideconstructor
  */
-class otText extends Directive {
+class otText extends DirectiveBase {
   get name() {
     return "text";
   }
@@ -865,7 +867,7 @@ registerDirective("[data-ot-text]", otText);
  * 
  * @hideconstructor
  */
-class otImg extends Directive {
+class otImg extends DirectiveBase {
   get name() {
     return "img";
   }
@@ -904,7 +906,7 @@ registerDirective("[data-ot-img]", otImg);
  * 
  * @hideconstructor
  */
-class otAttrBase extends Directive {
+class otAttrBase extends DirectiveBase {
   reset() {
     setAttr(this.elem, this.name, null);
   }
@@ -942,7 +944,7 @@ ALLOWED_ATTRIBS.forEach(attrname => {
  * 
  * @hideconstructor
  */
-class otWhen extends Directive {
+class otWhen extends DirectiveBase {
   get name() {
     return "when";
   }
@@ -1106,11 +1108,12 @@ class Page {
   /**
    * Emits user input.
    *
-   * @param {object} data
+   * @param {Strinn} name
+   * @param {Strinn} value
    * @fires Page.update
    */
-  emitInput(data) {
-    this.emitEvent("ot.input", data);
+  emitInput(name, value) {
+    this.emitEvent("ot.input", { name, value });
   }
 
   /**
@@ -1471,7 +1474,7 @@ class Game {
    * @type {Game~onInput}
    */
   set onInput(fn) {
-    this.page.onEvent("ot.input", (ev) => fn(ev.detail));
+    this.page.onEvent("ot.input", (ev) => fn(ev.detail.name, ev.detail.value));
   }
 
   /**
@@ -1670,7 +1673,7 @@ class Schedule {
 
 const otree = {
   dom, random, changes, timers, measurement, 
-  Directive, registerDirective
+  DirectiveBase, registerDirective
 };
 
 window.addEventListener('load', function() {

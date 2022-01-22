@@ -31,7 +31,7 @@ function liveRecv(data) {
 }
 
 async function main() {
-  let $input = document.querySelector('[data-ot-input="answer"]');
+  let $input = document.querySelector('[data-ot-input]');
   let $skip_btn = document.querySelector("#skip-btn"), $submit_btn=document.querySelector("#submit-btn")
   let trial_time0, trial_time, trial_timer;
 
@@ -48,7 +48,6 @@ async function main() {
 
   game.startTrial = function (trial) {
     console.debug("starting:", trial);
-    $input.value = ""; // FIXME: should be handled by ot-input
     schedule.start();
     otree.measurement.begin();
     page.togglePhase({ input: true });
@@ -61,11 +60,11 @@ async function main() {
     }
   };
 
-  game.onInput = function (input) {
-    console.debug("input:", input);
+  game.onInput = function (name, value) {
+    console.debug("input:", value);
     page.freezeInputs();
     let response_time = otree.measurement.end();
-    liveSend({ type: "input", input: input.answer, response_time });
+    liveSend({ type: "input", input: value, response_time });
   };
 
   game.onTimeout = function () {
