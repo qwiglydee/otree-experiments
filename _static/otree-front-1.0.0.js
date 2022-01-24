@@ -1200,6 +1200,56 @@ class Page {
   submit() {
     this.documentQuery("form").submit();
   }
+
+  /**
+   * A handler for {@link Page.ready}
+   *
+   * @type {Game~onReady}
+   */
+  set onReady(fn) {
+    this.onEvent("ot.ready", (ev) => fn());
+  }
+
+  /**
+   * A handler for {@link Page.input}
+   *
+   * @type {Page~onInput}
+   */
+  set onInput(fn) {
+    this.onEvent("ot.input", (ev) => fn(ev.detail.name, ev.detail.value));
+  }
+
+  /**
+   * A handler for {@link Page.update}
+   *
+   * @type {Page~onUpdate}
+   */
+  set onUpdate(fn) {
+    this.onEvent("ot.update", (ev) => fn(ev.detail));
+  }
+
+  /**
+   * A handler for {@link Page.phase}
+   *
+   * Does not get triggered on resetting and temporaty freezing/unfreezing/switching.
+   *
+   * @type {Page~onPhase}
+   */
+  set onPhase(fn) {
+    this.onEvent("ot.phase", (ev) => {
+      if (ev.detail._resetting || ev.detail._freezing || ev.detail._switching) return;
+      fn(ev.detail);
+    });
+  }
+
+  /**
+   * A handler for {@link Schedule.timeout}
+   *
+   * @type {Page~onTimeout}
+   */
+  set onTimeout(fn) {
+    this.onEvent("ot.timeout", (ev) => fn(ev.detail));
+  }
 }
 
 /**
@@ -1457,46 +1507,6 @@ class Game {
    */
   onProgress(progress) {}
 
-  /**
-   * A handler for {@link Page.ready}
-   *
-   * @type {Game~onReady}
-   */
-  set onReady(fn) {
-    this.page.onEvent("ot.ready", (ev) => fn());
-  }
-
-  /**
-   * A handler for {@link Page.input}
-   *
-   * @type {Game~onInput}
-   */
-  set onInput(fn) {
-    this.page.onEvent("ot.input", (ev) => fn(ev.detail.name, ev.detail.value));
-  }
-
-  /**
-   * A handler for {@link Page.phase}
-   *
-   * Does not get triggered on resetting and temporaty freezing/unfreezing/switching.
-   *
-   * @type {Game~onPhase}
-   */
-  set onPhase(fn) {
-    this.page.onEvent("ot.phase", (ev) => {
-      if (ev.detail._resetting || ev.detail._freezing || ev.detail._switching) return;
-      fn(ev.detail);
-    });
-  }
-
-  /**
-   * A handler for {@link Schedule.timeout}
-   *
-   * @type {Game~onTimeout}
-   */
-  set onTimeout(fn) {
-    this.page.onEvent("ot.timeout", (ev) => fn(ev.detail));
-  }
 
   /**
    * A handler for {@link Game.status}
@@ -1526,77 +1536,6 @@ class Game {
     }
   }
 }
-
-/**
- * A progress during iterations loop.
- *
- * @typedef {object} Progress
- * @property {number|null} total total number of itterations, or null if it's infinite
- * @property {number} current current iteration, counting from 1
- * @property {number} completed number of completed rounds
- * @property {number} solved number of rounds with `success=true`
- * @property {number} failed number of rounds with `success=false`
- */
-
-/**
- * Indicates that a game (or something else) has been reset.
- *
- * @event Game.reset
- * @property {string} type `ot.reset`
- * @property {string} detail an object being reset, i.e. 'game' or 'progress'
- */
-
-/**
- * Indicates a game has started.
- *
- * @event Game.started
- * @property {string} type `ot.started`
- * @property {params} detail some params, like `{ iteration: i }`
- */
-
-/**
- * @callback Game~onStart
- * @param {object} params some staring params such as provided by {@link Game.start}
- */
-
-/**
- * Indicates some game conditions changed.
- *
- * @event Game.status
- * @property {string} type `ot.status`
- * @property {object} detail some flags
- */
-
-/**
- * @callback Game~onStatus
- * @param {object} status some staring params provided by `game.status`
- */
-
-/**
- * Indicates an error (relvant to user) happend.
- *
- * @event Game.error
- * @property {string} type `ot.error`
- * @property {object|null} detail contains `code` and `message`, or null for reseting error
- */
-
-/**
- * @callback Game~onError
- * @param {object} error `{ code, message}`
- */
-
-/**
- * Indicates a game has completed.
- *
- * @event Game.completed
- * @property {string} type `ot.completed`
- * @property {object} detail result data indicating game outcome
- */
-
-/**
- * @callback Game~onCompleted
- * @param {object} result
- */
 
 /**
  * Schedule to toggle page flags at specifed time moments

@@ -99,8 +99,10 @@ Several messages are combined into a list to send together.
 Any player's action or response, including timeout event, which may count as a response (e.g. go/nogo games) or just failure.
 
 - `type` = 'input'
-- `input`: user input, e.g. an answer to trial, a single move in puzzle, or a whole solution
-- `reaction_time`: reaction or solution time
+- `input`: user input, e.g. an response to trial
+  - `move`: single action for a puzzle
+  - `solution`: whole sequence of actions to solve puzzle  
+- `reaction_time`: reaction time
 - `timeout`: boolean indicating that timeout happen w/out any input 
 
 ### Sending feedback
@@ -109,7 +111,7 @@ Server feedback for a user input that is a subject of assesment correct/incorrec
 
 - `type` = 'feedback'
 - `input`: the corresponding original input, normalized
-- `correct`: boolean indicating the answer is correct   
+- `correct`: boolean indicating the answer/solution is correct   
 - `error`: if present, indicates the input is wrong (a player fail)
   - `code`: a string code of an error to use in program code
   - `message`: a human readable string to display
