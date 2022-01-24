@@ -3,7 +3,7 @@
 {{ block styles }}
 <link href="{{ static 'global/fullscreen.css' }}" rel="stylesheet" />
 <link href="{{ static 'global/common.css' }}" rel="stylesheet" />
-<link href="{{ static 'demo_stimuli.css' }}" rel="stylesheet" />
+<link href="{{ static 'demo_trials_preloaded.css' }}" rel="stylesheet" />
 {{ endblock }} 
 
 {{ block content }}
@@ -35,10 +35,10 @@
 <div class="overlay get-ready" ot-ready ot-key="Space" ot-touch ot-click>
   {{ include C.INSTRUCTIONS }}
   <p>
-    Press <kbd ot-input value="negative" ot-key="KeyF">F</kbd> or touch/click left side for
+    Press <kbd ot-input name="response" value="negative" ot-key="KeyF">F</kbd> or touch/click left side for
     <u>negative</u> emoji.
     <br />
-    Press <kbd ot-input value="positive" ot-key="KeyJ">J</kbd> or touch/click right side for
+    Press <kbd ot-input name="reponse" value="positive" ot-key="KeyJ">J</kbd> or touch/click right side for
     <u>positive</u> emoji.
   </p>
   <p>Press <kbd>Space</kbd> or click the message to start.</p>
@@ -52,5 +52,6 @@
 
 {{ block scripts }}
 <script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
-<script src="{{ static 'demo_stimuli.js' }}"></script>
+<script src="{{ static 'otree-front-live.js' }}"></script>
+<script src="{{ static 'demo_trials_preloaded.js' }}"></script>
 {{ endblock }}

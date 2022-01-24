@@ -4,7 +4,8 @@ from pathlib import Path
 
 from otree.api import *
 
-from common import image_utils, live_utils
+from common import image_utils
+from common.live_utils import live_trials
 
 doc = """
 Demo of question/answer app
@@ -30,7 +31,7 @@ class C(BaseConstants):
 
     NUM_TRIALS = None  # None for infinite
     MAX_RETRIES = 3
-    TRIAL_TIMEOUT = 10 # seconds
+    TRIAL_TIMEOUT = 10  # seconds
     NOGO_RESPONSE = None
 
 
@@ -85,7 +86,7 @@ class Trial(ExtraModel):
     text = models.StringField()
     solution = models.StringField()
 
-    # either solved/failed or skipped  
+    # either solved/failed or skipped
     is_completed = models.BooleanField(initial=False)
 
     response = models.StringField()
@@ -162,23 +163,20 @@ def on_load(player):
     return dict(trial=newtrial)
 
 
-def on_input(player, trial, input, response_time, timeout):
-    print("input:", input, "time:", response_time, "timeout:", timeout)
+def on_input(player, trial, input, response_time):
+    print("input:", input, "time:", response_time)
     params = player.session.params
     max_retries = params["max_retries"]
-    nogo_response = params["nogo_response"] 
 
     trial.response_time = response_time
-
-    if timeout:
-        trial.is_timeouted = True
-        input = nogo_response
 
     if input is not None:
         validate_trial(trial, input)
         trial.retries += 1
-        trial.is_completed = trial.is_correct or timeout or trial.retries == max_retries
-    else: # skipping trial when null input or vain timeout
+        trial.is_completed = (
+            trial.is_correct or trial.is_timeouted or trial.retries == max_retries
+        )
+    else:  # skipping trial when null input or vain timeout
         trial.response = None
         trial.is_correct = None
         trial.is_completed = True
@@ -190,7 +188,7 @@ def on_input(player, trial, input, response_time, timeout):
             player.num_solved += 1
         elif trial.is_correct is False:
             player.num_failed += 1
-        else: # None
+        else:  # None
             player.num_skipped += 1
 
     return dict(
@@ -200,6 +198,23 @@ def on_input(player, trial, input, response_time, timeout):
     )
 
 
+def on_timeout(player, trial):
+    print("timeout")
+
+    trial.is_timeouted = True
+
+    nogo_response = player.session.params.get("nogo_response")
+    if nogo_response is not None:
+        return on_input(player, trial, nogo_response, None)
+
+    trial.response = None
+    trial.is_correct = None
+    trial.is_completed = True
+    player.num_trials += 1
+    player.num_skipped += 1
+    return dict(feedback=dict(input=None, correct=False, final=True))
+
+
 class Main(Page):
     timeout_seconds = C.GAME_TIMEOUT
 
@@ -207,19 +222,21 @@ class Main(Page):
     def js_vars(player):
         params = player.session.params
         return dict(
-            config=dict(
+            params=dict(
                 num_trials=params["num_trials"],
                 max_retries=params["max_retries"],
-                trial_timeout=params['trial_timeout'] * 1000,
-                post_trial_pause=params['post_trial_pause'] * 1000
+                trial_timeout=params["trial_timeout"],
+                post_trial_pause=params["post_trial_pause"],
+                media_fields={ 'image': 'img' }
             )
         )
 
-    live_method = live_utils.live_trials(
+    live_method = live_trials(
         get_trial=get_trial,
         encode_trial=encode_trial,
         on_load=on_load,
         on_input=on_input,
+        on_timeout=on_timeout,
         get_progress=get_progress,
     )
 
@@ -277,7 +294,7 @@ def custom_export(players):
 
         player_fields = [
             participant.code,
-            participant.is_dropout if 'is_dropout' in participant.vars else None,
+            participant.is_dropout if "is_dropout" in participant.vars else None,
             session.code,
             subsession.round_number,
             subsession.is_practice,
@@ -299,5 +316,5 @@ def custom_export(players):
                 trial.is_correct,
                 trial.retries,
                 trial.response_time,
-                trial.is_timeouted
+                trial.is_timeouted,
             ]

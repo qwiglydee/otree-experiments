@@ -25,7 +25,7 @@ class C(BaseConstants):
     MAX_RETRIES = 3
     TRIAL_TIMEOUT = 3  # seconds
     POSTTRIAL_PAUSE = 0.5  # seconds
-    NOGO_RESPONSE = None
+    NOGO_RESPONSE = "xxx"
 
 
 DATA = []
@@ -101,6 +101,10 @@ class Trial(ExtraModel):
     is_timeouted = models.BooleanField()
 
 
+def img_url(img_name):
+    return f"/static/images/{img_name}"
+
+
 def generate_trial(player: Player, iteration: int) -> Trial:
     """Creates a new trial with random prime and stimuli"""
     prime_row = random.choice(PRIMES_POOL)
@@ -113,7 +117,7 @@ def generate_trial(player: Player, iteration: int) -> Trial:
         #
         prime=prime_row["stimulus"],
         prime_category=prime_row["category"],
-        target=target_row["stimulus"],
+        target=img_url(target_row["stimulus"]),
         target_category=target_row["category"],
         is_congruent=prime_row["category"] == target_row["category"],
     )
@@ -161,8 +165,9 @@ def validate_trials(player, results):
         trial.is_completed = True
 
         trial.retries = result.get('retr')
-        trial.is_timeouted = result.get('rt') == None
-        validate_trial(trial, result["input"])
+        trial.is_timeouted = result.get('to', False)
+        trial.response_time = result.get('rt')
+        validate_trial(trial, result.get("input"))
 
 
 def cleanup_trials(player):
@@ -196,12 +201,13 @@ class Main(Page):
     def js_vars(player):
         params = player.session.params
         return dict(
-            config=dict(
+            params=dict(
                 num_trials=params["num_trials"],
                 max_retries=params['max_retries'],
-                trial_timeout=params["trial_timeout"] * 1000,
-                post_trial_pause=params["post_trial_pause"] * 1000,
-                nogo_response=params['nogo_response']
+                trial_timeout=params["trial_timeout"],
+                post_trial_pause=params["post_trial_pause"],
+                nogo_response=params['nogo_response'],
+                media_fields={'target': 'img'}
             ),
             trials=encode_trials(player),
         )

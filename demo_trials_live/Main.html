@@ -24,15 +24,16 @@
   </div>
 
   <div class="input-group">
-    <button class="btn btn-outline-secondary" type="button" id="skip-btn">Skip</button>
+    <button class="btn btn-outline-secondary" type="button" ot-input name="submit" value="skip">Skip</button>
     <input
+      id="answer-inp"
       type="text"
-      ot-input
+      ot-input name="answer"
       class="form-control"
       ot-class="feedback.class"
       placeholder="type characters from the image above"
     />
-    <button class="btn btn-outline-primary" type="button" id="submit-btn">Submit</button>
+    <button class="btn btn-outline-primary" type="button"  ot-input name="submit" value="submit">Submit</button>
   </div>
   <span ot-when="status.trialSuccessful==null">(skipping)</span>  
 </div>
@@ -46,5 +47,6 @@
 
 {{ block scripts }}
 <script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
+<script src="{{ static 'otree-front-live.js' }}"></script>
 <script src="{{ static 'demo_trials.js' }}"></script>
 {{ endblock }}

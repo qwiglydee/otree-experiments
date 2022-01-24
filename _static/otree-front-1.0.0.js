@@ -1381,6 +1381,19 @@ class Game {
   async setTrial(trial) {
     this.trial = trial;
 
+    if (this.config.preload_media) {
+      for(let fld in this.config.preload_media) {
+        let mtype = this.config.preload_media[fld];
+        switch (mtype) {
+          case 'img':
+            this.trial[fld] = await loadImage(this.trial[fld]);
+            break;
+          default:
+            throw new Error("Unsupported media type to preload");
+        }
+      }
+    }
+
     this.page.emitUpdate({ trial });
     await this.page.waitForEvent("ot.update"); // make sure the hook is called after page update
     this.startTrial(this.trial);

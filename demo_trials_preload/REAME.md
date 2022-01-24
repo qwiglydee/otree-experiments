@@ -1,6 +1,8 @@
 # Demo stimuli
 
-An app for stimulus/response trials running realtime page
+An app for stimulus/response trials.
+
+All data is preloaded and interactions are running in browser.
 
 Back-end features:
 - loading data from csv

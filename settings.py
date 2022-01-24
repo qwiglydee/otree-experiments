@@ -1,18 +1,18 @@
 from os import environ
 
 SESSION_CONFIGS = [
-    # dict(
-    #     name="demo_stimuli",
-    #     display_name="stimulus/response, preloaded page",
-    #     app_sequence=['demo_stimuli'],
-    #     num_demo_participants=1,
-    # ),
-    # dict(
-    #     name="demo_trials",
-    #     display_name="question/answer, live page",
-    #     app_sequence=['demo_trials'],
-    #     num_demo_participants=1,
-    # ),
+    dict(
+        name="demo_trials_preload",
+        display_name="demo_trials_preload: stimulus/response, preloaded page",
+        app_sequence=['demo_trials_preload'],
+        num_demo_participants=1,
+    ),
+    dict(
+        name="demo_trials_live",
+        display_name="demo_trials_live: question/answer, live page",
+        app_sequence=['demo_trials_live'],
+        num_demo_participants=1,
+    ),
     dict(
         name="demo_puzzle",
         display_name="demo_puzzle: puzzle/solution, half-live page",

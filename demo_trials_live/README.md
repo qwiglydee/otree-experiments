@@ -16,6 +16,7 @@ Back-end features:
 - custom data export
 
 Front-end features:
+- waiting for user to get ready
 - pre-loading image for every trial
 - optional trial progress bar
 - input by keys, screen touch or click

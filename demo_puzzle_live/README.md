@@ -1,25 +1,25 @@
 # Demo puzzle
 
-An app for puzzle trials using live page.
+An app for puzzle trials.
 
-Solving a puzzle requires submitting a sequemce of moves.
+State is managed on server. Every move submitted.
 
 Back-end features:
 - infinite iterations
 - optional finite iterations 
-- trials generated randomly on server on demand
-- increazing difficulty when solved
+- solvable puzzlles generated randomly on server on demand
+- increazing/decreezing difficulty when solved/failed
+- optional limited moves 
 - counting player stats on the go
-- allow skipping trials
 - keeping records for all trials
 - custom data export
 
 Front-end features:
-- complex html puzzle rendering
-- on-click input and submit button
+- waiting for user to get ready
+- complex html puzzle rendering and interaction
+- on-click and on-touch input
 - measuring response time
 - trial timeout 
 - animated trial timer
-- rendering feedback
 - post-trial pause
 - freezing/unfreezing inputs during communication or pause
