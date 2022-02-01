@@ -1,30 +1,6 @@
 from os import environ
 
 SESSION_CONFIGS = [
-    dict(
-        name="demo_trials_preload",
-        display_name="demo_trials_preload: stimulus/response, preloaded page",
-        app_sequence=['demo_trials_preload'],
-        num_demo_participants=1,
-    ),
-    dict(
-        name="demo_trials_live",
-        display_name="demo_trials_live: question/answer, live page",
-        app_sequence=['demo_trials_live'],
-        num_demo_participants=1,
-    ),
-    dict(
-        name="demo_puzzle",
-        display_name="demo_puzzle: puzzle/solution, half-live page",
-        app_sequence=['demo_puzzle'],
-        num_demo_participants=1,
-    ),
-    dict(
-        name="demo_puzzle_live",
-        display_name="demo_puzzle_live: puzzle/solution, full live page",
-        app_sequence=['demo_puzzle_live'],
-        num_demo_participants=1,
-    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs
