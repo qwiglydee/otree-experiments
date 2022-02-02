@@ -1,0 +1,41 @@
+.welcome {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.main {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-flow: row;
+  justify-content: stretch;
+}
+
+.party {
+  flex: 0 0 auto;
+  border: 1px solid black;
+  padding: 8px;
+}
+
+.chat {
+  flex: 1 1 auto;
+  border: 1px solid black;
+  padding: 8px;
+}
+
+.msg.system {
+  font-weight: bold;
+}
+
+.msg.wisper {
+  opacity: 0.5;
+}
+
+.input-group {
+  max-width: none;
+  width: 100%;
+}
