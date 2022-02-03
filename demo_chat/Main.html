@@ -3,6 +3,7 @@ Page title
 {{ endblock }}
 
 {{ block styles }}
+<link href="{{ static 'global/fullscreen.css' }}" rel="stylesheet" />
 <link href="{{ static 'global/common.css' }}" rel="stylesheet" />
 <link href="{{ static 'demo_chat.css' }}" rel="stylesheet" />
 {{ endblock }}
@@ -14,38 +15,44 @@ Page title
 {{ endblock }}
 
 {{ block content }}
-<div class="welcome" ot-if="phase == 'joining'">
-    <h4>Enter your nickname</h4>
+<div ot-if="stage == 'joining'" class="fullscreen welcome flex-col">
+    <h5>Welcome to the chat!</h5>
+    <h6>Enter your nickname:</h6>
     <input class="form-control" type="text" ot-input="nickname" autofocus>
 </div>
 
-<div class="main" ot-if="phase == 'chatting'">
-    <div class="party">
-        {{ for i in range(0, 10) }}
-        <div class="player" ot-text="party.{{i}}" ot-click ot-input="recipient = {{i}}"></div>
-        {{ endfor }}
-    </div>
-    <div class="chat">
-        {{ for i in range(0, 10) }}
-        <div class="msg" ot-class="chat.{{i}}.class">
-            <span class="source" ot-text="chat.{{i}}.source"></span>
-            <span class="destination" ot-if="chat.{{i}}.dest"> → <span ot-text="chat.{{i}}.dest"></span></span>
-            <b ot-if="chat.{{i}}.source">:</b>
-            <span class="text" ot-text="chat.{{i}}.text"></span>
+<div ot-if="stage == 'chatting'" class="flex-col">
+    <div class="main">
+        <div class="party">
+            {{ for i in range(0, 10) }}
+            <div class="player" ot-text="party.{{i}}" ot-click ot-input="recipient = {{i}}"></div>
+            {{ endfor }}
         </div>
-        {{ endfor }}
+        <div class="chat">
+            {{ for i in range(0, 10) }}
+            <div class="msg" ot-class="chat.{{i}}.class">
+                <span class="source" ot-text="chat.{{i}}.source"></span>
+                <span class="destination" ot-if="chat.{{i}}.dest"> → <span ot-text="chat.{{i}}.dest"></span></span>
+                <b ot-if="chat.{{i}}.source">:</b>
+                <span class="text" ot-text="chat.{{i}}.text"></span>
+            </div>
+            {{ endfor }}
+        </div>
+    </div>
+    <div class="input-group">
+        <button type="button" class="btn btn-outline-secondary" ot-emit="chat.clear">❌</button>
+        <input class="form-control" ot-input="text" placeholder="type your message here and press enter">
+        <span ot-if="recipient" class="input-group-text">→ <span ot-text="recipient"></span></span>
+        <button type="button" class="btn btn-outline-secondary" ot-emit="chat.send">send</button>
+    </div>
+
+    <div class="input-group">
+        <button type="button" class="btn btn-outline-secondary" ot-emit="chat.leave">leave chat</button>
     </div>
 </div>
 
-<div ot-if="phase == 'chatting'" class="input-group">
-    <button type="button" class="btn btn-outline-secondary" ot-input="action = 'clear'">❌</button>
-    <input class="form-control" ot-input="text" placeholder="type your message here and press enter">
-    <span ot-if="recipient" class="input-group-text">→ <span ot-text="recipient"></span></span>
-    <button type="button" class="btn btn-outline-secondary" ot-input="action = 'send'">send</button>
-</div>
-
-<div ot-if="phase == 'chatting'">
-    <button type="button" class="btn btn-outline-secondary" ot-input="action = 'leave'">leave chat</button>
+<div ot-if="stage == 'left'" class="fullscreen welcome flex-col">
+    <h5>Good-bye!</h5>
 </div>
 
 {{ endblock }}

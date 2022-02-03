@@ -54,7 +54,7 @@ function evalCond(parsed, changes) {
 
   if (eq === undefined) return !!value;
   if (eq == "==") return value === val;
-  if (eq == "1=") return value !== val;
+  if (eq == "!=") return value !== val;
 }
 
 const ASSIGNEXPR = new RegExp(/^([\w.]+) = (.+)?$/);
@@ -609,9 +609,8 @@ class DirectiveBase {
    * @param {String} eventype
    * @param {Function} handler either `this.something` or a standalone function
    */
-  onPageEvent(eventype, handler) {
-    let hnd = handler.bind(this);
-    this.page.onEvent(eventype, (event) => hnd(event, event.detail));
+  onEvent(eventype, handler) {
+    this.page.onEvent(eventype, handler.bind(this));
   }
 
   /**
@@ -621,62 +620,17 @@ class DirectiveBase {
    * @param {Function} handler either `this.something` or a standalone function
    */
   onElemEvent(eventype, handler) {
-    let hnd = handler.bind(this);
-    this.page.onEvent(eventype, (event) => hnd(event, event.detail), this.elem);
+    this.page.onElemEvent(this.elem, eventype, handler.bind(this));
   }
 
   /**
    * Sets up event handlers
    */
   setup() {
-    if (this.onReset) this.onPageEvent("ot.reset", this.onReset);
-    if (this.onUpdate) this.onPageEvent("ot.update", this.onUpdate);
+    if (this.onReset) this.onEvent("ot.reset", this.onReset);
+    if (this.onUpdate) this.onEvent("ot.update", this.onUpdate);
   }
 }
-
-/**
- * Directive `ot-ready`
- * 
- * It is activated by any configured trigger `ot-key="keycode"`, `ot-touch`, `ot-click`, and triggers {@link Page.event:start}. 
- * 
- * @hideconstructor
- */
-class otReady extends DirectiveBase {
-  init() {
-    this.trigger = {
-      click: this.hasParam("click") || this.elem.tagName == "BUTTON",
-      touch: this.hasParam("touch"),
-      key: this.hasParam("key") ? this.getParam("key"): false,
-    }; 
-  }
-
-  setup() {
-    if (this.trigger.key) this.onPageEvent("keydown", this.onKey);
-    if (this.trigger.touch) this.onElemEvent("touchend", this.onClick);
-    if (this.trigger.click) this.onElemEvent("click", this.onClick);
-    this.onPageEvent('ot.ready', this.onStart);
-  }
-
-  onKey(event) {
-    if (this.disabled) return;
-    if (event.code != this.trigger.key) return;
-    event.preventDefault();
-    this.page.emitEvent('ot.ready'); 
-  }
-
-  onClick(event) {
-    if (this.disabled) return;
-    event.preventDefault();
-    this.page.emitEvent('ot.ready'); 
-  }
-
-  onStart() {
-    toggleDisplay(this.elem, false);
-    toggleDisabled(this.elem, true);
-  }
-}
-
-registerDirective("[ot-ready]", otReady);
 
 /**
  * Base for input
@@ -731,9 +685,9 @@ class otRealInput extends otEnablable {
   }
 
   setup() {
-    this.onPageEvent("ot.reset", this.onReset);
-    this.onPageEvent("ot.update", this.onUpdate);
-    this.onPageEvent("ot.freezing", this.onFreezing);
+    this.onEvent("ot.reset", this.onReset);
+    this.onEvent("ot.update", this.onUpdate);
+    this.onEvent("ot.freezing", this.onFreezing);
     if (isTextInput(this.elem)) {
       this.onElemEvent("keydown", this.onKey);
     } else {
@@ -768,7 +722,7 @@ class otRealInput extends otEnablable {
   }
 
   submit() {
-    this.page.emitInput(this.var.ref, this.elem.value);
+    this.page.emitEvent('ot.input', {name: this.var.ref, value: this.elem.value});
   }
 }
 
@@ -776,6 +730,15 @@ registerDirective(
   "[ot-input]:is(input, select, textarea)",
   otRealInput
 );
+
+
+function parseTriggers(elem) {
+  return {
+    click: elem.hasParam("click") || elem.elem.tagName == "BUTTON",
+    touch: elem.hasParam("touch"),
+    key: elem.hasParam("key") ? elem.getParam("key"): false,
+  }; 
+}
 
 
 /**
@@ -797,21 +760,15 @@ class otCustomInput extends otEnablable {
 
   init() {
     super.init();
-
     this.ass = parseAssign(this.getParam('input'));
-
-    this.trigger = {
-      click: this.hasParam("click") || this.elem.tagName == "BUTTON",
-      touch: this.hasParam("touch"),
-      key: this.hasParam("key") ? this.getParam("key"): false,
-    }; 
+    this.trigger = parseTriggers(this);
   }
 
   setup() {
-    this.onPageEvent("ot.reset", this.onReset);
-    this.onPageEvent("ot.update", this.onUpdate);
-    this.onPageEvent("ot.freezing", this.onFreezing);
-    if (this.trigger.key) this.onPageEvent("keydown", this.onKey);
+    this.onEvent("ot.reset", this.onReset);
+    this.onEvent("ot.update", this.onUpdate);
+    this.onEvent("ot.freezing", this.onFreezing);
+    if (this.trigger.key) this.onEvent("keydown", this.onKey);
     if (this.trigger.touch) this.onElemEvent("touchend", this.onClick);
     if (this.trigger.click) this.onElemEvent("click", this.onClick);
   }
@@ -819,20 +776,73 @@ class otCustomInput extends otEnablable {
   onClick(event) {
     if (isDisabled(this.elem)) return;
     event.preventDefault();
-    this.page.emitInput(this.ass.ref, this.ass.val);  
+    this.submit();
   }
 
   onKey(event) {
     if (isDisabled(this.elem)) return;
     if (event.code != this.trigger.key) return;
     event.preventDefault();
-    this.page.emitInput(this.ass.ref, this.ass.val);  
+    this.submit();
+  }
+
+  submit() {
+    this.page.emitEvent('ot.input', {name: this.ass.ref, value: this.ass.val});
   }
 }
 
 registerDirective(
   "[ot-input]:not(input, select, textarea)",
   otCustomInput
+);
+
+
+
+/**
+ * Directive `ot-emit="eventtype"` emits custom event when triggered by ot-click/ot-touch/ot-key.
+ * 
+ * Respect ot-enabled and freezing the same way as ot-input
+ * 
+ * @hideconstructor
+ */
+class otCustomEmit extends otEnablable {
+
+  init() {
+    super.init();
+    this.evtype = this.getParam('emit');
+    this.trigger = parseTriggers(this);
+  }
+
+  setup() {
+    this.onEvent("ot.reset", this.onReset);
+    this.onEvent("ot.update", this.onUpdate);
+    this.onEvent("ot.freezing", this.onFreezing);
+    if (this.trigger.key) this.onEvent("keydown", this.onKey);
+    if (this.trigger.touch) this.onElemEvent("touchend", this.onClick);
+    if (this.trigger.click) this.onElemEvent("click", this.onClick);
+  }
+
+  onClick(event) {
+    if (isDisabled(this.elem)) return;
+    event.preventDefault();
+    this.submit();
+  }
+
+  onKey(event) {
+    if (isDisabled(this.elem)) return;
+    if (event.code != this.trigger.key) return;
+    event.preventDefault();
+    this.submit();
+  }
+
+  submit() {
+    this.page.emitEvent(this.evtype);
+  }
+}
+
+registerDirective(
+  "[ot-emit]",
+  otCustomEmit
 );
 
 /**
@@ -1042,29 +1052,28 @@ class Page {
       });
     });
 
-    this.emitReset();
+    this.reset();
   }
 
   /**
-   * Binds an event handler
+   * Binds an event handler to page
    *
    * @param {String} type type of an event
-   * @param {Function} handler
-   * @param {HTMLElement} [target=page.body] an element to bind handler, instead of the page itself
+   * @param {Function} handler getting parameters (event, data)
    */
-  onEvent(type, handler, target) {
-    (target || this.body).addEventListener(type, handler);
+  onEvent(type, handler) {
+    this.body.addEventListener(type, (ev) => handler(ev, ev.detail));
   }
 
   /**
-   * Removes event hanfler
+   * Binds an event handler to an element
    *
+   * @param {HTMLElement} elem an element
    * @param {String} type type of an event
-   * @param {Function} handler, previously binded to an event
-   * @param {HTMLElement} [target=page.body]
+   * @param {Function} handler getting parameters (event, data)
    */
-  offEvent(type, handler, target) {
-    (target || this.body).removeEventListener(type, handler);
+  onElemEvent(elem, type, handler) {
+    elem.addEventListener(type, (ev) => handler(ev, ev.detail));
   }
 
   /**
@@ -1083,11 +1092,10 @@ class Page {
    *    await waiting; // suspend for an event happend since the 'waiting' created
    *
    * @param {String} type of the event
-   * @param {HTMLElement} [target=page.body]
    * @returns {Promise} resolved when event emitd
    */
-  waitForEvent(type, target) {
-    target = target || this.body;
+  waitForEvent(type) {
+    let target = this.body;
     return new Promise((resolve) => {
       function listener(event) {
         resolve(event);
@@ -1105,45 +1113,45 @@ class Page {
    *
    * @param {String} type type of the event
    * @param {Object} detail any data to attach to the event
-   * @param {HTMLElement} [target=page.body] an alternate element to emit at
    */
-  emitEvent(type, detail, target) {
-    // console.debug("firing", type, detail);
-    const event = new CustomEvent(type, { detail });
-    target = target || this.body;
+  emitEvent(type, detail) {
     // NB: queueing a task like a normal event, instead of dispatching synchronously
-    setTimeout(() => target.dispatchEvent(event));
+    setTimeout(() => this.body.dispatchEvent(new CustomEvent(type, { detail })));
   }
 
   /**
-   * Emits page reset.
+   * Emits an event on an element
+   *
+   * The event is always a `CustomEvent`.
+   * To emit built-in events, use built-in `target.dispatchEvent(event)`.
+   *
+   * @param {HTMLElement} [target=page.body] an alternate element to emit at
+   * @param {String} type type of the event
+   * @param {Object} detail any data to attach to the event
+   */
+  emitElemEvent(elem, type, detail) {
+    // NB: queueing a task like a normal event, instead of dispatching synchronously
+    setTimeout(() => elem.dispatchEvent(new CustomEvent(type, { detail })));
+  }
+
+  /**
+   * Signals reset of some page vars.
    *
    * @param {string[]} [vars] list of vars being reset, by default only ['game']
    * @fires Page.reset
    */
-  emitReset(vars) {
+  reset(vars) {
     if (vars !== undefined && !Array.isArray(vars)) vars = [vars];
     this.emitEvent("ot.reset", vars);
   }
 
   /**
-   * Emits user input.
-   *
-   * @param {Strinn} name
-   * @param {Strinn} value
-   * @fires Page.update
-   */
-  emitInput(name, value) {
-    this.emitEvent("ot.input", { name, value });
-  }
-
-  /**
-   * Emits update.
+   * Signals changes of some page vars 
    *
    * @param {object|Changes} changes
    * @fires Page.update
    */
-  emitUpdate(changes) {
+  update(changes) {
     if (!(changes instanceof Changes)) changes = new Changes(changes);
     this.emitEvent("ot.update", changes);
   }
@@ -1153,7 +1161,7 @@ class Page {
    *
    * @fires Schedule.timeout
    */
-  emitTimeout(time) {
+  timeout(time) {
     this.emitEvent("ot.timeout", time);
   }
 
@@ -1183,7 +1191,7 @@ class Page {
    */
   submitInputs(inpvar) {
     this.body.querySelectorAll(`[ot-input="${inpvar}"]`).forEach(inp => {
-      this.emitInput(inpvar, inp.value);
+      this.emitEvent('ot.input', {name: inpvar, value: inp.value});
     });
   }
 
@@ -1192,15 +1200,6 @@ class Page {
    */
   submit() {
     this.body.querySelector("form").submit();
-  }
-
-  /**
-   * A handler for {@link Page.ready}
-   *
-   * @type {Game~onReady}
-   */
-  set onReady(fn) {
-    this.onEvent("ot.ready", (ev) => fn());
   }
 
   /**
@@ -1309,7 +1308,7 @@ class Game {
    */
   setConfig(config) {
     this.config = config;
-    this.page.emitUpdate({ config });
+    this.page.update({ config });
   }
 
   /**
@@ -1326,7 +1325,7 @@ class Game {
     this.trial = {};
     this.status = {};
     this.feedback = undefined;
-    this.page.emitReset(["trial", "status", "feedback"]);
+    this.page.reset(["trial", "status", "feedback"]);
     this.loadTrial();
   }
 
@@ -1355,7 +1354,7 @@ class Game {
       }
     }
 
-    this.page.emitUpdate({ trial });
+    this.page.update({ trial });
     await this.page.waitForEvent("ot.update"); // make sure the hook is called after page update
     this.startTrial(this.trial);
   }
@@ -1370,7 +1369,7 @@ class Game {
    */
   updateTrial(changes) {
     new Changes(changes).patch(this.trial);
-    this.page.emitUpdate(new Changes(changes, "trial"));
+    this.page.update(new Changes(changes, "trial"));
   }
 
   /**
@@ -1385,7 +1384,7 @@ class Game {
   updateStatus(changes) {
     let status = this.status;
     Object.assign(status, changes);
-    this.page.emitUpdate({ status: changes });
+    this.page.update({ status: changes });
     this.page.emitEvent("ot.status", changes);
     if (changes.trialStarted) {
       this.page.emitEvent("ot.started");
@@ -1409,7 +1408,7 @@ class Game {
    */
   setFeedback(feedback) {
     this.feedback = feedback;
-    this.page.emitUpdate({ feedback });
+    this.page.update({ feedback });
     this.onFeedback(this.feedback);
   }
 
@@ -1420,7 +1419,7 @@ class Game {
    */
   clearFeedback() {
     this.feedback = undefined;
-    this.page.emitReset("feedback");
+    this.page.reset("feedback");
   }
 
   /**
@@ -1434,7 +1433,7 @@ class Game {
    */
   setProgress(progress) {
     this.progress = progress;
-    this.page.emitUpdate({ progress });
+    this.page.update({ progress });
     this.onProgress(this.progress);
   }
 
@@ -1445,7 +1444,7 @@ class Game {
    */
   resetProgress() {
     this.progress = undefined;
-    this.page.emitReset("progress");
+    this.page.reset("progress");
   }
 
   /**
@@ -1562,7 +1561,7 @@ class Schedule {
         this.timers.delay(
           `phase-${i}`,
           () => {
-            this.page.emitUpdate(vars);
+            this.page.update(vars);
           },
           phase.at
         );
@@ -1574,7 +1573,7 @@ class Schedule {
         `timeout`,
         () => {
           this.stop();
-          this.page.emitTimeout(this.timeout);
+          this.page.timeout(this.timeout);
         },
         this.timeout
       );

@@ -9,7 +9,7 @@ Your app description
 
 
 class C(BaseConstants):
-    NAME_IN_URL = "demo_chat"
+    NAME_IN_URL = "chat"
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
 
@@ -41,18 +41,23 @@ class Main(Page):
         print("joining", message)
         player.joined = True
         player.nickname = message["nickname"]
-        return {0: dict(joining=dict(newcomer=player.nickname, party=get_party(player.group)))}
+        return {0: dict(joined=dict(newcomer=player.nickname, party=get_party(player.group)))}
+
+    def handle_leave(player, message: dict):
+        print("leaving", message)
+        player.joined = False
+        return {0: dict(left=dict(nickname=player.nickname, party=get_party(player.group)))}
 
     @staticmethod
-    def handle_say(player, message):
+    def handle_saying(player, message):
         print("saying", message)
-        return {0: dict(saying=dict(source=player.nickname, text=message["text"]))}
+        return {0: dict(talk=dict(source=player.nickname, text=message["text"]))}
 
     @staticmethod
-    def handle_wisper(player, message):
+    def handle_wispering(player, message):
         print("whispering", message)
         dest = [p for p in player.group.get_players() if p.nickname == message['dest']][0]
-        return {dest: dict(wispering=dict(source=player.nickname, text=message["text"]))}
+        return {dest: dict(wisper=dict(source=player.nickname, text=message["text"]))}
 
 
 page_sequence = [Main]

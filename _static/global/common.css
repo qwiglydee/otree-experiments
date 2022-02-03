@@ -1,19 +1,27 @@
 .flex-col {
   display: flex;
+  justify-content: center;
+  align-items: stretch;
   flex-flow: column nowrap;
 }
 
 .flex-row {
   display: flex;
+  justify-content: center;
+  align-items: stretch;
   flex-flow: row nowrap;
 }
 
 .center {
   justify-content: center;
-  align-items: center;
 }
 
-.icon-char {
+.instructions p {
+  text-align: center;
+}
+
+.icon {
+  display: inline-block;
   font-family: Roboto, monospace;
   font-size: 64px;
   vertical-align: middle;
