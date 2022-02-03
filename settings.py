@@ -3,8 +3,15 @@ from os import environ
 SESSION_CONFIGS = [
     dict(
         name="demo_chat",
+        display_name="chat: multi-user realtime page witout any game logic",
         num_demo_participants=3,
         app_sequence=['demo_chat']
+    ),
+    dict(
+        name="demo_trials_live",
+        display_name="live trials: stimulus/response app with server-side iteration, retrieval and validation",
+        num_demo_participants=1,
+        app_sequence=['demo_trials_live']
     )
 ]
 
@@ -17,7 +24,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=1.00, participation_fee=0.00, doc=""
 )
 
-PARTICIPANT_FIELDS = ['is_dropout']
+PARTICIPANT_FIELDS = ['is_dropout', 'iteration']
 SESSION_FIELDS = ['params']
 
 # ISO-639 code

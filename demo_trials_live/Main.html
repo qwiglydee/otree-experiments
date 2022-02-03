@@ -1,0 +1,44 @@
+{{ block title }}
+Page title
+{{ endblock }}
+
+{{ block styles }}
+<link href="{{ static 'global/fullscreen.css' }}" rel="stylesheet" />
+<link href="{{ static 'global/common.css' }}" rel="stylesheet" />
+<link href="{{ static 'demo_trials.css' }}" rel="stylesheet" />
+{{ endblock }}
+
+{{ block scripts }}
+<script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
+<script src="{{ static 'live_utils.js' }}"></script>
+<script src="{{ static 'demo_trials_live.js' }}"></script>
+{{ endblock }}
+
+{{ block content }} 
+
+<div ot-if="stage == 'instructing'" class="fullscreen flex-col instructions">
+    <div class="overlay" ot-enabled="stage == 'instructing'" ot-emit="user_ready" ot-key="Space" ot-touch ot-click></div>
+    {{ include C.INSTRUCTIONS }}
+    <p>Press <kbd>Space</kbd> or click the message to start.</p>
+</div>
+
+<div ot-if="stage == 'playing'" class="fullscreen flex-col">
+    <div class="overlay left-side" ot-touch ot-click ot-key="KeyF" ot-input="response = 'negative'"></div>
+    <div class="overlay right-side" ot-touch ot-click ot-key="KeyJ" ot-input="response = 'positive'"></div>
+
+    <div class="main">
+        <div ot-if="phase == 'aim'" class="icon aim">⌖</div>
+        <div ot-if="phase == 'prime'" class="prime" ot-text="trial.prime"></div>
+        <div ot-if="phase == 'target'" class="target" ot-img="trial.target"></div>
+    </div>
+
+    <progress ot-max="progress.total" ot-value="progress.completed"></progress>
+  
+    <div class="bottom">
+        <span ot-if="feedback.responseCorrect == true" class="icon success">✔</span>
+        <span ot-if="feedback.responseCorrect == false" class="icon failure">✘</span>
+        <span ot-if="status.trialSkipped">(skipped)</span>
+    </div>      
+</div>
+ 
+{{ endblock }}

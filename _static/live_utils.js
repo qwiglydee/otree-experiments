@@ -35,12 +35,12 @@ function loadTrial() {
   liveSend({ type: 'load' });
 }
 
-function sendResponse(input, rt) {
-  liveSend({ type: 'response', input, rt });
+function sendResponse(input, response_time) {
+  liveSend({ type: 'response', input, response_time });
 }
 
 function sendResponseTimeout() {
-  liveSend({ type: 'response', timeout: true });
+  liveSend({ type: 'response', timeout_happened: true });
 }
 
 window.otree_live_utils = {

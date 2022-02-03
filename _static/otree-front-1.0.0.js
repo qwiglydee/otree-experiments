@@ -91,8 +91,8 @@ function parseAssign(expr) {
 function affecting(parsed, event) {
   switch (event.type) {
     case "ot.reset":
-      let vars = event.detail;
-      return vars == undefined || vars.includes(parsed.ref);
+      let topvars = event.detail;
+      return topvars == null || topvars.some(v => includes(v, parsed.ref));
     case "ot.update":
       let changes = event.detail;
       return changes.affects(parsed.ref);
@@ -732,11 +732,11 @@ registerDirective(
 );
 
 
-function parseTriggers(elem) {
+function parseTriggers(directive) {
   return {
-    click: elem.hasParam("click") || elem.elem.tagName == "BUTTON",
-    touch: elem.hasParam("touch"),
-    key: elem.hasParam("key") ? elem.getParam("key"): false,
+    click: directive.hasParam("click") || directive.elem.tagName == "BUTTON",
+    touch: directive.hasParam("touch"),
+    key: directive.hasParam("key") ? directive.getParam("key"): false,
   }; 
 }
 
@@ -1346,7 +1346,11 @@ class Game {
         let mtype = this.config.preload_media[fld];
         switch (mtype) {
           case 'img':
-            this.trial[fld] = await loadImage(this.trial[fld]);
+            try {
+              this.trial[fld] = await loadImage(this.trial[fld]);
+            } catch {
+              throw new Error(`Failed to load media ${this.trial[fld]}`);
+            }
             break;
           default:
             throw new Error("Unsupported media type to preload");
