@@ -9,10 +9,16 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="demo_trials_live",
-        display_name="live trials: stimulus/response app with server-side iteration, retrieval and validation",
+        display_name="live trials: stimulus/response app, server-side iteration/retrieval/validation",
         num_demo_participants=1,
         app_sequence=['demo_trials_live']
-    )
+    ),
+    dict(
+        name="demo_trials_local",
+        display_name="local trials: stimulus/response app, browser-side iteration/retrieval/pre-validation",
+        num_demo_participants=1,
+        app_sequence=['demo_trials_local']
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs

@@ -36,6 +36,10 @@ progress {
   font-size: 100px;
 }
 
+.prime, .target {
+  font-size: xxx-large;
+}
+
 .success {
   color: green;
 }

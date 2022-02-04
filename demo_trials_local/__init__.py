@@ -3,7 +3,7 @@ import random
 
 from otree.api import *
 
-from common.live_utils import live_trials
+from common.live_utils import live_trials_preloaded
 from common.csv_utils import load_csv
 
 doc = """
@@ -13,7 +13,7 @@ Your app description
 WORKDIR = Path(__file__).parent
 
 class C(BaseConstants):
-    NAME_IN_URL = "demo_trials_live"
+    NAME_IN_URL = "demo_trials_local"
     PLAYERS_PER_GROUP = None
     INSTRUCTIONS = __name__ + "/instructions.html"
     NUM_ROUNDS = 1
@@ -96,18 +96,10 @@ def creating_session(subsession: Subsession):
 # PAGES
 
 
-@live_trials
+@live_trials_preloaded
 class Main(Page):
     trial_model = Trial
-    trial_fields = ['iteration', 'prime', 'target']
-
-    @staticmethod
-    def get_progress(player: Player, iteration):
-        return dict(
-            total=C.NUM_TRIALS,
-            current=iteration,
-            completed=player.num_completed
-        )
+    trial_fields = ['iteration', 'prime', 'target', 'target_category']
 
     @staticmethod
     def js_vars(player):
@@ -122,6 +114,7 @@ class Main(Page):
     @staticmethod
     def validate_trial(trial: Trial, response: dict):
         print("validating", trial, response)
+
         if response.get('timeout_happened'):
             trial.is_timeouted = True
             trial.is_successful = False
@@ -134,11 +127,5 @@ class Main(Page):
             trial.is_completed = True
 
         trial.player.num_completed += 1
-
-        return dict(
-            responseFinal=True,
-            responseCorrect=trial.is_successful,
-        )
-
 
 page_sequence = [Main]

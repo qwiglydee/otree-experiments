@@ -1,4 +1,4 @@
-liveRecv = otree_live_utils.livePageRecv;
+liveRecv = otree.live_utils.livePageRecv;
 
 function main() {
   let page = otree.page;
@@ -59,7 +59,7 @@ function main() {
   page.onEvent("chat.leave", function () {
     liveSend({ type: "leave" });
     page.update({ stage: "left" });
-    otree.timers.delay(() => page.submit(), 3000);
+    otree.utils.timers.delay(() => page.submit(), 3000);
 });
 
   page.onInput = function (name, value) {

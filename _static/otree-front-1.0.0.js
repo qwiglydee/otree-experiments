@@ -512,6 +512,34 @@ var timers = /*#__PURE__*/Object.freeze({
 });
 
 /**
+ * Preloading media accorfing to media_fields config of form: `{ field: 'image' }`.
+ * Only images supported for now
+ * 
+ * @param {*} trial 
+ * @param {*} media_fields 
+ */
+async function preloadMedia(trial, media_fields) {
+  for (let [fld, mediatype] of Object.entries(media_fields)) {
+    switch (mediatype) {
+      case 'image':
+        try {
+          trial[fld] = await loadImage(trial[fld]);
+        } catch {
+          throw new Error(`Failed to load media ${trial[fld]}`);
+        }
+        break;
+      default:
+        throw new Error("Unsupported media type to preload");
+    }      
+  }  
+}
+
+var trials = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  preloadMedia: preloadMedia
+});
+
+/**
  * Begins measurement
  *
  * @param {string} name
@@ -1341,21 +1369,8 @@ class Game {
   async setTrial(trial) {
     this.trial = trial;
 
-    if (this.config.preload_media) {
-      for(let fld in this.config.preload_media) {
-        let mtype = this.config.preload_media[fld];
-        switch (mtype) {
-          case 'img':
-            try {
-              this.trial[fld] = await loadImage(this.trial[fld]);
-            } catch {
-              throw new Error(`Failed to load media ${this.trial[fld]}`);
-            }
-            break;
-          default:
-            throw new Error("Unsupported media type to preload");
-        }
-      }
+    if (this.config.media_fields) {
+      await preloadMedia(trial, this.config.media_fields);
     }
 
     this.page.update({ trial });
@@ -1592,15 +1607,15 @@ class Schedule {
   }
 }
 
-const otree = {
-  dom, random, changes, timers, measurement, 
-  DirectiveBase, registerDirective
-};
+if (window.otree === undefined) {
+  window.otree = {};
+}
+
 
 window.addEventListener('load', function() {
-  otree.page = new Page(document.body);
-  otree.game = new Game(otree.page);
-  otree.schedule = new Schedule(otree.page);
+  window.otree.page = new Page(document.body);
+  window.otree.game = new Game(otree.page);
+  window.otree.schedule = new Schedule(otree.page);
 
   if (!window.main) {
     throw new Error("You need to define global `function main()` to make otree work");
@@ -1608,6 +1623,12 @@ window.addEventListener('load', function() {
   window.main();
 });
 
-window.otree = otree;
-
-export { otree };
+Object.assign(window.otree, {
+  utils: {
+    dom, random, timers, measurement, 
+    changes, trials
+  },
+  directives: {
+    DirectiveBase, registerDirective
+  }
+});

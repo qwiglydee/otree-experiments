@@ -35,18 +35,48 @@ function loadTrial() {
   liveSend({ type: 'load' });
 }
 
-function sendResponse(input, response_time) {
-  liveSend({ type: 'response', input, response_time });
+
+let trials_data; // iteration from 1, indexing from 0
+
+function getPreloadedTrial(iteration) {
+  return trials_data[iteration-1];
 }
 
-function sendResponseTimeout() {
-  liveSend({ type: 'response', timeout_happened: true });
+async function preloadTrials(media_fields) {
+  if (window.liveRecv === undefined) {
+    throw new Error("Preloading requires liveRecv to be defined like `otree.live_utils.livePageRecv` or similarly")
+  }
+
+  liveSend({ type: 'load' });
+  let event = await otree.page.waitForEvent('ot.live.trials');
+  trials_data = event.detail.data;
+  if (media_fields) {
+    for(let trial of trials_data) {
+      otree.utils.trials.preloadMedia(trial, media_fields);
+    }
+  }
+  current_iter = 0;
 }
 
-window.otree_live_utils = {
+function sendResponse(i, input, response_time) {
+  liveSend({ type: 'response', iteration: i, input, response_time });
+}
+
+function sendResponseTimeout(i) {
+  liveSend({ type: 'response', iteration: i, timeout_happened: true });
+}
+
+
+if (window.otree === undefined) {
+  window.otree = {};
+}
+
+window.otree.live_utils = {
   livePageRecv,
   liveTrialsRecv,
   loadTrial,
   sendResponse,
   sendResponseTimeout,
+  preloadTrials,
+  getPreloadedTrial
 }

@@ -1,5 +1,25 @@
+from email.policy import default
 from lib2to3.pytree import Base
 from otree.api import BasePlayer
+
+
+def defaultmethod(cls):
+    """Adds a method to the class, if it's missing"""
+    def decorator(fn):
+        if not hasattr(cls, fn.__name__):
+            setattr(cls, fn.__name__, staticmethod(fn))
+        return None # prevent accident referencing
+    return decorator
+
+def wrappedmethod(cls):
+    """Adds a method to the class, with reference to original"""
+    def decorator(fn):
+        orig = getattr(cls, fn.__name__, None)
+        def wrapped(*args, **kwargs):
+            return fn(orig, *args, **kwargs)
+        setattr(cls, fn.__name__, staticmethod(wrapped))
+        return None # prevent accident referencing        
+    return decorator
 
 
 def live_page(pagecls):
@@ -102,84 +122,77 @@ def live_trials(pagecls):
         # the current iteration is also automatically added to any custom feedback  
     """
 
-    if not hasattr(pagecls, 'get_trial'):
-        def get_trial(player, iteration):
-            trials = pagecls.trial_model.filter(player=player, iteration=iteration)
-            if len(trials) == 0:
-                return None
-            if len(trials) > 1:
-                raise ValueError("trials messed up")
-            return trials[0]
+    @defaultmethod(pagecls)
+    def get_trial(player, iteration):
+        trials = pagecls.trial_model.filter(player=player, iteration=iteration)
+        if len(trials) == 0:
+            return None
+        if len(trials) > 1:
+            raise ValueError("trials messed up")
+        return trials[0]
 
-        pagecls.get_trial = staticmethod(get_trial)
+    @defaultmethod(pagecls)
+    def new_trial(player, iteration):
+        return pagecls.get_trial(player, iteration)
 
-    if not hasattr(pagecls, 'new_trial'):
-        def new_trial(player, iteration):
-            return get_trial(player, iteration)
-        pagecls.new_trial = staticmethod(new_trial)
 
-    if not hasattr(pagecls, 'encode_trial'):
-        def encode_trial(trial):
-            return { f: getattr(trial, f) for f in pagecls.trial_fields }
-        
-        pagecls.encode_trial = staticmethod(encode_trial)
+    @defaultmethod(pagecls)
+    def encode_trial(trial):
+        return { f: getattr(trial, f) for f in pagecls.trial_fields }
 
-    if not hasattr(pagecls, 'get_progress'):
-        def get_progress(player):
-            return dict(current=player.participant.iteration)
-    else:
-        orig_progress = pagecls.get_progress
-        def get_progress(player):
-            progress = orig_progress(player)
-            progress['current'] = player.participant.iteration
-            return progress
 
-    pagecls.get_progress = staticmethod(get_progress)
+    @defaultmethod(pagecls)
+    def get_progress(player, iteration):
+        return {'current': iteration}
 
-    if not hasattr(pagecls, 'validate_trial'):
+
+    @defaultmethod(pagecls)
+    def validate_trial(trial):
         raise TypeError("@live_trials class require validate_trial static method")
 
     #### live methods of the trials logic 
 
+    @defaultmethod(pagecls)
     def handle_load(player, message):
-        trial = pagecls.get_trial(player, player.participant.iteration)
-        progress=pagecls.get_progress(player)
+        iteration = player.participant.iteration
+        progress = pagecls.get_progress(player, iteration)
 
-        # current trial
-        if trial is not None and not trial.is_completed:
+        curtrial = pagecls.get_trial(player, iteration)
+
+        if curtrial is not None and not curtrial.is_completed:
             return {player: dict(
-                trial=pagecls.encode_trial(trial),
+                trial=pagecls.encode_trial(curtrial),
                 progress=progress
             )}
 
-        # next trial            
-        player.participant.iteration += 1
-
-        trial = pagecls.new_trial(player, player.participant.iteration)
+        newtrial = pagecls.new_trial(player, iteration + 1)
         
-        if trial is None:
+        if newtrial is None:
             return {player: dict(
                 status=dict(gameOver=True),
-                progress=progress  # last step progress
+                progress=progress  # prev step progress
             )}
 
-        progress['current'] = player.participant.iteration        
+        player.participant.iteration += 1
+        progress['current'] += 1        
         return {player: dict(
-            trial=pagecls.encode_trial(trial),
+            trial=pagecls.encode_trial(newtrial),
             progress=progress
         )}
 
-    pagecls.handle_load = staticmethod(handle_load) 
-
+    @defaultmethod(pagecls)
     def handle_response(player, message):
-        trial = pagecls.get_trial(player, player.participant.iteration)
+        iteration = player.participant.iteration
+        trial = pagecls.get_trial(player, iteration)
 
         if trial is None:
             raise RuntimeError("Responding to missing trial")
         if trial.is_completed:
             raise RuntimeError("Responsing to already completed trial")
+        if trial.iteration != message['iteration']:
+            raise RuntimeError("Responsing to mismatched iteration")
 
-        progress=pagecls.get_progress(player)
+        progress=pagecls.get_progress(player, iteration)
 
         feedback = pagecls.validate_trial(trial, message)
         
@@ -198,14 +211,96 @@ def live_trials(pagecls):
                 progress=progress
             )}
 
-    pagecls.handle_response = staticmethod(handle_response)
+    ####
+
+    @wrappedmethod(pagecls)
+    def js_vars(orig_js_vars,  player):
+        """initialize iteration when age is loaded"""
+        player.participant.iteration = 0
+        return orig_js_vars(player) if orig_js_vars else None
+
+    return live_page(pagecls)
+
+
+def live_trials_preloaded(pagecls):
+    """Decorator to setup a page class to handle generic preloaded trials
+
+    In response to 'load' message it returns all trials instead of single.
+
+    In response to `response` message - calls `validate_trial(trial, response)` but does not send back anything.
+
+    Expected class attributes:
+    
+    - trial_model: a class of trial model, should have fields `player`, `iteration`, `is_completed`
+    - trial_fields: (optional) a list of fields of model to send to browser
+
+    Expected class static methods:
+
+    def validate_trial(trial, response):
+        # the response is dict: { input, rt, timeout_happened }
+        # updates trial according to response and doesn't return anything
+
+    # optional
+    def get_all_trials(player):
+        # returns all trial for a player
+        # by default gets all incompleted trials
+
+    # optional
+    def get_trial(player, iteration):
+        # returns current trial for a player
+        # by default, gets a trial according to current iteration
+
+    # optional
+    def encode_trial(trial):
+        # returns a dict to send to players browser
+        # by default, uses trial_fields 
+
+
+    """
+    @defaultmethod(pagecls)
+    def get_all_trials(player):
+        return pagecls.trial_model.filter(player=player, is_completed=False)
+
+
+    @defaultmethod(pagecls)
+    def get_trial(player, iteration):
+        trials = pagecls.trial_model.filter(player=player, iteration=iteration)
+        if len(trials) == 0:
+            return None
+        if len(trials) > 1:
+            raise ValueError("trials messed up")
+        return trials[0]
+
+    @defaultmethod(pagecls)
+    def encode_trial(trial):
+        return { f: getattr(trial, f) for f in pagecls.trial_fields }
 
     ####
 
-    orig_js_vars = pagecls.js_vars
-    def wrapped_js_vars(player):
-        player.participant.iteration = 0
-        return orig_js_vars(player)
-    pagecls.js_vars = staticmethod(wrapped_js_vars)
+    @defaultmethod(pagecls)
+    def handle_load(player, message):
+        trials = pagecls.get_all_trials(player)
+        return {player: dict(
+            trials=dict(data=[pagecls.encode_trial(t) for t in trials])
+        )}
+
+    @defaultmethod(pagecls)
+    def handle_response(player, message):
+        trial = pagecls.get_trial(player, message['iteration'])
+
+        if trial is None:
+            raise RuntimeError("Responding to missing trial")
+        if trial.is_completed:
+            raise RuntimeError("Responsing to already completed trial")
+
+        pagecls.validate_trial(trial, message)
+
+        # just empty response
+        return {player: dict(
+            status=dict()
+        )}
+
 
     return live_page(pagecls)
+
+
