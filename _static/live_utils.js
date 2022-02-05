@@ -1,4 +1,4 @@
-  /** default liveRecv is to emit 'ot'.live.*' events */
+/** default liveRecv is to emit corresponding 'ot.live.*' events */
 function liveDefaultRecv(data) {
   let messages = Array.isArray(data) ? data : [data];
   for(let message of messages) {
@@ -6,6 +6,7 @@ function liveDefaultRecv(data) {
   }
 }
 
+/* for live_trials, call appropriate game methods */
 function liveTrialsRecv(data) {
   let messages = Array.isArray(data) ? data : [data];
   for(let message of messages) {
@@ -57,8 +58,16 @@ async function preloadTrials(conf) {
   current_iter = 0;
 }
 
-function sendResponse(i, input, response_time) {
-  liveSend({ type: 'response', iteration: i, input, response_time });
+function sendResponse(i, value, response_time) {
+  liveSend({ type: 'response', iteration: i, input: value, response_time });
+}
+
+function sendResponseAction(i, value, response_time) {
+  liveSend({ type: 'response', iteration: i, action: value, response_time });
+}
+
+function sendResponseSolution(i, value, response_time) {
+  liveSend({ type: 'response', iteration: i, solution: value, response_time });
 }
 
 function sendTimeout(i) {
@@ -75,6 +84,8 @@ window.otree.live_utils = {
   liveTrialsRecv,
   loadTrial,
   sendResponse,
+  sendResponseAction,
+  sendResponseSolution,
   sendTimeout,
   preloadTrials,
   getPreloadedTrial

@@ -1,3 +1,92 @@
+/** 
+ * Utils to handle references to game state vars and manage their updates.
+ * 
+ * The references are just strings in form `obj.field.subfield`
+ * 
+ * @module utils/ref 
+ */
+
+/**
+ * Checks if one ref is parent of other
+ * 
+ * `expect(isparentRef("foo.bar", "foo.bar.baz")`
+ * 
+ * @param {string} parentref reference to parent object
+ * @param {string} nestedref reference to nested field
+ * @returns {boolean}
+ */
+function isparentRef(parentref, nestedref) {
+  return nestedref.startsWith(parentref + ".");
+}
+
+/**
+ * Strips common part of nested ref, making it local to parent
+ *
+ * `expect(getsubRef("foo.bar", "foo.bar.baz").to.be.eq("baz")`
+ * 
+ * @param {string} parentref reference to parent object
+ * @param {string} nestedref reference to nested field
+ * @returns {boolean}
+ */
+function getsubRef(parentref, nestedref) {
+  if (parentref == nestedref) {
+    return "";
+  } else if (nestedref.startsWith(parentref + ".")) {
+    return nestedref.slice(parentref.length + 1);
+  } else {
+    throw new Error(`Incompatible refs: ${parentref} / ${nestedref}`);
+  }
+}
+
+/**
+ * Extract a value from object by a ref
+ * 
+ * ```
+ * let obj = {foo:{bar:"Bar"}};
+ * expect(extractByRef("foo.bar", obj).to.be.eq("Bar")`
+ * ```
+ * 
+ * @param {object} data 
+ * @param {string} ref 
+ * @returns {boolean}
+ */
+function extractByRef(ref, data) {
+  return ref.split(".").reduce((o, k) => (o && k in o ? o[k] : undefined), data);
+}
+
+/**
+ * Sets a value in object by ref.
+ * The original object is modified in place
+ * 
+ * ```
+ * let obj = {foo:{bar:"Bar"}};
+ * updateByRef("foo.bar", obj, "newval");
+ * expect(obj.foo.bar).to.be.eq("newval");
+ * ```
+ * @param {object} data 
+ * @param {ref} ref 
+ * @param {*} value 
+ */
+function updateByRef(ref, data, value) {
+  function ins(obj, key) {
+    return (obj[key] = {});
+  }
+
+  const path = ref.split("."),
+    objpath = path.slice(0, -1),
+    fld = path[path.length - 1];
+
+  let obj = objpath.reduce((o, k) => (k in o ? o[k] : ins(o, k)), data);
+  if (obj === undefined) throw new Error(`Incompatible ref ${ref}`);
+  if (value === undefined) {
+    delete obj[fld];
+  } else {
+    obj[fld] = value;
+  }
+
+  return data; 
+}
+
 const VAREXPR = new RegExp(/^[a-zA-Z]\w+(\.\w+)*$/);
 
 function parseVar(expr) {
@@ -92,7 +181,7 @@ function affecting(parsed, event) {
   switch (event.type) {
     case "ot.reset":
       let topvars = event.detail;
-      return topvars == null || topvars.some(v => includes(v, parsed.ref));
+      return topvars == null || topvars.some(v => v == parsed.ref || isparentRef(v, parsed.ref));
     case "ot.update":
       let changes = event.detail;
       return changes.affects(parsed.ref);
@@ -100,95 +189,6 @@ function affecting(parsed, event) {
       return false;
   }
 }
-
-/** 
- * Utils to handle references to game state vars and manage their updates.
- * 
- * The references are just strings in form `obj.field.subfield`
- * 
- * @module utils/changes/Ref 
- */
-
-/**
- * Checks if references overlap 
- * 
- * Example: `Ref.includes("foo.bar", "foo.bar.baz")`
- * 
- * @param {string} parentref reference to parent object
- * @param {string} nestedref reference to nested field
- * @returns {boolean}
- */
-function includes(parentref, nestedref) {
-  return parentref == nestedref || nestedref.startsWith(parentref + ".");
-}
-
-/**
- * Strips common part of nested ref, making it local to parent
- *
- * Example: `Ref.strip("foo.bar", "foo.bar.baz") == "baz"`
- * 
- * @param {string} parentref reference to parent object
- * @param {string} nestedref reference to nested field
- * @returns {boolean}
- */
-function strip(parentref, nestedref) {
-  if (parentref == nestedref) {
-    return "";
-  } else if (nestedref.startsWith(parentref + ".")) {
-    return nestedref.slice(parentref.length + 1);
-  } else {
-    throw new Error(`Incompatible refs: ${parentref} / ${nestedref}`);
-  }
-}
-
-/**
- * Extract a value from object by a ref
- * 
- * Example: `Ref.extract({ foo: { bar: "Bar" } }, "foo.bar") == "Bar"`
- * 
- * @param {object} data 
- * @param {string} ref 
- * @returns {boolean}
- */
-function extract(data, ref) {
-  return ref.split(".").reduce((o, k) => (o && k in o ? o[k] : undefined), data);
-}
-
-/**
- * Sets a value in object by ref.
- * The original object is modified in place
- * 
- * Example: `Ref.update({foo: {bar: "Bar0" } }, "foo.bar", "Bar1") → {foo: {bar: "Bar1" } }`
- * 
- * @param {object} data 
- * @param {ref} ref 
- * @param {*} value 
- */
-function update(data, ref, value) {
-  function ins(obj, key) {
-    return (obj[key] = {});
-  }
-
-  const path = ref.split("."),
-    objpath = path.slice(0, -1),
-    fld = path[path.length - 1];
-
-  let obj = objpath.reduce((o, k) => (k in o ? o[k] : ins(o, k)), data);
-  if (obj === undefined) throw new Error(`Incompatible ref ${ref}`);
-  if (value === undefined) {
-    delete obj[fld];
-  } else {
-    obj[fld] = value;
-  }
-}
-
-var ref = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  includes: includes,
-  strip: strip,
-  extract: extract,
-  update: update
-});
 
 /**
  * Utils to handle changes of game state data
@@ -204,53 +204,82 @@ var ref = /*#__PURE__*/Object.freeze({
 class Changes extends Map {
   /**
    * @param {object} obj plain object describing changes
-   * @param {string} [prefix] a prefix to add to all the top-level fields, as if there was an above-top object
    */
 
-  constructor(obj, prefix) {
-    let entries = [...Object.entries(obj)];
-    if (prefix) {
-      entries = entries.map(([k, v]) => [prefix + "." + k, v]);
+  constructor(obj) {
+    if (obj) {
+      super(Array.from(Object.entries(obj)));
+    } else {
+      super();
     }
-    super(entries);
+    // validate keys
     this.forEach((v, k) => parseVar(k));
   }
 
-  /**
-   * Checks if the changeset contains referenced var
-   *
-   * Example:
-   *   ```
-   *   changes = new Changes({ 'obj.foo': { ... } })
-   *   changes.afects("obj.foo.bar") == true // becasue the `bar` is contained in `obj.foo`
-   *   ```
-   * @param {string} ref
-   */
-  affects(ref$1) {
-    return [...this.keys()].some((key) => includes(key, ref$1));
+  prefix(pref) {
+    let prefixed = new Changes();
+    for(let [k, v] of this.entries()) {
+      prefixed.set(`${pref}.${k}`, v);
+    }
+    return prefixed;
   }
 
   /**
-   * Picks single value from changeset.
+   * Checks if the changeset affects a var or a subvar
    *
-   * Example:
-   *   ```
-   *   changes = new Changes({ 'obj.foo': { bar: "Bar" } })
-   *   changes.pick("obj.foo.bar") == "Bar"
-   *   ```
+   * ```
+   * let changes = new Changes({ 'foo.bar': something });
+   * expect(changes.affect("foo.bar")).to.be.true;
+   * expect(changes.affect("foo.bar.anything")).to.be.true;
+   * expect(changes.affect("foo.*")).to.be.true;
+   *
+   * @param {*} fld
    */
-  pick(ref$1) {
-    let affecting = [...this.keys()].filter((key) => includes(key, ref$1));
-    if (affecting.length == 0) return undefined;
-    if (affecting.length != 1) throw new Error(`Incompatible changeset for ${ref$1}`);
-    affecting = affecting[0];
-
-    let value = this.get(affecting);
-
-    if (affecting == ref$1) {
-      return value;
+  affects(fld) {
+    if (fld.endsWith(".*")) {
+      let top = fld.slice(0, -2);
+      return this.has(top) || Array.from(this.keys()).some((key) => isparentRef(top, key));
     } else {
-      return extract(value, strip(affecting, ref$1));
+      return this.has(fld) || Array.from(this.keys()).some((key) => isparentRef(key, fld));
+    }
+  }
+
+  /**
+   * Picks single value from changeset, tracking reference across keys or nested objects.
+   *
+   * ```
+   * let change = new Changes({ 'foo.bar': { baz: "Baz"} })
+   * expect(change.pick('foo')).to.be.eq({ 'bar': { 'baz': "Baz" }})
+   * expect(change.pick('foo.bar')).to.be.eq({ 'baz': "Baz" })
+   * ```
+   *
+   */
+  pick(fld) {
+    if (this.has(fld)) {
+      return this.get(fld);
+    }
+    // console.debug("picking", fld, "from", Array.from(this.keys()));
+
+    // fld.subfld: something
+    let nesting = Array.from(this.keys()).filter((k) => isparentRef(fld, k));
+    // console.debug("nesting", nesting);
+    if (nesting.length) {
+      let result = {};
+      for (let k of nesting) {
+        let subfld = getsubRef(fld, k);
+        result[subfld] = this.get(k);
+      }
+      return result;
+    }
+
+    // fld[top]: { fld[sub]: something }
+    let splitting = Array.from(this.keys()).filter((k) => isparentRef(k, fld) && this.get(k) !== undefined);
+    // console.debug("splitting", splitting);
+    if (splitting.length) {
+      for (let k of splitting) {
+        let fldsub = getsubRef(k, fld);
+        return extractByRef(fldsub, this.get(k))
+      }
     }
   }
 
@@ -273,14 +302,13 @@ class Changes extends Map {
    */
   patch(obj) {
     this.forEach((v, k) => {
-      update(obj, k, v);
+      updateByRef(k, obj, v);
     });
   }
 }
 
 var changes = /*#__PURE__*/Object.freeze({
   __proto__: null,
-  Ref: ref,
   Changes: Changes
 });
 
@@ -793,6 +821,9 @@ class otCustomInput extends otEnablable {
   }
 
   setup() {
+    if (!this.trigger.key && !this.trigger.touch && !this.trigger.click) {
+      throw new Error("custom ot-input missing any ot-click ot-key ot-touch");
+    }
     this.onEvent("ot.reset", this.onReset);
     this.onEvent("ot.update", this.onUpdate);
     this.onEvent("ot.freezing", this.onFreezing);
@@ -1383,12 +1414,14 @@ class Game {
    *
    * Applies given changes to game state, using {@link Changes}
    *
-   * @param {Object} changes the changes to apply
+   * @param {Object} updates the changes to apply
    * @fires Page.update
    */
-  updateTrial(changes) {
-    new Changes(changes).patch(this.trial);
-    this.page.update(new Changes(changes, "trial"));
+  updateTrial(updates) {
+    let changes = new Changes(updates);
+    changes.patch(this.trial);
+    changes = changes.prefix("trial");
+    this.page.update(changes);
   }
 
   /**
@@ -1403,8 +1436,6 @@ class Game {
   updateStatus(changes) {
     let status = this.status;
     Object.assign(status, changes);
-    this.page.update({ status: changes });
-    this.page.emitEvent("ot.status", changes);
     if (changes.trialStarted) {
       this.page.emitEvent("ot.started");
     }
@@ -1414,6 +1445,8 @@ class Game {
     if (changes.gameOver) {
       this.page.emitEvent("ot.gameover");
     }
+    this.onStatus(changes);
+    this.page.update({ status: changes });
   }
 
   /**
@@ -1427,8 +1460,8 @@ class Game {
    */
   setFeedback(feedback) {
     this.feedback = feedback;
-    this.page.update({ feedback });
     this.onFeedback(this.feedback);
+    this.page.update({ feedback: this.feedback });
   }
 
   /**
@@ -1452,8 +1485,8 @@ class Game {
    */
   setProgress(progress) {
     this.progress = progress;
-    this.page.update({ progress });
     this.onProgress(this.progress);
+    this.page.update({ progress: this.progress });
   }
 
   /**
@@ -1499,15 +1532,12 @@ class Game {
    */
   onProgress(progress) {}
 
-
   /**
-   * A handler for {@link Game.status}
+   * A hook called after updateStatus
    *
-   * @type {Game~onStatus}
+   * @param {Object} changes obj of changed flags
    */
-  set onStatus(fn) {
-    this.page.onEvent("ot.status", (ev) => fn(this.status, ev.detail));
-  }
+  onStatus(changes) {}
 
   /**
    * Plays a game trial.

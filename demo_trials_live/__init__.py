@@ -49,6 +49,9 @@ class Trial(ExtraModel):
     player = models.Link(Player)
     iteration = models.IntegerField(initial=0)
     is_completed = models.BooleanField(initial=False)
+    is_timeouted = models.BooleanField(initial=False)
+    is_skipped = models.BooleanField(initial=False)
+    is_successful = models.BooleanField(initial=None)
 
     prime = models.StringField()
     prime_category = models.StringField()
@@ -57,9 +60,7 @@ class Trial(ExtraModel):
     congruent = models.BooleanField()
 
     response = models.StringField()
-    is_successful = models.BooleanField()
     response_time = models.IntegerField()
-    is_timeouted = models.BooleanField()
 
 
 def generate_trial(player, iteration):

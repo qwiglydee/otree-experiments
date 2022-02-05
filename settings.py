@@ -19,6 +19,12 @@ SESSION_CONFIGS = [
         num_demo_participants=1,
         app_sequence=['demo_trials_local']
     ),
+    dict(
+        name="demo_puzzles_live",
+        display_name="live puzzles: multi-step task, server-side steps processing",
+        num_demo_participants=1,
+        app_sequence=['demo_puzzles_live']
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs
