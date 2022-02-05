@@ -116,7 +116,11 @@ class Main(Page):
 
     @staticmethod
     def encode_trial(puzzle: Puzzle):
-        return dict(iteration=puzzle.iteration, target=list(puzzle.target), matrix=list(puzzle.matrix))
+        return dict(
+            iteration=puzzle.iteration, 
+            target=list(puzzle.target), 
+            matrix=list(puzzle.matrix),
+            validated=[None] * C.MATRIX_LENGTH)  # a field not stored in model
 
     @staticmethod
     def get_progress(player: Player, iteration):

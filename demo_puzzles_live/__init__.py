@@ -116,7 +116,11 @@ class Main(Page):
 
     @staticmethod
     def encode_trial(puzzle: Puzzle):
-        return dict(iteration=puzzle.iteration, target=list(puzzle.target), matrix=list(puzzle.matrix))
+        return dict(
+            iteration=puzzle.iteration, 
+            target=list(puzzle.target), 
+            matrix=list(puzzle.matrix),
+            validated=[None] * C.MATRIX_LENGTH)  # a field not stored in model
 
     @staticmethod
     def get_progress(player: Player, iteration):
@@ -152,7 +156,7 @@ class Main(Page):
             correct = puzzle.matrix[pos] == puzzle.target[pos]
 
         moves_count = puzzle.matrix.count(C.CHAR_FILL)
-        solved, validated = validate_puzzle(puzzle)
+        solved, _ = validate_puzzle(puzzle)
         
         puzzle.is_successful = solved
         puzzle.is_completed = timeout_happened or solved or moves_count == params["max_moves"]
@@ -163,7 +167,7 @@ class Main(Page):
 
         return dict(
             feedback=dict(input=pos, responseCorrect=correct, responseFinal=puzzle.is_completed),
-            update=dict(validated=validated),
+            update={f'validated.{pos}': correct},
         )
 
 
