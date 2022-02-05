@@ -1,0 +1,53 @@
+{{ block title }}
+Page title
+{{ endblock }}
+
+{{ block styles }}
+<link href="{{ static 'fullscreen.css' }}" rel="stylesheet" />
+<link href="{{ static 'common.css' }}" rel="stylesheet" />
+<link href="{{ static 'matrix.css' }}" rel="stylesheet" />
+{{ endblock }}
+
+{{ block scripts }}
+<script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
+<script src="{{ static 'live_utils.js' }}"></script>
+<script src="{{ static 'demo_puzzles_local.js' }}"></script>
+{{ endblock }}
+
+{{ block content }} 
+
+<div ot-if="stage == 'instructing'" class="fullscreen flex-col instructions">
+    <div class="overlay" ot-enabled="stage == 'instructing'" ot-emit="user_ready" ot-key="Space" ot-touch ot-click></div>
+    {{ include C.INSTRUCTIONS }}
+    <p>Press <kbd>Space</kbd> or click the message to start.</p>
+</div>
+
+<div ot-if="stage == 'playing'" class="fullscreen flex-col">
+    <div class="main">
+        <div ot-if="phase == 'exposing'" class="matrix matrix4">
+            {{ for i in range(16) }}
+                <div class="cell" ot-text="trial.target.{{i}}"></div> 
+            {{ endfor }}
+        </div>
+        <div ot-if="phase == 'solving'" class="matrix matrix4">
+            {{ for i in range(16) }}
+                <div class="cell" ot-class="styles.matrix.{{i}}" ot-text="trial.matrix.{{i}}" ot-touch ot-click ot-input="place = {{i}}"></div> 
+            {{ endfor }}
+        </div>
+        <div ot-if="phase == 'feedback'" class="matrix matrix4">
+            {{ for i in range(16) }}
+                <div class="cell" ot-class="styles.matrix.{{i}}" ot-text="trial.target.{{i}}"></div> 
+            {{ endfor }}
+        </div>
+    </div>
+
+    <progress ot-max="progress.total" ot-value="progress.completed"></progress>
+  
+    <div class="bottom">
+        <span ot-if="status.trialSuccessful == true" class="icon success">✔</span>
+        <span ot-if="status.trialSuccessful == false" class="icon failure">✘</span>
+        <span ot-if="status.trialTimeouted" class="icon">🕠</span>
+    </div>      
+</div>
+ 
+{{ endblock }}

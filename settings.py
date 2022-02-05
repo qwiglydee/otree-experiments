@@ -15,15 +15,21 @@ SESSION_CONFIGS = [
     ),
     dict(
         name="demo_trials_local",
-        display_name="local trials: stimulus/response app, browser-side iteration/retrieval/pre-validation",
+        display_name="local trials: stimulus/response app, preloaded trials, browser-side iteration/retrieval/pre-validation",
         num_demo_participants=1,
         app_sequence=['demo_trials_local']
     ),
     dict(
         name="demo_puzzles_live",
-        display_name="live puzzles: multi-step task, server-side steps processing",
+        display_name="live puzzles: multi-step task, server-side processing of every step",
         num_demo_participants=1,
         app_sequence=['demo_puzzles_live']
+    ),
+    dict(
+        name="demo_puzzles_local",
+        display_name="local puzzles: multi-step task, browser-side processing, submitting complete solution",
+        num_demo_participants=1,
+        app_sequence=['demo_puzzles_local']
     ),
 ]
 
