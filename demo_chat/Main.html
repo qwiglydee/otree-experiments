@@ -15,10 +15,13 @@ Page title
 {{ endblock }}
 
 {{ block content }}
+
 <div ot-if="stage == 'joining'" class="fullscreen welcome flex-col">
     <h5>Welcome to the chat!</h5>
-    <h6>Enter your nickname:</h6>
-    <input class="form-control" type="text" ot-input="nickname" autofocus>
+    <div class="input-group">
+        <input class="form-control" type="text" ot-input="nickname" autofocus placeholder="Enter your nickname">
+        <button type="button" class="btn btn-outline-secondary" ot-emit="chat.join">send</button>
+    </div>
 </div>
 
 <div ot-if="stage == 'chatting'" class="flex-col">
@@ -51,7 +54,7 @@ Page title
     </div>
 </div>
 
-<div ot-if="stage == 'left'" class="fullscreen welcome flex-col">
+<div ot-if="stage == 'leaving'" class="fullscreen welcome flex-col">
     <h5>Good-bye!</h5>
 </div>
 
