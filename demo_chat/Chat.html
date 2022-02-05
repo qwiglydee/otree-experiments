@@ -16,6 +16,10 @@ Page title
 
 {{ block content }}
 
+{{ if player.role == C.SUPERVISOR_ROLE }}
+<h5>You're randomly assigned a supervisor role</h5>
+{{ endif }}
+
 <div ot-if="stage == 'joining'" class="fullscreen welcome flex-col">
     <h5>Welcome to the chat!</h5>
     <div class="input-group">
@@ -48,6 +52,7 @@ Page title
         <span ot-if="recipient" class="input-group-text">→ <span ot-text="recipient"></span></span>
         <button type="button" class="btn btn-outline-secondary" ot-emit="chat.send">send</button>
     </div>
+    <p>Click on user nickname to send wisper</p>
 
     <div class="input-group">
         <button type="button" class="btn btn-outline-secondary" ot-emit="chat.leave">leave chat</button>

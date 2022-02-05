@@ -1,4 +1,5 @@
-from os import stat
+import random
+
 from otree.api import *
 
 from common.live_utils import live_page
@@ -12,6 +13,8 @@ class C(BaseConstants):
     NAME_IN_URL = "chat"
     PLAYERS_PER_GROUP = None
     NUM_ROUNDS = 1
+
+    SUPERVISOR_ROLE = "supervis"
 
 
 class Subsession(BaseSubsession):
@@ -35,29 +38,43 @@ def get_party(group):
 
 
 @live_page
-class Main(Page):
+class Chat(Page):
     @staticmethod
     def handle_join(player, message: dict):
         print("joining", message)
         player.joined = True
         player.nickname = message["nickname"]
-        return {0: dict(joined=dict(newcomer=player.nickname, party=get_party(player.group)))}
+        party = get_party(player.group)
+
+        joinmsg = dict(newcomer=player.nickname, party=party)
+        statmsg = dict(partysize=len(party))
+        return {C.SUPERVISOR_ROLE: dict(join=joinmsg, stat=statmsg), 0: dict(join=joinmsg)}
 
     def handle_leave(player, message: dict):
         print("leaving", message)
         player.joined = False
-        return {0: dict(left=dict(nickname=player.nickname, party=get_party(player.group)))}
+        party = get_party(player.group)
+
+        leavmsg = dict(leaver=player.nickname, party=party)
+        statmsg = dict(partysize=len(party))
+        return {C.SUPERVISOR_ROLE: dict(leave=leavmsg, stat=statmsg), 0: dict(leave=leavmsg)}
 
     @staticmethod
-    def handle_saying(player, message):
-        print("saying", message)
-        return {0: dict(talk=dict(source=player.nickname, text=message["text"]))}
+    def handle_talking(player, message):
+        print("talking", message)
+        talkmsg = dict(source=player.nickname, text=message["text"])
+        return {0: dict(talk=talkmsg)}
 
     @staticmethod
     def handle_wispering(player, message):
         print("whispering", message)
-        dest = [p for p in player.group.get_players() if p.nickname == message['dest']][0]
-        return {dest: dict(wisper=dict(source=player.nickname, text=message["text"]))}
+
+        dest = [p for p in player.group.get_players() if p.nickname == message["dest"]][0]
+
+        wispmsg = dict(source=player.nickname, dest=dest.nickname, text=message["text"])
+        wispmsg0 = dict(source=player.nickname, dest=dest.nickname)
+
+        return {player: dict(wisper=wispmsg), dest: dict(wisper=wispmsg), 0: dict(wisper=wispmsg0)}
 
 
-page_sequence = [Main]
+page_sequence = [Chat]

@@ -1,8 +1,26 @@
-from email.policy import default
-from lib2to3.pytree import Base
-from multiprocessing.sharedctypes import Value
-from otree.api import BasePlayer
+"""Magic utilities to simplify live page development
 
+The decorators: 
+- live_page
+- live_trials
+- live_trials_preloaded
+- live_puzzles
+
+They modify page classes and add live_method to handle generic app of specified type.
+
+Usage:
+
+```
+@live_trials
+class MyPage(Page):
+    define some required staticmethods here 
+```
+
+See docs for specific decorator for detail.
+"""
+
+from lib2to3.pytree import Base
+from otree.api import BasePlayer
 
 def defaultmethod(cls):
     """Adds a method to the class, if it's missing"""
@@ -31,7 +49,7 @@ def wrappedmethod(cls):
 
 
 def live_page(pagecls):
-    """Decorator to add generic live_method to a Page class
+    """Decorator to make page class a very generic live page.
 
     The live page receives messages in format: `{ type: sometype, fields: ... }`
     Both incoming and outgoing messages can be batched together into lists.
@@ -41,7 +59,7 @@ def live_page(pagecls):
     Return value from handlers should be:
     ```
     {
-        destination: {        # destination player, or 0 for broadcast
+        destination: {        # destination player, role, or 0 for all or 'other players' (not directly addressed)
             type: {           # type of message to send back
                 field: value  # data for the messages
             }
@@ -51,7 +69,7 @@ def live_page(pagecls):
     The messages send back according to return value.
     """
 
-    def generic_live_method(player, message):
+    def generic_live_method(player: BasePlayer, message: dict):
         assert isinstance(message, dict) and "type" in message
 
         msgtype = message["type"]
@@ -64,21 +82,48 @@ def live_page(pagecls):
 
         response = handler(player, message)
 
-        senddata = {}
+        sending = {}
 
         for rcpt, msgdict in response.items():
-            if isinstance(rcpt, BasePlayer):
-                rcpt = rcpt.id_in_group
-            senddata[rcpt] = []
-
+            sending[rcpt] = []
             for type, data in msgdict.items():
                 if data is None:
                     continue
                 msg = {"type": type}
                 msg.update(data)
-                senddata[rcpt].append(msg)
+                sending[rcpt].append(msg)
 
-        return senddata
+        group = player.group
+
+
+        def expand_roles(sending):
+            return {
+                (group.get_player_by_role(rcpt) if isinstance(rcpt, str) else rcpt) : data 
+                for rcpt, data in sending.items()
+            }
+
+        def expand_others(sending):
+            if len(sending) == 1 or 0 not in sending:
+                return sending
+
+            addressed = list(filter(lambda p: p != 0, sending.keys()))
+            others = list(filter(lambda p: p not in addressed, group.get_players()))
+
+            expanded = { p: sending[p] for p in addressed }
+            expanded.update({ p: sending[0] for p in others })
+            return expanded
+
+        def expand_ids(sending):
+            return { 
+                (rcpt.id_in_group if isinstance(rcpt, BasePlayer) else rcpt) : data 
+                for rcpt, data in sending.items() 
+            }
+
+        sending = expand_roles(sending)
+        sending = expand_others(sending)
+        sending = expand_ids(sending)
+
+        return sending
 
     pagecls.live_method = staticmethod(generic_live_method)
 
@@ -199,21 +244,21 @@ def live_trials(pagecls):
         if curtrial.is_completed:
             raise RuntimeError("Responsing to already completed trial")
 
-        feedback = pagecls.validate_response(curtrial, response=message, timeout_happened=False)
-        progress = pagecls.get_progress(player, iteration)
-
+        responses = {}
+        responses['feedback'] = pagecls.validate_response(curtrial, response=message, timeout_happened=False)
+        responses['progress'] = pagecls.get_progress(player, iteration)
 
         if curtrial.is_completed:
             # FIXME: send only changed status
-            status = dict(
+            responses['status'] = dict(
                 trialCompleted=True,
                 trialSuccessful=curtrial.is_successful,
                 trialSkipped=curtrial.is_skipped,
                 trialTimeouted=curtrial.is_timeouted,
             )
-            return {player: dict(feedback=feedback, progress=progress, status=status)}
-        else:
-            return {player: dict(feedback=feedback, progress=progress)}
+
+        return {player: responses}
+
 
     @defaultmethod(pagecls)
     def handle_timeout(player, message):
@@ -229,19 +274,21 @@ def live_trials(pagecls):
         if curtrial.is_completed:
             raise RuntimeError("Timeouting already completed trial")
 
-        feedback = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
-        progress = pagecls.get_progress(player, iteration)
+        responses = {}
+        responses['feedback'] = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
+        responses['progress'] = pagecls.get_progress(player, iteration)
 
         assert curtrial.is_completed, "timeouted trials should be marked completed"
 
         # FIXME: send only changed status
-        status=dict(
+        responses['status'] = dict(
             trialCompleted=True,
             trialSuccessful=curtrial.is_successful,
             trialSkipped=curtrial.is_skipped,
             trialTimeouted=curtrial.is_timeouted,
         )
-        return {player: dict(feedback=feedback, progress=progress, status=status)}
+
+        return {player: responses}
 
     ####
 
@@ -348,20 +395,19 @@ def live_puzzles(pagecls):
         if curtrial.is_completed:
             raise RuntimeError("Responsing to already completed trial")
 
-        feedback, updates = pagecls.validate_response(curtrial, response=message, timeout_happened=False)
-        progress = pagecls.get_progress(player, iteration)
+        responses = pagecls.validate_response(curtrial, response=message, timeout_happened=False)
+        responses['progress'] = pagecls.get_progress(player, iteration)
 
         if curtrial.is_completed:
             # FIXME: send only changed status
-            status = dict(
+            responses['status'] = dict(
                 trialCompleted=True,
                 trialSuccessful=curtrial.is_successful,
                 trialSkipped=curtrial.is_skipped,
                 trialTimeouted=curtrial.is_timeouted,
             )
-            return {player: dict(feedback=feedback, update=updates, progress=progress, status=status)}
-        else:
-            return {player: dict(feedback=feedback, update=updates, progress=progress)}
+        
+        return {player: responses}
 
 
     @defaultmethod(pagecls)
@@ -378,20 +424,21 @@ def live_puzzles(pagecls):
         if curtrial.is_completed:
             raise RuntimeError("Timeouting already completed trial")
 
-        feedback, updates = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
-        progress = pagecls.get_progress(player, iteration)
 
+        responses = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
+        responses['progress'] = pagecls.get_progress(player, iteration)
+        
         assert curtrial.is_completed, "timeouted trials should be marked completed"
 
         # FIXME: send only changed status
-        status=dict(
+        responses['status'] = dict(
             trialCompleted=True,
             trialSuccessful=curtrial.is_successful,
             trialSkipped=curtrial.is_skipped,
             trialTimeouted=curtrial.is_timeouted,
         )
-        return {player: dict(feedback=feedback, update=updates, progress=progress, status=status)}
-
+        
+        return {player: responses}
 
     ####
 

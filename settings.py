@@ -3,7 +3,7 @@ from os import environ
 SESSION_CONFIGS = [
     dict(
         name="demo_chat",
-        display_name="chat: multi-user realtime page witout any game logic",
+        display_name="chat: multi-user realtime page without any game logic",
         num_demo_participants=3,
         app_sequence=['demo_chat']
     ),

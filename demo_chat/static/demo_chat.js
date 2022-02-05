@@ -28,16 +28,16 @@ function main() {
 
   //// events from liveRecv
 
-  page.onEvent("ot.live.joined", function (event, data) {
-    console.debug("joined", data);
+  page.onEvent("ot.live.join", function (event, data) {
+    console.debug("join", data);
     loadParty(data.party);
     addMessage("system", `Welcome, ${data.newcomer}!`);
   });
 
-  page.onEvent("ot.live.left", function (event, data) {
-    console.debug("left", data);
+  page.onEvent("ot.live.leave", function (event, data) {
+    console.debug("leave", data);
     loadParty(data.party);
-    addMessage("system", `Bye, ${data.nickname}!`);
+    addMessage("system", `Bye, ${data.leaver}!`);
   });
 
   page.onEvent("ot.live.talk", function (event, data) {
@@ -47,7 +47,15 @@ function main() {
 
   page.onEvent("ot.live.wisper", function (event, data) {
     console.debug("wisper", data);
-    addMessage("wisper", data.text, data.source, mynickname);
+    if (data.text) {
+      addMessage("wisper", data.text, data.source, data.dest);
+    } else {
+      addMessage("wisper", "(wispering something)", data.source, data.dest);
+    }
+  });
+
+  page.onEvent("ot.live.stat", function (event, data) {
+    addMessage("system", `${data.partysize} people in chat`);
   });
 
   //// events from buttons
@@ -84,17 +92,18 @@ function main() {
     }
 
     if (name == "text") {
+      let text = value
       if (recipient != undefined) {
-        liveSend({ type: "wispering", text: value, dest: recipient });
-        addMessage("wisper", value, mynickname, recipient);
+        liveSend({ type: "wispering", text: text, dest: recipient });
       } else {
-        liveSend({ type: "saying", text: value });
+        liveSend({ type: "talking", text: text });
       }
       resetInput();
     }
 
     if (name == "recipient") {
-      recipient = party[value];
+      let index = value;
+      recipient = party[index];
       page.update({ recipient: recipient });
     }
   });

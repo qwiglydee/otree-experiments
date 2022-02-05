@@ -152,9 +152,9 @@ class Main(Page):
         puzzle.is_completed = True
         puzzle.is_skipped = moves_count == 0
 
-        return (
-            dict(responseCorrect=puzzle.is_successful, responseFinal=True),  # feedback
-            dict(validated=validated),  # state update
+        return dict(
+            feedback=dict(responseCorrect=puzzle.is_successful, responseFinal=True),
+            update=dict(validated=validated),
         )
 
 

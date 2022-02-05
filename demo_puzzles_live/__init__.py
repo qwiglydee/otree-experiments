@@ -161,9 +161,9 @@ class Main(Page):
         if puzzle.is_completed:
             puzzle.player.num_completed += 1
 
-        return (
-            dict(input=pos, responseCorrect=correct, responseFinal=puzzle.is_completed),  # feedback
-            dict(validated=validated),  # state update
+        return dict(
+            feedback=dict(input=pos, responseCorrect=correct, responseFinal=puzzle.is_completed),
+            update=dict(validated=validated),
         )
 
 
