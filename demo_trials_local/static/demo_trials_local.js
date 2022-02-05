@@ -1,4 +1,4 @@
-liveRecv = otree.live_utils.livePageRecv;
+liveRecv = otree.live_utils.liveDefaultRecv;
 
 
 async function main() {
@@ -6,17 +6,20 @@ async function main() {
     game = otree.game,
     schedule = otree.schedule
 
+  // TODO: move to game.progress
   let progress = {
     total: js_vars.num_trials,
     current: 0,
     completed: 0 
   };
 
+  // TODO: schedule.phases = 
   schedule.setup([
     { at: 0, phase: "aim" },
     { at: 1000, phase: "prime" },
     { at: 1500, phase: "target" },
   ]);
+  // TODO shedule.timeout = 
   schedule.setTimeout(js_vars.trial_timeout * 1000);
 
   // TODO: game.config = ...
@@ -28,8 +31,8 @@ async function main() {
   game.loadTrial = function () {
     console.debug("loading...");
     progress.current += 1;
-    game.setTrial(otree.live_utils.getPreloadedTrial(progress.current));
     game.setProgress(progress);
+    game.setTrial(otree.live_utils.getPreloadedTrial(progress.current));
   };
 
   game.startTrial = function (trial) {
@@ -41,7 +44,6 @@ async function main() {
     game.updateStatus({ trialStarted: true });
   };
 
-  // eventually called from utils.loadTrial
   game.onStatus = function (changed) {
     if (changed.trialCompleted) {
       progress.completed += 1
@@ -75,15 +77,15 @@ async function main() {
 
   page.onTimeout = function () {
     console.debug("timeout");
-    otree.live_utils.sendResponseTimeout(game.trial.iteration);
+    otree.live_utils.sendTimeout(game.trial.iteration);
     game.setFeedback({
-      responseCorrect: false,
+      responseCorrect: null,
       responseFinal: true
     });
     game.updateStatus({ trialCompleted: true, trialSkipped: true });
   };
 
-  await otree.live_utils.preloadTrials(js_vars.media_fields);
+  await otree.live_utils.preloadTrials({ media_fields: js_vars.media_fields });
 
   page.update({ stage: "instructing" });
   await page.waitForEvent("user_ready");

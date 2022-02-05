@@ -5,11 +5,13 @@ async function main() {
     game = otree.game,
     schedule = otree.schedule
 
+  // TODO: schedule.phases = 
   schedule.setup([
     { at: 0, phase: "aim" },
     { at: 1000, phase: "prime" },
     { at: 1500, phase: "target" },
   ]);
+  // TODO: schedule.timeout = 
   schedule.setTimeout(js_vars.trial_timeout * 1000);
 
   // TODO: game.config = ...
@@ -28,12 +30,8 @@ async function main() {
     console.debug("starting.. ", trial);
     schedule.start();
     otree.utils.measurement.begin();
-    // TODO: game.status.trialStarted = true
+    // TODO: hardcode into core game, not much used anyway
     game.updateStatus({ trialStarted: true });
-  };
-
-  game.onStatus = function (changed) {
-    // ???
   };
 
   page.onInput = function (name, value) {
@@ -52,7 +50,7 @@ async function main() {
 
   page.onTimeout = function () {
     console.debug("timeout");
-    otree.live_utils.sendResponseTimeout(game.trial.iteration);
+    otree.live_utils.sendTimeout(game.trial.iteration);
   };
 
   page.update({ stage: "instructing" });

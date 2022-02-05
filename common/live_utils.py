@@ -1,5 +1,6 @@
 from email.policy import default
 from lib2to3.pytree import Base
+from multiprocessing.sharedctypes import Value
 from otree.api import BasePlayer
 
 
@@ -80,12 +81,18 @@ def live_trials(pagecls):
 
     Expected class attributes:
     
-    - trial_model: a class of trial model, should have fields `player`, `iteration`, `is_completed`
+    - trial_model: a class of trial model, should have fields
     - trial_fields: (optional) a list of fields of model to send to browser
+
+    The handlers analyze trial to check for errors and autogenerate status/progress responses:
+    - iteration
+    - is_completed
+    - is_successful
+    - response (checked for None)
 
     Expected class static methods:
 
-    def validate_trial(trial, response):
+    def validate_response(trial, response):
         # the response is dict: { input, rt, timeout_happened }
         # updates trial according to response and return feedback
 
@@ -147,8 +154,8 @@ def live_trials(pagecls):
 
 
     @defaultmethod(pagecls)
-    def validate_trial(trial):
-        raise TypeError("@live_trials class require validate_trial static method")
+    def validate_response(trial):
+        raise TypeError("@live_trials class require validate_response static method")
 
     #### live methods of the trials logic 
 
@@ -183,26 +190,27 @@ def live_trials(pagecls):
     @defaultmethod(pagecls)
     def handle_response(player, message):
         iteration = player.participant.iteration
-        trial = pagecls.get_trial(player, iteration)
 
-        if trial is None:
+        if message['iteration'] != iteration:
+            raise RuntimeError("Trial sequence messsed up")
+
+        curtrial = pagecls.get_trial(player, iteration)
+
+        if curtrial is None:
             raise RuntimeError("Responding to missing trial")
-        if trial.is_completed:
+        if curtrial.is_completed:
             raise RuntimeError("Responsing to already completed trial")
-        if trial.iteration != message['iteration']:
-            raise RuntimeError("Responsing to mismatched iteration")
 
+        feedback = pagecls.validate_response(curtrial, response=message, timeout_happened=False)
         progress=pagecls.get_progress(player, iteration)
-
-        feedback = pagecls.validate_trial(trial, message)
         
-        if trial.is_completed:
+        if curtrial.is_completed:
             return {player: dict(
                 feedback=feedback,
                 status=dict(
                     trialCompleted=True, 
-                    trialSuccessful=trial.is_successful, 
-                    trialSkipped=trial.response is None),
+                    trialSuccessful=curtrial.is_successful, 
+                    trialSkipped=curtrial.response is None),
                 progress=progress
             )}
         else: 
@@ -210,6 +218,35 @@ def live_trials(pagecls):
                 feedback=feedback,
                 progress=progress
             )}
+
+    @defaultmethod(pagecls)
+    def handle_timeout(player, message):
+        iteration = player.participant.iteration
+
+        if message['iteration'] != iteration:
+            raise RuntimeError("Trial sequence messsed up")
+
+        curtrial = pagecls.get_trial(player, iteration)
+
+        if curtrial is None:
+            raise RuntimeError("Timeouting missing trial")
+        if curtrial.is_completed:
+            raise RuntimeError("Timeouting already completed trial")
+
+        feedback = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
+        progress=pagecls.get_progress(player, iteration)
+
+        assert curtrial.is_completed, "timeouted trials should be marked completed"
+
+        return {player: dict(
+            feedback=feedback,
+            status=dict(
+                trialCompleted=True, 
+                trialSuccessful=curtrial.is_successful, 
+                trialSkipped=curtrial.response is None
+                ),
+            progress=progress
+        )}
 
     ####
 
@@ -225,57 +262,58 @@ def live_trials(pagecls):
 def live_trials_preloaded(pagecls):
     """Decorator to setup a page class to handle generic preloaded trials
 
-    In response to 'load' message it returns all trials instead of single.
-
-    In response to `response` message - calls `validate_trial(trial, response)` but does not send back anything.
-
-    Expected class attributes:
-    
-    - trial_model: a class of trial model, should have fields `player`, `iteration`, `is_completed`
-    - trial_fields: (optional) a list of fields of model to send to browser
+    The same as @live_trials, but the 'load' message is responded with all trials data.
+    Other messages don't get any response, so validate_response don't need to return feedback.
 
     Expected class static methods:
 
-    def validate_trial(trial, response):
-        # the response is dict: { input, rt, timeout_happened }
-        # updates trial according to response and doesn't return anything
-
-    # optional
     def get_all_trials(player):
-        # returns all trial for a player
-        # by default gets all incompleted trials
-
-    # optional
-    def get_trial(player, iteration):
         # returns current trial for a player
-        # by default, gets a trial according to current iteration
+        # by default, gets all uncompleted trials for player
 
-    # optional
-    def encode_trial(trial):
-        # returns a dict to send to players browser
-        # by default, uses trial_fields 
-
+    The rest is the same as @live_trials
 
     """
     @defaultmethod(pagecls)
     def get_all_trials(player):
         return pagecls.trial_model.filter(player=player, is_completed=False)
 
-
-    @defaultmethod(pagecls)
-    def get_trial(player, iteration):
-        trials = pagecls.trial_model.filter(player=player, iteration=iteration)
-        if len(trials) == 0:
-            return None
-        if len(trials) > 1:
-            raise ValueError("trials messed up")
-        return trials[0]
-
-    @defaultmethod(pagecls)
-    def encode_trial(trial):
-        return { f: getattr(trial, f) for f in pagecls.trial_fields }
-
     ####
+    @defaultmethod(pagecls)
+    def handle_response(player, message):
+        iteration = message['iteration']
+
+        curtrial = pagecls.get_trial(player, iteration)
+
+        if curtrial is None:
+            raise RuntimeError("Responding to missing trial")
+        if curtrial.is_completed:
+            raise RuntimeError("Responsing to already completed trial")
+
+        pagecls.validate_response(curtrial, response=message, timeout_happened=False)
+
+        return dict()
+
+
+    @defaultmethod(pagecls)
+    def handle_timeout(player, message):
+        iteration = message['iteration']
+
+        curtrial = pagecls.get_trial(player, iteration)
+
+        if curtrial is None:
+            raise RuntimeError("Timeouting missing trial")
+        if curtrial.is_completed:
+            raise RuntimeError("Timeouting already completed trial")
+
+        progress=pagecls.get_progress(player, iteration)
+
+        feedback = pagecls.validate_response(curtrial, response=None, timeout_happened=True)
+
+        assert curtrial.is_completed, "timeouted trials should be marked completed"
+
+        return dict()
+
 
     @defaultmethod(pagecls)
     def handle_load(player, message):
@@ -284,23 +322,4 @@ def live_trials_preloaded(pagecls):
             trials=dict(data=[pagecls.encode_trial(t) for t in trials])
         )}
 
-    @defaultmethod(pagecls)
-    def handle_response(player, message):
-        trial = pagecls.get_trial(player, message['iteration'])
-
-        if trial is None:
-            raise RuntimeError("Responding to missing trial")
-        if trial.is_completed:
-            raise RuntimeError("Responsing to already completed trial")
-
-        pagecls.validate_trial(trial, message)
-
-        # just empty response
-        return {player: dict(
-            status=dict()
-        )}
-
-
-    return live_page(pagecls)
-
-
+    return live_trials(pagecls)

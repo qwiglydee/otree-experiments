@@ -112,15 +112,14 @@ class Main(Page):
         )
 
     @staticmethod
-    def validate_trial(trial: Trial, response: dict):
-        print("validating", trial, response)
+    def validate_response(trial: Trial, response: dict, timeout_happened: bool):
+        print("validating", trial, "\nresponse:", response, "\ntimeout:", timeout_happened)
 
-        if response.get('timeout_happened'):
+        if timeout_happened:
             trial.is_timeouted = True
-            trial.is_successful = False
+            trial.is_successful = None
             trial.is_completed = True
-
-        if response.get('input'):
+        else:
             trial.response_time = response.get('response_time')
             trial.response = response['input']
             trial.is_successful = trial.response == trial.target_category

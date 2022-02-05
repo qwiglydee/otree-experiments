@@ -1,0 +1,36 @@
+.matrix4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  grid-gap: 4px;
+}
+
+.matrix .cell {
+  width: 32px;
+  height: 32px;
+  border: 1px solid black;
+} 
+
+.cell.empty {
+  background-color: #aaa;
+}
+
+.cell.filled {
+  background-color: #448;
+}
+
+.cell.empty.correct {
+  background-color: #080;
+}
+
+.cell.empty.incorrect {
+  background-color: #800;
+}
+
+.cell.filled.correct {
+  background-color: #8d8;
+}
+
+.cell.filled.incorrect {
+  background-color: #d88;
+}
