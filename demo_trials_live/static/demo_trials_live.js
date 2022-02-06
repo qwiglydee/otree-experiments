@@ -26,13 +26,20 @@ async function main() {
     otree.live_utils.loadTrial();
   };
 
-  game.startTrial = function (trial) {
+  game.startTrial = function (trial) { // == onStart
     console.debug("starting.. ", trial);
     schedule.start();
     otree.utils.measurement.begin();
     // TODO: hardcode into core game, not much used anyway
     game.updateStatus({ trialStarted: true });
   };
+
+  game.onStatus = function(changed) {
+    if( changed.trialCompleted ) { // == onStop
+      console.debug("stopped", trial);
+      schedule.stop();
+    }
+  }
 
   page.onInput = function (name, value) {
     console.debug("input:", name, value);

@@ -12,7 +12,6 @@ async function main() {
     { at: 0, phase: "exposing" },
     { at: js_vars.exposure_time * 1000, phase: "solving" },
   ]);
-  schedule.setTimeout(js_vars.trial_timeout * 1000);
 
   // TODO: game.config = ...
   game.setConfig({
@@ -46,11 +45,6 @@ async function main() {
     page.update({ "trial.matrix": game.trial.matrix }); // manually refresh updated matrix
 
     otree.live_utils.sendResponseAction(game.trial.iteration, pos);
-  };
-
-  page.onTimeout = function () {
-    console.debug("timeout");
-    otree.live_utils.sendTimeout(game.trial.iteration);
   };
 
   page.onUpdate = function (change) { // FIXME??? this is page update, not game state update

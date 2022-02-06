@@ -18,16 +18,17 @@ class C(BaseConstants):
     PLAYERS_PER_GROUP = None
     INSTRUCTIONS = __name__ + "/instructions.html"
     NUM_ROUNDS = 1
-    NUM_TRIALS = 10
+    
     MATRIX_SIZE = 4
     MATRIX_LENGTH = MATRIX_SIZE ** 2
     CHAR_EMPTY = "•"
     CHAR_FILL = "●"
 
+    GAME_TIMEOUT = 30
+
     DEFAULT_DIFFICULTY = 4
     DEFAULT_MAX_MOVES = 6
     DEFAULT_EXPOSURE_TIME = 2
-    DEFAULT_TRIAL_TIMEOUT = DEFAULT_EXPOSURE_TIME + 6
     DEFAULT_POST_TRIAL_PAUSE = 1
 
 
@@ -41,6 +42,7 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
     num_completed = models.IntegerField(initial=0)
+    num_solved = models.IntegerField(initial=0)
 
 
 class Puzzle(ExtraModel):
@@ -58,12 +60,12 @@ class Puzzle(ExtraModel):
     response_time = models.IntegerField()
 
 
-def generate_trial(player, iteration, difficulty):
+def generate_puzzle(player, iteration, difficulty):
     empty = [C.CHAR_EMPTY] * C.MATRIX_LENGTH
     target = [C.CHAR_FILL] * difficulty + [C.CHAR_EMPTY] * (C.MATRIX_LENGTH - difficulty)
     random.shuffle(target)
 
-    Puzzle.create(
+    return Puzzle.create(
         player=player, iteration=iteration, difficulty=difficulty, target="".join(target), matrix="".join(empty)
     )
 
@@ -91,7 +93,6 @@ def creating_session(subsession: Subsession):
     # override constants with session params
     session = subsession.session
     defaults = dict(
-        trial_timeout=C.DEFAULT_TRIAL_TIMEOUT,
         post_trial_pause=C.DEFAULT_POST_TRIAL_PAUSE,
         exposure_time=C.DEFAULT_EXPOSURE_TIME,
         difficulty=C.DEFAULT_DIFFICULTY,
@@ -101,18 +102,18 @@ def creating_session(subsession: Subsession):
     for param in defaults:
         session.params[param] = session.config.get(param, defaults[param])
 
-    # pregenerate trials
-    for player in subsession.get_players():
-        for i in range(1, C.NUM_TRIALS + 1):
-            generate_trial(player, i, session.params["difficulty"])
-
 
 # PAGES
 
 
 @live_puzzles
-class Main(Page):
+class Game(Page):
     trial_model = Puzzle
+    timeout_seconds = C.GAME_TIMEOUT
+
+    @staticmethod
+    def new_trial(player, iteration):
+        return generate_puzzle(player, iteration, player.session.params['difficulty'])
 
     @staticmethod
     def encode_trial(puzzle: Puzzle):
@@ -120,11 +121,8 @@ class Main(Page):
             iteration=puzzle.iteration, 
             target=list(puzzle.target), 
             matrix=list(puzzle.matrix),
-            validated=[None] * C.MATRIX_LENGTH)  # a field not stored in model
-
-    @staticmethod
-    def get_progress(player: Player, iteration):
-        return dict(total=C.NUM_TRIALS, current=iteration, completed=player.num_completed)
+            validated=[None] * C.MATRIX_LENGTH  # a field not stored in model
+        )
 
     @staticmethod
     def js_vars(player):
@@ -133,8 +131,6 @@ class Main(Page):
             char_fill=C.CHAR_FILL,
             matrix_size=C.MATRIX_SIZE,
             matrix_length=C.MATRIX_LENGTH,
-            num_trials=C.NUM_TRIALS,
-            trial_timeout=params["trial_timeout"],
             post_trial_pause=params["post_trial_pause"],
             exposure_time=params["exposure_time"],
             max_moves=params["max_moves"],
@@ -142,28 +138,25 @@ class Main(Page):
 
     @staticmethod
     def validate_response(puzzle: Puzzle, response: dict, timeout_happened: bool):
-        print("validating", puzzle, "\nresponse:", response, "\ntimeout:", timeout_happened)
+        print("validating", puzzle, "\nresponse:", response)
 
         params = puzzle.player.session.params
 
-        if timeout_happened:
-            puzzle.is_timeouted = True
-            pos = None
-            correct = None
-        else:
-            pos = response["action"]
-            fill_cell(puzzle, pos)
-            correct = puzzle.matrix[pos] == puzzle.target[pos]
+        pos = response["action"]
+        fill_cell(puzzle, pos)
+        correct = puzzle.matrix[pos] == puzzle.target[pos]
 
         moves_count = puzzle.matrix.count(C.CHAR_FILL)
         solved, _ = validate_puzzle(puzzle)
         
         puzzle.is_successful = solved
-        puzzle.is_completed = timeout_happened or solved or moves_count == params["max_moves"]
+        puzzle.is_completed = solved or moves_count == params["max_moves"]
         puzzle.is_skipped = puzzle.is_completed and moves_count == 0
 
         if puzzle.is_completed:
             puzzle.player.num_completed += 1
+            if solved:
+                puzzle.player.num_solved += 1
 
         return dict(
             feedback=dict(input=pos, responseCorrect=correct, responseFinal=puzzle.is_completed),
@@ -171,4 +164,4 @@ class Main(Page):
         )
 
 
-page_sequence = [Main]
+page_sequence = [Game]

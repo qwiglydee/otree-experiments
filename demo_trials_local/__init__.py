@@ -12,6 +12,7 @@ Your app description
 
 WORKDIR = Path(__file__).parent
 
+
 class C(BaseConstants):
     NAME_IN_URL = "demo_trials_local"
     PLAYERS_PER_GROUP = None
@@ -19,7 +20,7 @@ class C(BaseConstants):
     NUM_ROUNDS = 1
     NUM_TRIALS = 10
 
-    DEFAULT_TRIAL_TIMEOUT = 5 
+    DEFAULT_TRIAL_TIMEOUT = 5
     DEFAULT_POST_TRIAL_PAUSE = 1
 
 
@@ -63,19 +64,21 @@ class Trial(ExtraModel):
     response_time = models.IntegerField()
 
 
-def generate_trial(player, iteration):
-    prime_row = random.choice(PRIMES)
-    target_row = random.choice(TARGETS)
-    
-    Trial.create(
-        player=player,
-        iteration=iteration,
-        prime=prime_row['stimulus'],
-        prime_category=prime_row['category'],
-        target=image_url(target_row['stimulus']),
-        target_category=target_row['category'],
-        congruent=prime_row['category'] == target_row['category']
-    )
+def pregenerate_trials(player):
+    for iter in range(1, C.NUM_TRIALS + 1):
+        prime_row = random.choice(PRIMES)
+        target_row = random.choice(TARGETS)
+
+        Trial.create(
+            player=player,
+            iteration=iter,
+            prime=prime_row["stimulus"],
+            prime_category=prime_row["category"],
+            target=image_url(target_row["stimulus"]),
+            target_category=target_row["category"],
+            congruent=prime_row["category"] == target_row["category"],
+        )
+
 
 def creating_session(subsession: Subsession):
     # override constants with session params
@@ -88,10 +91,8 @@ def creating_session(subsession: Subsession):
     for param in defaults:
         session.params[param] = session.config.get(param, defaults[param])
 
-    # pregenerate trials
     for player in subsession.get_players():
-        for i in range(1, C.NUM_TRIALS+1):
-            generate_trial(player, i)
+        pregenerate_trials(player)
 
 
 # PAGES
@@ -100,16 +101,16 @@ def creating_session(subsession: Subsession):
 @live_trials_preloaded
 class Main(Page):
     trial_model = Trial
-    trial_fields = ['iteration', 'prime', 'target', 'target_category']
+    trial_fields = ["iteration", "prime", "target", "target_category"]
 
     @staticmethod
     def js_vars(player):
         params = player.session.params
         return dict(
-            num_trials = C.NUM_TRIALS,
-            media_fields = {'target': 'image'},
-            trial_timeout = params['trial_timeout'],
-            post_trial_pause = params['post_trial_pause'],
+            num_trials=C.NUM_TRIALS,
+            media_fields={"target": "image"},
+            trial_timeout=params["trial_timeout"],
+            post_trial_pause=params["post_trial_pause"],
         )
 
     @staticmethod
@@ -121,11 +122,12 @@ class Main(Page):
             trial.is_successful = None
             trial.is_completed = True
         else:
-            trial.response_time = response.get('response_time')
-            trial.response = response['input']
+            trial.response_time = response.get("response_time")
+            trial.response = response["input"]
             trial.is_successful = trial.response == trial.target_category
             trial.is_completed = True
 
         trial.player.num_completed += 1
+
 
 page_sequence = [Main]

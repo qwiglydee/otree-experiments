@@ -11,7 +11,7 @@ Page title
 {{ block scripts }}
 <script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
 <script src="{{ static 'live_utils.js' }}"></script>
-<script src="{{ static 'demo_puzzles_local.js' }}"></script>
+<script src="{{ static 'demo_puzzles_live.js' }}"></script>
 {{ endblock }}
 
 {{ block content }} 
@@ -31,22 +31,21 @@ Page title
         </div>
         <div ot-if="phase == 'solving'" class="matrix matrix4">
             {{ for i in range(16) }}
-                <div class="cell" ot-class="styles.matrix.{{i}}" ot-text="trial.matrix.{{i}}" ot-touch ot-click ot-input="place = {{i}}"></div> 
+                <div class="cell" ot-class="styles.{{i}}" ot-text="trial.matrix.{{i}}" ot-touch ot-click ot-input="place = {{i}}"></div> 
             {{ endfor }}
         </div>
         <div ot-if="phase == 'feedback'" class="matrix matrix4">
             {{ for i in range(16) }}
-                <div class="cell" ot-class="styles.matrix.{{i}}" ot-text="trial.target.{{i}}"></div> 
+                <div class="cell" ot-class="styles.{{i}}" ot-text="trial.target.{{i}}"></div> 
             {{ endfor }}
         </div>
     </div>
+    
+    <!-- TODO: progress-bar timer -->
 
-    <progress ot-max="progress.total" ot-value="progress.completed"></progress>
-  
     <div class="bottom">
         <span ot-if="status.trialSuccessful == true" class="icon success">✔</span>
         <span ot-if="status.trialSuccessful == false" class="icon failure">✘</span>
-        <span ot-if="status.trialTimeouted" class="icon">🕠</span>
     </div>      
 </div>
  
