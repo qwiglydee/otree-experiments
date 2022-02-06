@@ -1,4 +1,4 @@
-liveRecv = otree.live_utils.liveTrialsRecv;
+liveRecv = otree.live_utils.liveGenericRecv;
 
 async function main() {
   let page = otree.page,
@@ -25,7 +25,7 @@ async function main() {
 
   game.loadTrial = function () {
     console.debug("loading...");
-    otree.live_utils.loadTrial();
+    otree.live_utils.requestTrial();
   };
 
   page.onStatus = function (changed) {
@@ -65,7 +65,7 @@ async function main() {
 
     game.progress.moves++;
     if (game.progress.moves == js_vars.max_moves) {
-      otree.live_utils.sendResponseSolution(game.trial.iteration, game.trial.matrix);
+      otree.live_utils.sendSolution(game.trial, game.trial.matrix);
     }
 
     page.update({ "trial.matrix": game.trial.matrix }); // manually refresh updated matrix

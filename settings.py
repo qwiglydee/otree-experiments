@@ -31,6 +31,12 @@ SESSION_CONFIGS = [
         num_demo_participants=1,
         app_sequence=['demo_puzzles_local']
     ),
+    dict(
+        name="demo_multiplayer_2",
+        display_name="tictactoe: two-players game, turn based",
+        num_demo_participants=2,
+        app_sequence=['demo_multiplayer_2']
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs

@@ -2,12 +2,14 @@
 function liveDefaultRecv(data) {
   let messages = Array.isArray(data) ? data : [data];
   for(let message of messages) {
-    otree.page.emitEvent(`ot.live.${message.type}`, message)
+    let type = message.type;
+    delete message.type;
+    otree.page.emitEvent(`ot.live.${type}`, message)
   }
 }
 
-/* for live_trials, call appropriate game methods */
-function liveTrialsRecv(data) {
+/** generic liveRecv calls appropriate game methods */
+function liveGenericRecv(data) {
   let messages = Array.isArray(data) ? data : [data];
   for(let message of messages) {
     let type = message.type;
@@ -32,10 +34,6 @@ function liveTrialsRecv(data) {
   }
 }
 
-function loadTrial() {
-  liveSend({ type: 'load' });
-}
-
 let trials_data; // iteration from 1, indexing from 0
 
 function getPreloadedTrial(iteration) {
@@ -55,25 +53,27 @@ async function preloadTrials(conf) {
       otree.utils.trials.preloadMedia(trial, conf.media_fields);
     }
   }
-  current_iter = 0;
 }
 
-function sendResponse(i, value, response_time) {
-  liveSend({ type: 'response', iteration: i, input: value, response_time });
+function requestTrial() {
+  liveSend({ type: 'load' });
 }
 
-function sendResponseAction(i, value, response_time) {
-  liveSend({ type: 'response', iteration: i, action: value, response_time });
+function sendInput(trial, input, response_time) {
+  liveSend({ type: 'response', iteration: trial.iteration, input, response_time });
 }
 
-function sendResponseSolution(i, value, response_time) {
-  liveSend({ type: 'response', iteration: i, solution: value, response_time });
+function sendAction(trial, action, response_time) {
+  liveSend({ type: 'response', iteration: trial.iteration, action, response_time });
 }
 
-function sendTimeout(i) {
-  liveSend({ type: 'timeout', iteration: i });
+function sendSolution(trial, solution, response_time) {
+  liveSend({ type: 'response', iteration: trial.iteration, solution, response_time });
 }
 
+function sendTimeout(trial) {
+  liveSend({ type: 'timeout', iteration: trial.iteration });
+}
 
 if (window.otree === undefined) {
   window.otree = {};
@@ -81,12 +81,12 @@ if (window.otree === undefined) {
 
 window.otree.live_utils = {
   liveDefaultRecv,
-  liveTrialsRecv,
-  loadTrial,
-  sendResponse,
-  sendResponseAction,
-  sendResponseSolution,
-  sendTimeout,
+  liveGenericRecv,
+  requestTrial,
   preloadTrials,
-  getPreloadedTrial
+  getPreloadedTrial,
+  sendInput,
+  sendAction,
+  sendSolution,
+  sendTimeout,
 }

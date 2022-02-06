@@ -1,4 +1,4 @@
-liveRecv = otree.live_utils.liveTrialsRecv;
+liveRecv = otree.live_utils.liveGenericRecv;
 
 async function main() {
   let page = otree.page,
@@ -23,7 +23,7 @@ async function main() {
 
   game.loadTrial = function () {
     console.debug("loading...");
-    otree.live_utils.loadTrial();
+    otree.live_utils.requestTrial();
   };
 
   page.onStatus = function (changed) {
@@ -46,12 +46,12 @@ async function main() {
     console.debug("input:", name, value);
     page.freezeInputs();
     let rt = otree.utils.measurement.end();
-    otree.live_utils.sendResponse(game.trial.iteration, value, rt);
+    otree.live_utils.sendInput(game.trial, value, rt);
   };
 
   page.onTimeout = function (time) {
     console.debug("timeout", time);
-    otree.live_utils.sendTimeout(game.trial.iteration);
+    otree.live_utils.sendTimeout(game.trial);
   };
 
   page.update({ stage: "instructing" });

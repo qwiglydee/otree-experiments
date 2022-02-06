@@ -5,10 +5,18 @@
   grid-gap: 4px;
 }
 
+.matrix3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  grid-gap: 4px;
+}
+
 .cell {
   width: 64px;
   height: 64px;
   border: 1px solid black;
+  font-size: 32px;
 
   display: flex;
   align-items: center;
@@ -22,4 +30,16 @@
 
 .cell.incorrect {
   background-color: #800;
+}
+
+.cell.winning {
+  background-color: #cc0;
+}
+
+.cell.losing {
+  background-color: #0cc;
+}
+
+.matrix.waiting {
+  opacity: 0.5;
 }

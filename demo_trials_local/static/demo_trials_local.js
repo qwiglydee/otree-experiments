@@ -70,7 +70,7 @@ async function main() {
 
   page.onTimeout = function (time) {
     console.debug("timeout", time);
-    otree.live_utils.sendTimeout(game.trial.iteration);
+    otree.live_utils.sendTimeout(game.trial);
 
     game.setFeedback({ responseCorrect: null });
     game.updateStatus({ trialCompleted: true, trialSkipped: true });

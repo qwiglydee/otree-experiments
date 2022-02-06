@@ -1,25 +1,11 @@
 """Magic utilities to simplify live page development
 
-The decorators: 
-- live_page
-- live_trials
-- live_trials_preloaded
-- live_puzzles
+The decorators modify page class and add generic methods to handle game state, check protocol errors, 
+and send back responses based on results of existing methods provided in class  
 
-They modify page classes and add live_method to handle generic app of specified type.
-
-Usage:
-
-```
-@live_trials
-class MyPage(Page):
-    define some required staticmethods here 
-```
-
-See docs for specific decorator for detail.
+See docs for specific live_decorator for detail.
 """
 
-from lib2to3.pytree import Base
 from otree.api import BasePlayer
 
 def defaultmethod(cls):
@@ -49,7 +35,7 @@ def wrappedmethod(cls):
 
 
 def live_page(pagecls):
-    """Decorator to make page class a very generic live page.
+    """Decorator to make very generic live page.
 
     The live page receives messages in format: `{ type: sometype, fields: ... }`
     Both incoming and outgoing messages can be batched together into lists.
@@ -89,6 +75,8 @@ def live_page(pagecls):
             for type, data in msgdict.items():
                 if data is None:
                     continue
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid data provided for message")
                 msg = {"type": type}
                 msg.update(data)
                 sending[rcpt].append(msg)
@@ -131,7 +119,12 @@ def live_page(pagecls):
 
 
 def live_trials(pagecls):
-    """Decorator to setup a page class to handle generic live trials
+    """Decorator to make trial/response games.
+
+    Expected class attributes:
+
+    - trial_model: a class of trial model, should have fields
+    - trial_fields: (optional) a list of fields of model to send to browser
 
     Expected trial model fields:
     - iteration = models.IntegerField(initial=0)
@@ -139,11 +132,6 @@ def live_trials(pagecls):
     - is_timeouted = models.BooleanField(initial=False)
     - is_skipped = models.BooleanField(initial=False)
     - is_successful = models.BooleanField(initial=None)
-
-    Expected class attributes:
-
-    - trial_model: a class of trial model, should have fields
-    - trial_fields: (optional) a list of fields of model to send to browser
 
     Expected class static methods:
 
@@ -369,14 +357,10 @@ def live_puzzles(pagecls):
 
     Work basically as live_trials, but in addition to feedback it sends update message.
 
-
-    Expected class static methods:
-
-    def validate_response(trial, response):
-        # the response is dict: { input, rt, timeout_happened }
+    def validate_response(trial, response, timeout_happened):
+        # the response is dict: { action, response_time } or { solution, response_time }
         # updates trial according to response and return feedback and update
-        # like:
-        return dict(responseCorrect), {'trial.something': newvalue }
+        return dict(feedback=..., update=...)
     """
 
     #### live methods of the puzzle logic
@@ -443,3 +427,105 @@ def live_puzzles(pagecls):
     ####
 
     return live_trials(pagecls)
+
+
+def live_multiplayer(pagecls):
+    """Decorator to make multi-player games
+
+    Expected class attributes:
+
+    - trial_model: a class representing game state
+    - trial_fields: (optional) a list of fields of model to send to browser
+
+    Expected class static methods:
+
+    # optional
+    def get_trial(group):
+        # returns current trial for a group
+        # by default, gets the trial linked to the group   
+
+    # optional
+    def encode_trial(trial):
+        # returns a dict to send to players browser
+        # by default, uses trial_fields
+
+    # required
+    def validate_response(trial, response, timeout_happened):
+        # validates response['action'] and updates state 
+        # should return update dict containing feedback and update
+
+    The feedback is sent to the original player, the update is broadcasted to all players in a group.  
+
+    # optional
+    def get_status(trial, player):
+        # checks status of a player in the game
+        # shuld return dict for 'status' message for the player
+        # by default, sends { gameOver: trial.is_completed, playerActive: true } 
+
+    The status is sent individually to each player in group and it should indicate particular player status.
+    """
+
+    @defaultmethod(pagecls)
+    def get_trial(group):
+        trials = pagecls.trial_model.filter(group=group)
+        if len(trials) != 1:
+            raise ValueError("trials messed up")
+        return trials[0]
+
+    @defaultmethod(pagecls)
+    def encode_trial(trial):
+        return {f: getattr(trial, f) for f in pagecls.trial_fields}
+
+    @defaultmethod(pagecls)
+    def get_status(trial, player):
+        return dict(gameOver=trial.is_completed, playerActive=True)
+
+    @defaultmethod(pagecls)
+    def validate_response(trial, response, timeout_happened):
+        raise TypeError("@live_multiplayer class requires `validate_response` static method")
+
+    def make_status(game):
+        return { p: pagecls.get_status(game, p) for p in game.group.get_players() } 
+
+    #### 
+
+    @defaultmethod(pagecls)
+    def handle_load(player, message):
+        group = player.group
+        trial = pagecls.get_trial(group)
+
+        if trial is None:
+            raise RuntimeError("No trials found")
+
+        return {player: dict(
+            trial=pagecls.encode_trial(trial),
+            status=pagecls.get_status(trial, player)
+        )}
+
+    @defaultmethod(pagecls)
+    def handle_response(player, message):
+        group = player.group
+        trial = pagecls.get_trial(group)
+
+        if trial is None:
+            raise RuntimeError("No trials found")
+        
+        result = pagecls.validate_response(trial, player, response=message, timeout_happened=False)
+        if set(result.keys()) > {'feedback', 'update'}:
+            raise ValueError("validate_response expected to return either feedback or update")
+        feedback = result.get('feedback')
+        update = result.get('update')
+
+        responses = {}
+        
+        if feedback:
+            responses[player] = dict(feedback=feedback, status=pagecls.get_status(trial, player), update=update)
+
+        if update:
+            for p in group.get_players():
+                if p != player:
+                    responses[p] = dict(status=pagecls.get_status(trial, p), update=update)
+
+        return responses
+
+    return live_page(pagecls)
