@@ -1,0 +1,40 @@
+{{ block title }}
+Page title
+{{ endblock }}
+
+{{ block styles }}
+<link href="{{ static 'fullscreen.css' }}" rel="stylesheet" />
+<link href="{{ static 'common.css' }}" rel="stylesheet" />
+{{ endblock }}
+
+{{ block scripts }}
+<script type="module" src="{{ static 'otree-front-1.0.0.js' }}"></script>
+<script src="{{ static 'live_utils.js' }}"></script>
+<script src="{{ static 'demo_auction.js' }}"></script>
+{{ endblock }}
+
+{{ block content }}
+
+<div class="fullscreen flex-col">
+    {{ include C.INSTRUCTIONS }}
+    <div class="main">
+        <h4 ot-if="trial.top_bid">Top bid: <span ot-text="trial.top_bid"></span> 
+            <span ot-if="status.playerRank == 1">(yours)</span>
+            <span ot-if="status.playerRank != 1">(<span ot-text="trial.top_bidder"></span>)</span>
+        </h4>
+        <h4 ot-if="trial.second_bid">Second bid: <span ot-text="trial.second_bid"></span> 
+            <span ot-if="status.playerRank == 2">(yours)</span>
+            <span ot-if="status.playerRank != 2">(<span ot-text="trial.second_bidder"></span>)</span>
+        </h4>
+
+        <p ot-if="status.playerRank == null">You are not the top or second bidder.</p>
+    </div>
+    <div class="bottom">
+        <div class="input-group">
+            <input type="number" step="{{ C.BID_INCREMENT }}" class="form-control" ot-input="bid" ot-enabled="status.playerActive">
+            <button type="button" class="btn btn-outline-secondary" ot-emit="btn.bid" ot-enabled="status.playerActive">Bid</button>
+        </div>
+    </div>
+</div>
+
+{{ endblock }}

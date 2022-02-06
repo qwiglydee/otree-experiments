@@ -415,6 +415,9 @@ function setChild(elem, child) {
   }
 }
 
+
+const TEXTINPUTS = ['text', 'number', 'time', 'date']; 
+
 /** 
  * Checks if an elem is a text input or textarea
  *  
@@ -422,7 +425,7 @@ function setChild(elem, child) {
  * @returns {boolean}
  */
 function isTextInput(elem) {
-  return (elem.tagName == "INPUT" && elem.type == "text") || elem.tagName == "TEXTAREA";
+  return (elem.tagName == "INPUT" && TEXTINPUTS.includes(elem.type));
 }
 
 var dom = /*#__PURE__*/Object.freeze({

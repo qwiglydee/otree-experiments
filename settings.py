@@ -37,6 +37,12 @@ SESSION_CONFIGS = [
         num_demo_participants=2,
         app_sequence=['demo_multiplayer_2']
     ),
+    dict(
+        name="demo_multiplayer_N",
+        display_name="auction: many-players game, asynchronouse",
+        num_demo_participants=3,
+        app_sequence=['demo_multiplayer_N']
+    ),
 ]
 
 # if you set a property in SESSION_CONFIG_DEFAULTS, it will be inherited by all configs

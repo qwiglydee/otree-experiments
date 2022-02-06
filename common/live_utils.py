@@ -518,8 +518,7 @@ def live_multiplayer(pagecls):
 
         responses = {}
         
-        if feedback:
-            responses[player] = dict(feedback=feedback, status=pagecls.get_status(trial, player), update=update)
+        responses[player] = dict(feedback=feedback, status=pagecls.get_status(trial, player), update=update)
 
         if update:
             for p in group.get_players():
