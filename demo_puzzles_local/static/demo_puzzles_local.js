@@ -28,52 +28,49 @@ async function main() {
     otree.live_utils.loadTrial();
   };
 
-  game.startTrial = function (trial) {
-    console.debug("starting...", trial);
-    schedule.start();
-    game.progress.moves = 0;  // augmenting progress
-    // TODO: move inside game core
-    game.updateStatus({ trialStarted: true });
-  };
-
-  game.onStatus = function(changed) {
+  page.onStatus = function (changed) {
+    console.debug("status", changed);
+    if (changed.trialStarted) {
+      schedule.start();
+      game.progress.moves = 0;
+    }
     if (changed.trialCompleted) {
       schedule.stop();
-      page.update({ phase: 'feedback' });
+      page.update({ phase: "feedback" });
     }
-  }
-
-  page.onInput = function (name, value) {
-    console.debug("input:", name, value);
-
-    let pos = value;
-
-    // modifying directly
-    game.trial.matrix[pos] = js_vars.char_fill;
-  
-    if (game.progress.moves == js_vars.max_moves) {
-      otree.live_utils.sendResponseSolution(game.trial.iteration, game.trial.matrix);
-    }
-
-    game.progress.moves++;
-    page.update({ "trial.matrix": game.trial.matrix }); // manually refresh updated matrix
   };
 
-  page.onUpdate = function (change) { // FIXME??? this is page update, not game state update
-    if (change.affects("trial.*")) {
-      // recalculate styles for all matrices when they are updated
-      console.debug("updating styles");
-      styles.matrix = game.trial.matrix.map((cell) => (cell == js_vars.char_fill ? "filled" : "empty"));
+  page.onUpdate = function (update) {
+    if (update.affects("trial.*")) {
+      // recalculate styles when anything changes
+      styles = game.trial.matrix.map((cell) => (cell == js_vars.char_fill ? "filled" : "empty"));
       if (game.trial.validated) {
         game.trial.validated.forEach((val, i) => {
           if (val !== null) {
-            styles.matrix[i] = val ? "correct" : "incorrect";
+            styles[i] = val ? "correct" : "incorrect";
           }
         });
       }
       page.update({ styles: styles });
     }
   };
+
+  page.onInput = function (name, value) {
+    console.debug(game.progress.moves, "input:", name, value);
+
+    let pos = value;
+
+    // modifying directly
+    game.trial.matrix[pos] = js_vars.char_fill;
+
+    game.progress.moves++;
+    if (game.progress.moves == js_vars.max_moves) {
+      otree.live_utils.sendResponseSolution(game.trial.iteration, game.trial.matrix);
+    }
+
+    page.update({ "trial.matrix": game.trial.matrix }); // manually refresh updated matrix
+  };
+
 
   page.update({ stage: "instructing" });
   await page.waitForEvent("user_ready");

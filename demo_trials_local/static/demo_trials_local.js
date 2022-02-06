@@ -1,25 +1,24 @@
 liveRecv = otree.live_utils.liveDefaultRecv;
 
-
 async function main() {
   let page = otree.page,
     game = otree.game,
-    schedule = otree.schedule
+    schedule = otree.schedule;
 
   // TODO: move to game.progress
   let progress = {
     total: js_vars.num_trials,
     current: 0,
-    completed: 0 
+    completed: 0,
   };
 
-  // TODO: schedule.phases = 
+  // TODO: schedule.phases =
   schedule.setup([
     { at: 0, phase: "aim" },
     { at: 1000, phase: "prime" },
     { at: 1500, phase: "target" },
   ]);
-  // TODO shedule.timeout = 
+  // TODO shedule.timeout =
   schedule.setTimeout(js_vars.trial_timeout * 1000);
 
   // TODO: game.config = ...
@@ -32,26 +31,30 @@ async function main() {
     console.debug("loading...");
     progress.current += 1;
     game.setProgress(progress);
-    game.setTrial(otree.live_utils.getPreloadedTrial(progress.current));
+    game.startTrial(otree.live_utils.getPreloadedTrial(progress.current));
   };
 
-  game.startTrial = function (trial) {
-    console.debug("starting.. ", trial);
-
-    schedule.start();
-    otree.utils.measurement.begin();
-    // TODO: game.status.trialStarted = true
-    game.updateStatus({ trialStarted: true });
-  };
-
-  game.onStatus = function (changed) {
+  page.onStatus = function (changed) {
+    if (changed.trialStarted) {
+      console.debug("started");
+      schedule.start();
+    }
     if (changed.trialCompleted) {
-      progress.completed += 1
+      console.debug("completed");
+      schedule.stop();
+
+      progress.completed += 1;
       game.setProgress(progress);
 
       if (progress.current == js_vars.num_trials) {
         game.updateStatus({ gameOver: true });
       }
+    }
+  };
+
+  page.onUpdate = function (update) {
+    if (update.get("phase") == "target") {
+      otree.utils.measurement.begin();
     }
   };
 
@@ -61,27 +64,15 @@ async function main() {
     let rt = otree.utils.measurement.end();
     otree.live_utils.sendResponse(game.trial.iteration, value, rt);
 
-    game.setFeedback({
-      responseCorrect: value == game.trial.target_category,
-      responseFinal: true
-    });
+    game.setFeedback({ responseCorrect: value == game.trial.target_category });
     game.updateStatus({ trialCompleted: true });
   };
 
-  page.onUpdate = function (changes) {
-    console.debug("update:", changes);
-    if (changes.get("phase") == "target") {
-      otree.utils.measurement.begin();
-    }
-  };
-
-  page.onTimeout = function () {
-    console.debug("timeout");
+  page.onTimeout = function (time) {
+    console.debug("timeout", time);
     otree.live_utils.sendTimeout(game.trial.iteration);
-    game.setFeedback({
-      responseCorrect: null,
-      responseFinal: true
-    });
+
+    game.setFeedback({ responseCorrect: null });
     game.updateStatus({ trialCompleted: true, trialSkipped: true });
   };
 
@@ -90,7 +81,7 @@ async function main() {
   page.update({ stage: "instructing" });
   await page.waitForEvent("user_ready");
   page.update({ stage: "playing" });
- 
+
   await game.playIterations();
 
   page.submit();

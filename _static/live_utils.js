@@ -15,7 +15,7 @@ function liveTrialsRecv(data) {
     delete payload.type;
     switch (type) {
       case "trial":
-        otree.game.setTrial(payload);
+        otree.game.startTrial(payload);
         break;
       case "status":
         otree.game.updateStatus(payload);
