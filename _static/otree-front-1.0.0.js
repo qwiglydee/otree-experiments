@@ -1381,7 +1381,7 @@ class Game {
    * Updates page with all the affected objects.
    *
    * calls user-defined loadTrial()
-   * 
+   *
    * @fires Page.reset
    */
   resetTrial() {
@@ -1451,7 +1451,7 @@ class Game {
       this.page.emitEvent("ot.game.over");
     }
 
-    this.page.update(new Changes(changes).prefix('status'));
+    this.page.update(new Changes(changes).prefix("status"));
   }
 
   /**
@@ -1511,15 +1511,26 @@ class Game {
   /**
    * Plays a game trial.
    *
-   * It resets trial and waits for status update with trial_completed
+   * It resets trial and waits for trialCompleted or gameOver
+   *
+   * @returns {Promise} resolving with result when trial or game completes
+   */
+  async playTrial() {
+    this.resetTrial();
+    await this.page.waitForEvents(["ot.trial.completed", "ot.game.over"]);
+    await sleep(this.config.post_trial_pause);
+  }
+
+  /**
+   * Plays loop of trials.
+   * 
+   * Just repeating playTrial until gameOver
    *
    * @returns {Promise} resolving with result when game completes
    */
   async playIterations() {
     while (!this.status.gameOver) {
-        this.resetTrial();
-        await this.page.waitForEvents(["ot.trial.completed", "ot.game.over"]);
-        await sleep(this.config.post_trial_pause);
+      await this.playTrial();
     }
   }
 }

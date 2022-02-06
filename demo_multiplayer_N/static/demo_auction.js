@@ -1,4 +1,3 @@
-// the default handler generates 'ot.live.*' events
 liveRecv = otree.live_utils.liveGenericRecv;
 
 function main() {
@@ -22,5 +21,5 @@ function main() {
     page.submitInputs('bid');
   });
 
-  otree.live_utils.requestTrial();
+  game.playTrial();
 }

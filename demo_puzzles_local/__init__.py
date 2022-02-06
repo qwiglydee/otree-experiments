@@ -25,7 +25,7 @@ class C(BaseConstants):
     CHAR_FILL = "●"
 
     GAME_TIMEOUT = 30
-    
+
     DEFAULT_DIFFICULTY = 4
     DEFAULT_MAX_MOVES = 4
     DEFAULT_EXPOSURE_TIME = 2
@@ -112,19 +112,6 @@ class Game(Page):
     timeout_seconds = C.GAME_TIMEOUT
 
     @staticmethod
-    def new_trial(player, iteration):
-        return generate_puzzle(player, iteration, player.session.params['difficulty'])
-
-    @staticmethod
-    def encode_trial(puzzle: Puzzle):
-        return dict(
-            iteration=puzzle.iteration,
-            target=list(puzzle.target),
-            matrix=list(puzzle.matrix),
-            validated=[None] * C.MATRIX_LENGTH, # a field not stored in model
-        )  
-
-    @staticmethod
     def js_vars(player):
         params = player.session.params
         return dict(
@@ -134,6 +121,19 @@ class Game(Page):
             post_trial_pause=params["post_trial_pause"],
             exposure_time=params["exposure_time"],
             max_moves=params["max_moves"],
+        )
+
+    @staticmethod
+    def new_trial(player, iteration):
+        return generate_puzzle(player, iteration, player.session.params["difficulty"])
+
+    @staticmethod
+    def encode_trial(puzzle: Puzzle):
+        return dict(
+            iteration=puzzle.iteration,
+            target=list(puzzle.target),
+            matrix=list(puzzle.matrix),
+            validated=[None] * C.MATRIX_LENGTH,  # a field not stored in model
         )
 
     @staticmethod
@@ -152,7 +152,7 @@ class Game(Page):
         puzzle.player.num_completed += 1
         if solved:
             puzzle.player.num_solved += 1
-        
+
         return dict(
             feedback=dict(responseCorrect=puzzle.is_successful, responseFinal=True),
             update=dict(validated=validated),

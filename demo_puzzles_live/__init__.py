@@ -18,7 +18,7 @@ class C(BaseConstants):
     PLAYERS_PER_GROUP = None
     INSTRUCTIONS = __name__ + "/instructions.html"
     NUM_ROUNDS = 1
-    
+
     MATRIX_SIZE = 4
     MATRIX_LENGTH = MATRIX_SIZE ** 2
     CHAR_EMPTY = "•"
@@ -112,19 +112,6 @@ class Game(Page):
     timeout_seconds = C.GAME_TIMEOUT
 
     @staticmethod
-    def new_trial(player, iteration):
-        return generate_puzzle(player, iteration, player.session.params['difficulty'])
-
-    @staticmethod
-    def encode_trial(puzzle: Puzzle):
-        return dict(
-            iteration=puzzle.iteration, 
-            target=list(puzzle.target), 
-            matrix=list(puzzle.matrix),
-            validated=[None] * C.MATRIX_LENGTH  # a field not stored in model
-        )
-
-    @staticmethod
     def js_vars(player):
         params = player.session.params
         return dict(
@@ -134,6 +121,19 @@ class Game(Page):
             post_trial_pause=params["post_trial_pause"],
             exposure_time=params["exposure_time"],
             max_moves=params["max_moves"],
+        )
+
+    @staticmethod
+    def new_trial(player, iteration):
+        return generate_puzzle(player, iteration, player.session.params["difficulty"])
+
+    @staticmethod
+    def encode_trial(puzzle: Puzzle):
+        return dict(
+            iteration=puzzle.iteration,
+            target=list(puzzle.target),
+            matrix=list(puzzle.matrix),
+            validated=[None] * C.MATRIX_LENGTH,  # a field not stored in model
         )
 
     @staticmethod
@@ -148,7 +148,7 @@ class Game(Page):
 
         moves_count = puzzle.matrix.count(C.CHAR_FILL)
         solved, _ = validate_puzzle(puzzle)
-        
+
         puzzle.is_successful = solved
         puzzle.is_completed = solved or moves_count == params["max_moves"]
         puzzle.is_skipped = puzzle.is_completed and moves_count == 0
@@ -160,7 +160,7 @@ class Game(Page):
 
         return dict(
             feedback=dict(input=pos, responseCorrect=correct, responseFinal=puzzle.is_completed),
-            update={f'validated.{pos}': correct},
+            update={f"validated.{pos}": correct},
         )
 
 

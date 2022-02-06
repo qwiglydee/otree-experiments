@@ -16,19 +16,19 @@ Page title
 
 {{ block content }}
 
-{{ if player.role == C.SUPERVISOR_ROLE }}
-<h5>You're randomly assigned a supervisor role</h5>
-{{ endif }}
-
 <div ot-if="stage == 'joining'" class="fullscreen welcome flex-col">
     <h5>Welcome to the chat!</h5>
+    {{ if player.role == C.SUPERVISOR_ROLE }}
+    <h4>You're randomly assigned a supervisor role</h4>
+    {{ endif }}
+    
     <div class="input-group">
         <input class="form-control" type="text" ot-input="nickname" autofocus placeholder="Enter your nickname">
         <button type="button" class="btn btn-outline-secondary" ot-emit="chat.join">send</button>
     </div>
 </div>
 
-<div ot-if="stage == 'chatting'" class="flex-col">
+<div ot-if="stage == 'chatting'" class="fullscreen flex-col">
     <div class="main">
         <div class="party">
             {{ for i in range(0, 10) }}

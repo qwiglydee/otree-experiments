@@ -29,6 +29,11 @@ async function main() {
 
   game.loadTrial = function () {
     console.debug("loading...");
+    if (progress.current == js_vars.num_trials) {
+      game.updateStatus({ gameOver: true });
+      return;
+    }
+
     progress.current += 1;
     game.setProgress(progress);
     game.startTrial(otree.live_utils.getPreloadedTrial(progress.current));
@@ -45,10 +50,6 @@ async function main() {
 
       progress.completed += 1;
       game.setProgress(progress);
-
-      if (progress.current == js_vars.num_trials) {
-        game.updateStatus({ gameOver: true });
-      }
     }
   };
 
@@ -62,7 +63,7 @@ async function main() {
     console.debug("input:", name, value);
     page.freezeInputs();
     let rt = otree.utils.measurement.end();
-    otree.live_utils.sendResponse(game.trial.iteration, value, rt);
+    otree.live_utils.sendInput(game.trial.iteration, value, rt);
 
     game.setFeedback({ responseCorrect: value == game.trial.target_category });
     game.updateStatus({ trialCompleted: true });

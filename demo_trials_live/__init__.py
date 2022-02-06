@@ -104,26 +104,6 @@ class Main(Page):
     trial_fields = ["iteration", "prime", "target"]
 
     @staticmethod
-    def get_trial(player, iteration):
-        print("get_trial", player, iteration)
-        trials = Trial.filter(player=player, iteration=iteration)
-        if len(trials) == 0:
-            return None
-        if len(trials) > 1:
-            raise ValueError("trials messed up")
-        return trials[0]
-
-    @staticmethod
-    def new_trial(player, iteration):
-        print("new_trial", player, iteration)
-        return Main.get_trial(player, iteration)
-
-
-    @staticmethod
-    def get_progress(player: Player, iteration):
-        return dict(total=C.NUM_TRIALS, current=iteration, completed=player.num_completed)
-
-    @staticmethod
     def js_vars(player):
         params = player.session.params
         return dict(
@@ -132,6 +112,11 @@ class Main(Page):
             trial_timeout=params["trial_timeout"],
             post_trial_pause=params["post_trial_pause"],
         )
+
+    @staticmethod
+    def get_progress(player: Player, iteration):
+        return dict(total=C.NUM_TRIALS, current=iteration, completed=player.num_completed)
+
 
     @staticmethod
     def validate_response(trial: Trial, response: dict, timeout_happened: bool):

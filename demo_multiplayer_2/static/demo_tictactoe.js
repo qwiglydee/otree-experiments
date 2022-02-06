@@ -4,6 +4,14 @@ async function main() {
   let page = otree.page,
     game = otree.game;
 
+  game.setConfig({ 
+    post_trial_pause: js_vars.post_trial_pause * 1000
+  });
+
+  game.loadTrial = function() {
+    otree.live_utils.requestTrial();
+  }
+
   page.onStatus = function (changed) {
     if (changed.playerActive === true) {
       page.update({ phase: "playing" });
@@ -31,11 +39,7 @@ async function main() {
     otree.live_utils.sendAction(game.trial, value);
   };
 
-  otree.live_utils.requestTrial();
-
-  await page.waitForEvent("ot.game.over");
-
-  await otree.utils.timers.sleep(js_vars.post_trial_pause * 1000);
+  await game.playTrial();
 
   page.submit();
 }
