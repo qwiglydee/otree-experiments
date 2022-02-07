@@ -21,16 +21,20 @@ Page title
         <div class="matrix matrix3" ot-class="phase">
             {{ for i in range(9) }}
                 <div class="cell" ot-class="highlight.{{i}}" ot-text="trial.board.{{i}}" 
-                     ot-input="place = {{i}}" ot-enabled="phase == 'playing'" ot-touch ot-click></div> 
+                     ot-input="place = {{i}}" ot-enabled="phase == 'moving'" ot-touch ot-click></div> 
             {{ endfor }}
         </div>
     </div>      
-    <div class="bottom flex-col">
+    <div class="bottom flex-col" ot-if="stage == 'playing'">
         <p>You are playing <b>{{ player.role }}</b></p>
         <p ot-if="status.playerActive == true">Make your move...</p>
         <p ot-if="status.playerActive == false">Wait for your opponent...</p>
+    </div>
+    <div class="bottom flex-col" ot-if="stage == 'gameover'">
+        <p>Game over!</p>
         <p ot-if="status.trialSuccessful == true" class="success">You won!</p>
         <p ot-if="status.trialSuccessful == false" class="failure">You lost!</p>
+        <p ot-if="status.trialSuccessful == null">It's a tie!</p>
     </div>
 </div>
  

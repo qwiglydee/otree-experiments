@@ -1,3 +1,5 @@
+import re
+
 from otree.api import *
 
 from common.live_utils import live_multiplayer
@@ -53,29 +55,33 @@ def put_mark(game: Trial, pos: int, role: str):
     game.board = "".join(board)
 
 
-WINNING_PATTERNS = (
-    "+++------",
-    "---+++---",
-    "------+++",
-    "+--+--+--",
-    "-+--+--+-",
-    "--+--+--+",
-    "+---+---+",
-    "--+-+-+--",
+WINNING_PATTERNS = ( # regexps
+    "@@@......",
+    "...@@@...",
+    "......@@@",
+    "@..@..@..",
+    ".@..@..@.",
+    "..@..@..@",
+    "@...@...@",
+    "..@.@.@..",
 )
 
 
 def validate_game(game: Trial):
-    pattern = game.board.replace(C.CHAR_EMPTY, '-')
-    full = pattern.count('-') == 9
+    def check(mark):
+        brd = game.board.replace(mark, '@')
+        win = list(filter(lambda wp: re.match(wp, brd), WINNING_PATTERNS))
+        return win[0] if len(win) else None
 
-    x_pattern = pattern.replace(C.PLAYER_X_ROLE, "+").replace(C.PLAYER_O_ROLE, "-")
-    if x_pattern in WINNING_PATTERNS:
-        return C.PLAYER_X_ROLE, x_pattern, full
+    full = game.board.count(C.CHAR_EMPTY) == 0
 
-    o_pattern = pattern.replace(C.PLAYER_O_ROLE, "+").replace(C.PLAYER_X_ROLE, "-")
-    if o_pattern in WINNING_PATTERNS:
-        return C.PLAYER_O_ROLE, o_pattern, full
+    winning = check(C.PLAYER_X_ROLE)
+    if winning:
+        return C.PLAYER_X_ROLE, winning, full
+    
+    winning = check(C.PLAYER_O_ROLE)
+    if winning:
+        return C.PLAYER_O_ROLE, winning, full
 
     return None, None, full
 
@@ -113,7 +119,7 @@ class Game(Page):
             return dict(
                 gameOver=True,
                 trialCompleted=True,
-                trialSuccessful=(player.role == game.winner),
+                trialSuccessful=(player.role == game.winner) if game.winner else None,
                 playerActive=None
             )
         else:
@@ -149,7 +155,7 @@ class Game(Page):
             
             return dict(
                 feedback=dict(responseCorrect=True, responseFinal=True), 
-                update={"board": list(game.board), "winpattern": list(winpattern)}
+                update={"board": list(game.board), "winpattern": list(winpattern) if winpattern else []}
             )
 
         game.group.active_player = NEXT_PLAYER[game.group.active_player]

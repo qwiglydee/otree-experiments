@@ -13,14 +13,18 @@ async function main() {
   }
 
   page.onStatus = function (changed) {
+    console.debug("status", changed);
     if (changed.playerActive === true) {
-      page.update({ phase: "playing" });
+      page.update({ phase: "moving" });
     }
     if (changed.playerActive === false) {
       page.update({ phase: "waiting" });
     }
+    if (changed.trialStarted) {
+      page.update({ stage: "playing" });
+    }
     if (changed.gameOver) {
-      page.update({ phase: "feedback" });
+      page.update({ stage: "gameover" });
     }
   };
 
@@ -29,7 +33,7 @@ async function main() {
       // styles to highligh winning pattern
       let hl_class = game.status.trialSuccessful ? "winning" : "losing";
       page.update({
-        highlight: game.trial.winpattern.map((cell) => (cell == "+" ? hl_class : "")),
+        highlight: game.trial.winpattern.map((cell) => (cell == "@" ? hl_class : "")),
       });
     }
   };
