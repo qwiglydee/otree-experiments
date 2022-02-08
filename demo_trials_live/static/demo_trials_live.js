@@ -5,14 +5,12 @@ async function main() {
     game = otree.game,
     schedule = otree.schedule;
 
-  // TODO: schedule.phases =
-  schedule.setup([
+  schedule.phases = [
     { at: 0, phase: "aim" },
     { at: 1000, phase: "prime" },
     { at: 1500, phase: "target" },
-  ]);
-  // TODO: schedule.timeout =
-  schedule.setTimeout(js_vars.trial_timeout * 1000);
+  ];
+  schedule.timeout = js_vars.trial_timeout * 1000;
 
   // TODO: game.config = ...
   game.setConfig({
@@ -24,16 +22,6 @@ async function main() {
   game.loadTrial = function () {
     console.debug("loading...");
     otree.live_utils.requestTrial();
-  };
-
-  page.onStatus = function (changed) {
-    console.debug("status", changed);
-    if (changed.trialStarted) {
-      schedule.start();
-    }
-    if (changed.trialCompleted) {
-      schedule.stop();
-    }
   };
 
   page.onUpdate = function (update) {

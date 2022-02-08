@@ -12,10 +12,10 @@ async function main() {
     feedback: [],
   };
 
-  schedule.setup([
+  schedule.phases = [
     { at: 0, phase: "exposing" },
     { at: js_vars.exposure_time * 1000, phase: "solving" },
-  ]);
+  ];
 
   // TODO: game.config = ...
   game.setConfig({
@@ -31,11 +31,9 @@ async function main() {
   page.onStatus = function (changed) {
     console.debug("status", changed);
     if (changed.trialStarted) {
-      schedule.start();
       game.progress.moves = 0;
     }
     if (changed.trialCompleted) {
-      schedule.stop();
       page.update({ phase: "feedback" });
     }
   };

@@ -13,13 +13,13 @@ async function main() {
   };
 
   // TODO: schedule.phases =
-  schedule.setup([
+  schedule.phases = [
     { at: 0, phase: "aim" },
     { at: 1000, phase: "prime" },
     { at: 1500, phase: "target" },
-  ]);
+  ];
   // TODO shedule.timeout =
-  schedule.setTimeout(js_vars.trial_timeout * 1000);
+  schedule.timeout = js_vars.trial_timeout * 1000;
 
   // TODO: game.config = ...
   game.setConfig({
@@ -40,14 +40,7 @@ async function main() {
   };
 
   page.onStatus = function (changed) {
-    if (changed.trialStarted) {
-      console.debug("started");
-      schedule.start();
-    }
     if (changed.trialCompleted) {
-      console.debug("completed");
-      schedule.stop();
-
       progress.completed += 1;
       game.setProgress(progress);
     }

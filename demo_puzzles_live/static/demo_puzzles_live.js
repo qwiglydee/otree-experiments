@@ -8,10 +8,10 @@ async function main() {
   // styles to display working or validated matrix
   let styles = [];
 
-  schedule.setup([
+  schedule.phases = [
     { at: 0, phase: "exposing" },
     { at: js_vars.exposure_time * 1000, phase: "solving" },
-  ]);
+  ];
 
   // TODO: game.config = ...
   game.setConfig({
@@ -22,16 +22,6 @@ async function main() {
   game.loadTrial = function () {
     console.debug("loading...");
     otree.live_utils.requestTrial();
-  };
-
-  page.onStatus = function (changed) {
-    console.debug("status", changed);
-    if (changed.trialStarted) {
-      schedule.start();
-    }
-    if (changed.trialCompleted) {
-      schedule.stop();
-    }
   };
 
   page.onUpdate = function (update) {

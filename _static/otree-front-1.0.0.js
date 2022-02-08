@@ -969,8 +969,8 @@ registerDirective("[ot-text]", otText);
 /**
  * Directive `ot-img="reference"`
  *
- * It inserts image element from {@link Page.event:update} inside its host.
- * The value in the Changes should be an instance of created and pre-loaded Image element.
+ * It replaces host element with an element from referenced var.
+ * The var should have value of preloaded Image instance.
  *
  * @hideconstructor
  */
@@ -981,18 +981,30 @@ class otImg extends DirectiveBase {
 
   onReset(event, vars) {
     if (affecting(this.var, event)) {
-      setChild(this.elem, null);
+      this.replaceImg(new Image());
     }
   }
 
   onUpdate(event, changes) {
     if (affecting(this.var, event)) {
       let img = evalVar(this.var, changes);
-      if (!!img && !(img instanceof Image)) {
-        throw new Error(`Invalid value for image: ${img}`);
-      }
-      setChild(this.elem, img);
+      this.replaceImg(img);
     }
+  }
+
+  replaceImg(newimg) {
+    if (!!newimg && !(newimg instanceof Image)) {
+      throw new Error(`Invalid value for image: ${newimg}, expecting Imge instance`);
+    }
+    let attrs = this.elem.attributes;
+    this.elem.replaceWith(newimg);
+    this.elem = newimg;
+
+    for(let attr of attrs) {
+      if (attr.name.startsWith("ot-") || attr.name == 'src') continue;
+      this.elem.setAttribute(attr.name, attr.value);
+    }
+
   }
 }
 
@@ -1537,6 +1549,9 @@ class Game {
 
 /**
  * Schedule to toggle page flags at specifed time moments
+ * 
+ * @property {Array} phases list of phases as `{ at: msecodds, var: val, ...}`
+ * @property {number} timeout number of mseconds to emit timeout 
  */
 
 class Schedule {
@@ -1545,33 +1560,9 @@ class Schedule {
     this.timers = new Timers();
     this.phases = [];
     this.timeout = null;
-  }
 
-  /**
-   * Setup schedule
-   *
-   * The `phases` is a list of vars augmented with `at` field indicating time in ms to update the vars.
-   * ```
-   * [
-   *  { at: 0, phase: "something", ... }
-   *  { at: 1000, foo: "Foo", ... }
-   * }
-   * ```
-   *
-   * The `timeout` in config is time in ms to emit timeout even t.
-   *
-   * @param {Object} phases list of phases
-   */
-  setup(phases) {
-    this.phases = phases;
-  }
-
-  at(time, vars) {
-    this.phases.push({ at: time, ...vars});
-  }
-
-  setTimeout(time) {
-    this.timeout = time;
+    this.page.onEvent("ot.trial.started", () => this.start());
+    this.page.onEvent("ot.trial.completed", () => this.stop());
   }
 
   /**

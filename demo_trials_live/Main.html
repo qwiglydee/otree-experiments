@@ -28,7 +28,7 @@ Page title
     <div class="main">
         <div ot-if="phase == 'aim'" class="icon aim">⌖</div>
         <div ot-if="phase == 'prime'" class="prime" ot-text="trial.prime"></div>
-        <div ot-if="phase == 'target'" class="target" ot-img="trial.target"></div>
+        <div ot-if="phase == 'target'" class="target"><img ot-img="trial.target"></div>
     </div>
 
     <progress ot-max="progress.total" ot-value="progress.completed"></progress>

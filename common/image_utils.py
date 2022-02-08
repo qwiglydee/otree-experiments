@@ -5,7 +5,7 @@ from io import BytesIO
 from base64 import b64encode
 
 MSG_NEED_PIL = """
-FAILURE: Before using these real-effort tasks,
+FAILURE: Before using these image utils,
 You need to: 
 (1) run "pip install Pillow"
 (2) add Pillow to your requirements.txt
