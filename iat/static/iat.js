@@ -49,7 +49,7 @@ class View {
             this.$stimulus_txt.classList.toggle("hidden", is_image);
             this.$stimulus_img.classList.toggle("hidden", !is_image);
             if (is_image) {
-                this.$stimulus_img.src = images_url + this.model.stimulus;
+                this.$stimulus_img.src = this.model.stimulus;
                 this.$stimulus_img.classList.add(this.model.stimulus_cls);
             } else {
                 this.$stimulus_txt.textContent = this.model.stimulus;

@@ -20,6 +20,10 @@ class Constants(BaseConstants):
     trial_delay = 0.250
 
 
+def url_for_image(filename):
+    return f"/static/images/{filename}"
+
+
 class Subsession(BaseSubsession):
     practice = models.BooleanField()
 
@@ -48,7 +52,7 @@ def thumbnails_for_block(block, params):
             if cls in block[side] and params[f"{cls}_images"]:
                 # use first image in categopry as a corner thumbnail
                 images = stimuli.DICT[block[side][cls]]
-                thumbnails[side][cls] = "/static/images/" + images[0]
+                thumbnails[side][cls] = url_for_image(images[0])
     return thumbnails
 
 
@@ -168,7 +172,7 @@ def encode_trial(trial: Trial):
     return dict(
         cls=trial.stimulus_cls,
         cat=trial.stimulus_cat,
-        stimulus=trial.stimulus,
+        stimulus=url_for_image(trial.stimulus) if trial.stimulus.endswith((".png", ".jpg")) else str(trial.stimulus),
     )
 
 
