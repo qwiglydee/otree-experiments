@@ -48,7 +48,7 @@ def thumbnails_for_block(block, params):
             if cls in block[side] and params[f"{cls}_images"]:
                 # use first image in categopry as a corner thumbnail
                 images = stimuli.DICT[block[side][cls]]
-                thumbnails[side][cls] = "images/" + images[0]
+                thumbnails[side][cls] = "/static/images/" + images[0]
     return thumbnails
 
 

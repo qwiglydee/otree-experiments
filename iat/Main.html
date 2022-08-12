@@ -11,7 +11,7 @@
         <div class="left corner">
             {{ if params.primary_images }}
                 {{ if 'primary' in thumbnails.left }}
-                    <img class="left primary category" src="{{ static thumbnails.left.primary }}">
+                    <img class="left primary category" src="{{ thumbnails.left.primary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'primary' in block.left }}
@@ -21,7 +21,7 @@
 
             {{ if params.secondary_images }}
                 {{ if 'secondary' in thumbnails.left }}
-                    <img class="left secondary category" src="{{ static thumbnails.left.secondary }}">
+                    <img class="left secondary category" src="{{ thumbnails.left.secondary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'secondary' in block.left }}
@@ -32,7 +32,7 @@
         <div class="right corner">
             {{ if params.primary_images }}
                 {{ if 'primary' in thumbnails.right }}
-                    <img class="right primary category" src="{{ static thumbnails.right.primary }}">
+                    <img class="right primary category" src="{{ thumbnails.right.primary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'primary' in block.right }}
@@ -42,7 +42,7 @@
 
             {{ if params.secondary_images }}
                 {{ if 'secondary' in thumbnails.right }}
-                    <img class="right secondary category" src="{{ static thumbnails.right.secondary }}">
+                    <img class="right secondary category" src="{{ thumbnails.right.secondary }}">
                 {{ endif }}
             {{ else }}
                 {{ if 'secondary' in block.right }}
@@ -91,9 +91,6 @@
 {{ endblock }}
 
 {{ block scripts }}
-<script>
-    const images_url = "{{ static 'images/' }}";
-</script>
 <script src="{{ static 'iat.js' }}"></script>
 {{ if DEBUG }}<script src="{{ static 'iat_cheating.js' }}"></script>{{ endif }}
 {{ endblock }}
